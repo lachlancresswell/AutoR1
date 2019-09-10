@@ -6,14 +6,24 @@ from tkinter.filedialog import askopenfilename
 import shutil
 import sys
 
+INPUT_SNAPSHOT = "Inputs"
+ARRAYCALC_SNAPSHOT = 1
 
 ctrlStr = 'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") '
 
 #CLASS OVERVIEW
-#class Channel:
- # def __init__(GroupId, name):
-#    self.GroupId = GroupId
-#    self.name = name
+class Channel:
+    def __init__(self, targetId, targetChannel):
+        self.targetId = targetId
+        self.targetChannel = targetChannel
+        self.inputEnable = []
+        self.name = "name"
+
+    def print(self):
+        print(self.targetId)
+        print(self.targetChannel)
+        print(self.inputEnable)
+        print(self.name)
 
 class Group:
     def __init__(self, groupId, name):
@@ -171,23 +181,49 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
         s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{groups[i].viewId}", "{str(row[7])}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{groups[i].groupId}", "{str(row[23])}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")'
         proj_c.execute(s)
 
-
-print("Groups found:")
-print(groups)
-
-
 #Create new view
-viewName = "Meters"
-viewWidth = 2000
-viewHeight = 4000
-viewZoom = 100
-viewType = 1000
-proj_c.execute(f'INSERT INTO "main"."Views"("ViewId","Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (NULL,'+str(viewType)+',"'+viewName+'",NULL,NULL,NULL,NULL,'+str(viewWidth)+','+str(viewHeight)+','+str(viewZoom)+',NULL,NULL,NULL,NULL);')
+#viewName = "Meters"
+#viewWidth = 2000
+#viewHeight = 4000
+#viewZoom = 100
+#viewType = 1000
+#proj_c.execute(f'INSERT INTO "main"."Views"("ViewId","Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (NULL,'+str(viewType)+',"'+viewName+'",NULL,NULL,NULL,NULL,'+str(viewWidth)+','+str(viewHeight)+','+str(viewZoom)+',NULL,NULL,NULL,NULL);')
 
-#proj_c.execute(f'SELECT TargetId FROM "main"."SnapshotValues" WHERE SnapshotId = 1 AND TargetProperty = "Config_InputEnable3" ORDER BY TargetId')
-#proj_c.execute(f'SELECT TargetId FROM "main"."SnapshotValues" WHERE SnapshotId = 1 AND TargetProperty = "Config_InputEnable4" ORDER BY TargetId')
-#proj_c.execute(f'SELECT TargetId FROM "main"."SnapshotValues" WHERE SnapshotId = 1 AND TargetProperty = "Config_InputEnable5" ORDER BY TargetId')
-#proj_c.execute(f'SELECT TargetId FROM "main"."SnapshotValues" WHERE SnapshotId = 1 AND TargetProperty = "Config_InputEnable6" ORDER BY TargetId')
+
+#Create channel list
+channels = []
+proj_c.execute(f'SELECT TargetId, TargetNode FROM "main"."SnapshotValues" WHERE SnapshotId = {ARRAYCALC_SNAPSHOT} AND TargetProperty = "Config_InputEnable1" ORDER BY TargetId ASC')
+rtn = proj_c.fetchall()
+for row in rtn:
+    channels.append(Channel(row[0], row[1]))
+for i in range(len(channels)):
+    proj_c.execute(f'SELECT Name FROM "main"."AmplifierChannels" WHERE DeviceId = {channels[i].targetId} AND AmplifierChannel = {channels[i].targetChannel}')
+    channels[i].name = proj_c.fetchone()[0]
+
+
+#Find ip routing for each channel
+ipStr = ["Config_InputEnable1", "Config_InputEnable2", "Config_InputEnable3", "Config_InputEnable4", "Config_InputEnable5", "Config_InputEnable6", "Config_InputEnable7", "Config_InputEnable8"]
+proj_c.execute(f'SELECT SnapshotId FROM "main"."Snapshots" WHERE Name = "{INPUT_SNAPSHOT}"')
+#ipSnId = proj_c.fetchone()[0]
+for c in channels:
+    for s in ipStr:
+        proj_c.execute(f'SELECT * FROM "main"."SnapshotValues" WHERE SnapshotId = {1} AND TargetId = {c.targetId} AND TargetNode = {c.targetChannel} AND TargetProperty = "{s}" AND Value = 1 ORDER BY TargetId')
+        rtn = proj_c.fetchall()
+        c.inputEnable.append(len(rtn));
+
+# Create input groups
+ipStr = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"]
+ipId = []
+for s in ipStr:
+    proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",1,0,-1,0,0);')
+    proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{s}"')
+    ipId.append(proj_c.fetchone()[0])
+
+for c in channels:
+    for i in range(len(c.inputEnable)):
+        if c.inputEnable[i] > 0:
+            proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{c.name}",{ipId[i]},{c.targetId},{c.targetChannel},1,0);')
+            print(f'Inserted {c.name} into {ipStr[i]}')
 
 
 
