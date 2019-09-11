@@ -9,6 +9,13 @@ import sys
 INPUT_SNAPSHOT = "Inputs"
 ARRAYCALC_SNAPSHOT = 1
 TEMPLATE_NAMES = ['fallback', 'fallbacklr', 'fbmaster', 'mute', 'dsd1stat', 'dsd2stat']
+METER_WINDOW_TITLE = "Meters"
+
+GROUPID = 0
+SUBGROUP = 0
+TARGET_CHANNEL = 4
+TARGET_ID = 3
+
 
 ctrlStr = 'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") '
 
@@ -21,10 +28,8 @@ class Channel:
         self.name = "name"
 
     def print(self):
-        print(self.targetId)
-        print(self.targetChannel)
+        print(f'CHANNEL: id - {self.targetId} / channel - {self.targetChannel} / name - {self.name}')
         print(self.inputEnable)
-        print(self.name)
 
 class Group:
     def __init__(self, groupId, name):
@@ -32,6 +37,10 @@ class Group:
         self.name = name
         self.viewId = None
         self.groupIdSt = []
+        self.targetDevices = []
+
+    def print(self):
+        print(f'GROUP: {self.name} / {self.groupId}')
 
     @property
     def viewId(self):
@@ -55,6 +64,19 @@ def getTempContents(tempArray, tempName):
         if t.name == tempName:
             return t.contents
     return -1;
+
+def findDevicesInGroups(parentId):
+    proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE ParentId = {parentId}')
+    rtn = proj_c.fetchall()
+    ch = []
+    for row in rtn:
+        if row[TARGET_ID] == SUBGROUP: # If entry is not a device but a subgroup
+            ch += findDevicesInGroups(row[GROUPID])
+        else:
+            return rtn
+
+    return ch
+
 
 
 views = []
@@ -89,7 +111,7 @@ for row in rtn:
     print(f'[{i}] - {row[2]}')
 userIp = input('Select snapshot to retrieve input patch from (default 1):')
 if userIp == "":
-    userIp = 1
+    userIp = ARRAYCALC_SNAPSHOT
 snapId = rtn[int(userIp)-1][0]
 
 channels = []
@@ -124,7 +146,7 @@ for c in channels:
     for i in range(len(c.inputEnable)):
         if c.inputEnable[i] > 0:
             proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{c.name}",{ipId[i]},{c.targetId},{c.targetChannel},1,0);')
-            print(f'Inserted {c.name} into {ipStr[i]}')
+            #print(f'Inserted {c.name} into {ipStr[i]}')
 
 
 
@@ -165,76 +187,45 @@ for row in rtn:
     groups.append(Group(row[0], row[1])) #First is GroupId, second is Name
 
 
+
 for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get view ids
+    g = groups[i]
+
+    groups[i].targetDevices = findDevicesInGroups(g.groupId))
+
+
+
+
+
     proj_c.execute(f'SELECT "ViewId" FROM "main"."Views" WHERE Name = "{groups[i].name}" ORDER BY ViewId ASC LIMIT 1;') # Get view IDs
-    print(f'SELECT "ViewId" FROM "main"."Views" WHERE Name = "{groups[i].name}" ORDER BY ViewId ASC LIMIT 1;')
     rtn = proj_c.fetchone()
-    print(rtn)
     try:
         groups[i].viewId = rtn[0]
     except:
         print(f"Could not find view for {groups[i].name} group. Exiting.")
         sys.exit();
 
-    # Find any L/R subgroups
-    proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{groups[i].name + " TOPs L"}"')
-    try:
-        rtn = proj_c.fetchone()[0]
-        groups[i].groupIdSt.append(rtn)
-    except:
-        print(f"No TOPs L goup found for {groups[i].name} group.")
-
-    proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{groups[i].name + " TOPs R"}"')
-    try:
-        rtn = proj_c.fetchone()[0]
-        groups[i].groupIdSt.append(rtn)
-    except:
-        print(f"No TOPs R goup found for {groups[i].name} group.")
-
-    proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{groups[i].name + " SUBs L"}"')
-    try:
-        rtn = proj_c.fetchone()[0]
-        groups[i].groupIdSt.append(rtn)
-    except:
-        print(f"No TOPs L goup found for {groups[i].name} group.")
-
-    proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{groups[i].name + " SUBs R"}"')
-    try:
-        rtn = proj_c.fetchone()[0]
-        groups[i].groupIdSt.append(rtn)
-    except:
-        print(f"No TOPs R goup found for {groups[i].name} group.")
+    # Find any L/R or SUB L/R subgroups
+    grpNames = [" TOPs L", " TOPs R", " SUBs L", " SUBs R"]
+    for g in grpNames:
+        proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{groups[i].name + g}"')
+        try:
+            rtn = proj_c.fetchone()[0]
+            groups[i].groupIdSt.append(rtn)
+        except:
+            print(f"No {g} group found for {groups[i].name} group.")
 
 
 
-    # Delete input routing views
-    proj_c.execute(f'SELECT "JoinedId" FROM "main"."Controls" WHERE DisplayName = "Input Routing" AND ViewId = "{groups[i].viewId}"')
-    try:
-        for row in proj_c.fetchall():
-            proj_c.execute(f'DELETE FROM "main"."Controls" WHERE JoinedId = {row[0]};')
-    except:
-        print(f"Could not find digital clock info for {groups[i].name}")
-    # Delete clock selection window
-    proj_c.execute(f'SELECT "JoinedId" FROM "main"."Controls" WHERE DisplayName = "Digital Input Clock" AND ViewId = "{groups[i].viewId}"')
-    try:
-        for row in proj_c.fetchall():
-            proj_c.execute(f'DELETE FROM "main"."Controls" WHERE JoinedId = {row[0]};')
-    except:
-        print(f"Could not find digital clock info for {groups[i].name}")
-    proj_c.execute(f'SELECT "JoinedId" FROM "main"."Controls" WHERE DisplayName = "Digital Input Clock Left" AND ViewId = "{groups[i].viewId}"')
-    try:
-        for row in proj_c.fetchall():
-            proj_c.execute(f'DELETE FROM "main"."Controls" WHERE JoinedId = {row[0]};')
-    except:
-        print(f"Could not find digital clock info for {groups[i].name}")
-    proj_c.execute(f'SELECT "JoinedId" FROM "main"."Controls" WHERE DisplayName = "Digital Input Clock Right" AND ViewId = "{groups[i].viewId}"')
-    try:
-        for row in proj_c.fetchall():
-            proj_c.execute(f'DELETE FROM "main"."Controls" WHERE JoinedId = {row[0]};')
-    except:
-        print(f"Could not find digital clock info for {groups[i].name}")
-
-
+    # Delete input routing and clock selection views
+    dsplyNames = ["Input Routing", "Digital Input Clock", "Digital Input Clock Left", "Digital Input Clock Right"]
+    for d in dsplyNames:
+        proj_c.execute(f'SELECT "JoinedId" FROM "main"."Controls" WHERE DisplayName = "{d}" AND ViewId = "{groups[i].viewId}"')
+        try:
+            for row in proj_c.fetchall():
+                proj_c.execute(f'DELETE FROM "main"."Controls" WHERE JoinedId = {row[0]};')
+        except:
+            print(f"Could not find {d} info for {groups[i].name}")
 
 
     posX = 0
@@ -273,8 +264,14 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
 
 
 
+###### METERS
+proj_c.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,200,2000,100,NULL,NULL,NULL,NULL);')
+
+
+
+
 dbTemplate.commit()
 dbTemplate.close()
-dbProj.commit()
-dbProj.close()
+#dbProj.commit()
+#dbProj.close()
 sys.exit()
