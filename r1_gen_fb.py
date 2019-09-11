@@ -8,8 +8,16 @@ import sys
 
 INPUT_SNAPSHOT = "Inputs"
 ARRAYCALC_SNAPSHOT = 1
-TEMPLATE_NAMES = ['fallback', 'fallbacklr', 'fbmaster', 'mute', 'dsd1stat', 'dsd2stat']
+TEMPLATE_NAMES = ['fallback', 'fallbacklr', 'fbmaster', 'mute', 'dsd1stat', 'dsd2stat', 'meters', 'metersgroup']
 METER_WINDOW_TITLE = "Meters"
+METER_VIEW_WIDTH = 2000
+METER_VIEW_HEIGHT = 7000
+METER_VIEW_STARTX = 15
+METER_VIEW_STARTY = 15
+METER_GROUP_TEMPLATE_INDEX = 7
+METER_TEMPLATE_INDEX = 6
+METER_GROUP_SPACING = 230
+METER_SPACING_Y = 130
 
 GROUPID = 0
 SUBGROUP = 0
@@ -41,6 +49,8 @@ class Group:
 
     def print(self):
         print(f'GROUP: {self.name} / {self.groupId}')
+        for d in self.targetChannels:
+            print(d)
 
     @property
     def viewId(self):
@@ -191,10 +201,7 @@ for row in rtn:
 for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get view ids
     g = groups[i]
 
-    groups[i].targetDevices = findDevicesInGroups(g.groupId))
-
-
-
+    groups[i].targetChannels = findDevicesInGroups(g.groupId)
 
 
     proj_c.execute(f'SELECT "ViewId" FROM "main"."Views" WHERE Name = "{groups[i].name}" ORDER BY ViewId ASC LIMIT 1;') # Get view IDs
@@ -265,13 +272,52 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
 
 
 ###### METERS
-proj_c.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,200,2000,100,NULL,NULL,NULL,NULL);')
+proj_c.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,{METER_VIEW_WIDTH},{METER_VIEW_HEIGHT},100,NULL,NULL,NULL,NULL);')
+proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
+meterViewId = proj_c.fetchone()[0]
 
+print(f'Meters ViewId: {meterViewId}')
 
+posX = METER_VIEW_STARTX
+posY = METER_VIEW_STARTY
+# Create unique joinedId for each group frame and meters
+proj_c.execute(f'SELECT JoinedId FROM "main"."Controls" ORDER BY JoinedId DESC LIMIT 1')
+jId = proj_c.fetchone()[0]+1
+for g in groups:
+
+    for row in temps[METER_GROUP_TEMPLATE_INDEX].contents: # Create overall group frame
+        print(row)
+        s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(posX)}", "{str(posY)}", "{str(row[4])}", "{str(row[5])}", "{meterViewId}", "{str(g.name)}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(row[22])}", "{str(row[23])}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")'
+        proj_c.execute(s)
+
+    posY = 40
+
+    for d in g.targetChannels:
+        print(d)
+        for row in temps[METER_TEMPLATE_INDEX].contents: # Create channel meters
+            #22 23
+            dname = row[7]
+            if dname == "TITLE":
+                dname = d[1]
+
+            # DS10 info is provided on a per device basis and will not work if a channel id is provided
+            chId = d[4]
+            propType = row[-9]
+            if (propType == "Input_Digital_TxStream") or (propType == "Input_Digital_DsDataPri") or (propType == "Input_Digital_DsDataSec"):
+                chId = 0
+
+            s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{meterViewId}", "{str(dname)}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(d[3])}", "{str(chId)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")'
+            
+            proj_c.execute(s)
+
+        posY += METER_SPACING_Y
+    posX += METER_GROUP_SPACING
+    posY = METER_VIEW_STARTY
+    jId += 1
 
 
 dbTemplate.commit()
 dbTemplate.close()
-#dbProj.commit()
-#dbProj.close()
+dbProj.commit()
+dbProj.close()
 sys.exit()
