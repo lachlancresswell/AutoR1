@@ -19,6 +19,8 @@ METER_TEMPLATE_INDEX = 6
 METER_GROUP_SPACING = 230
 METER_SPACING_Y = 155
 
+PROPERTY_TYPE_INDEX = -9
+
 GROUPID = 0
 SUBGROUP = 0
 TARGET_CHANNEL = 4
@@ -89,6 +91,15 @@ def findDevicesInGroups(parentId):
 
     return ch
 
+def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c):
+    print(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel}')
+    for row in getTempContents(temps, tempName):
+        print({row[7]})
+        if targetId is None:
+            targetId = row[22]
+        if targetChannel is None:
+            targetChannel = row[23]
+        proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{str(viewId)}", "{row[7]}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(targetId)}", "{str(targetChannel)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
 
 
 views = []
@@ -177,18 +188,9 @@ masterId = proj_c.fetchone()[0]
 
 proj_c.execute(f'UPDATE "main"."Views" SET VRes = {1500} WHERE ViewId = {overviewId}')
 
-for row in getTempContents(temps, "fbmaster"):
-    s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+429)}", "{str(row[3]+823)}", "{str(row[4])}", "{str(row[5])}", "{overviewId}", "{str(row[7])}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(masterId)}", "{str(row[23])}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")'
-    proj_c.execute(s)
-
-for row in getTempContents(temps, "dsd1stat"):
-    s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+429)}", "{str(row[3]+1042)}", "{str(row[4])}", "{str(row[5])}", "{overviewId}", "{str(row[7])}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(ipId[4])}", "{str(row[23])}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")'
-    proj_c.execute(s)
-
-for row in getTempContents(temps, "dsd2stat"):
-    s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+603)}", "{str(row[3]+1042)}", "{str(row[4])}", "{str(row[5])}", "{overviewId}", "{str(row[7])}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(ipId[5])}", "{str(row[23])}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")'
-    proj_c.execute(s)
-
+insertTemplate(temps, "fbmaster", 429, 823, overviewId, "", masterId, None, proj_c);
+insertTemplate(temps, "dsd1stat", 429, 1042, overviewId, "", ipId[4], None, proj_c);
+insertTemplate(temps, "dsd2stat", 603, 1042, overviewId, "", ipId[4], None, proj_c);
 
 # Auto-Find Group ids and names
 proj_c.execute('SELECT "GroupId" FROM "main"."Groups" ORDER BY "GroupId" ASC LIMIT 3')
@@ -223,7 +225,8 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
             groups[i].groupIdSt.append(Group(rtn[0], rtn[1]))
             groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(groups[i].groupIdSt[-1].groupId)
         except:
-            print(f"No {g} group found for {groups[i].name} group.")
+            asdasd = 1;
+            #print(f"No {g} group found for {groups[i].name} group.")
 
 
 
@@ -251,8 +254,9 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
             if side == 1:
                 sideText = "Right"
                 sideX = 770
+
             for row in getTempContents(temps, 'mute'):
-                s = ctrlStr + f'VALUES ("{str(row[1])}", "{str(row[2]+sideX)}", "{str(row[3]+110)}", "{str(row[4])}", "{str(row[5])}", "{groups[i].viewId}", "{str(sideText)}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{groups[i].groupIdSt[side]}", "{str(row[23])}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")'
+                s = ctrlStr + f'VALUES ("{str(row[1])}", "{str(row[2]+sideX)}", "{str(row[3]+110)}", "{str(row[4])}", "{str(row[5])}", "{groups[i].viewId}", "{str(sideText)}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{groups[i].groupIdSt[side].groupId}", "{str(row[23])}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")'
                 proj_c.execute(s)
 
     elif groups[i].name.find("SUB") > -1 and groups[i].name.find("array") > -1: #Subs
@@ -308,14 +312,13 @@ for g in groups2:
 
     for d in g.targetChannels:
         for row in temps[METER_TEMPLATE_INDEX].contents: # Create channel meters
-            #22 23
             dname = row[7]
             if dname == "TITLE":
                 dname = d[1]
 
             # DS10 info is provided on a per device basis and will not work if a channel id is provided
             chId = d[4]
-            propType = row[-9]
+            propType = row[PROPERTY_TYPE_INDEX]
             if (propType == "Input_Digital_TxStream") or (propType == "Input_Digital_DsDataPri") or (propType == "Input_Digital_DsDataSec"):
                 chId = 0
 
