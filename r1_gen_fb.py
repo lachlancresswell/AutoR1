@@ -48,7 +48,9 @@ class Group:
         self.targetDevices = []
 
     def print(self):
-        print(f'GROUP: {self.name} / {self.groupId}')
+        print(f'GROUP: {self.name} / {self.groupId} / Subgroups: {len(self.groupIdSt)}')
+        for g in self.groupIdSt:
+            print(g.name)
         for d in self.targetChannels:
             print(d)
 
@@ -217,8 +219,9 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
     for g in grpNames:
         proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{groups[i].name + g}"')
         try:
-            rtn = proj_c.fetchone()[0]
-            groups[i].groupIdSt.append(rtn)
+            rtn = proj_c.fetchone()
+            groups[i].groupIdSt.append(Group(rtn[0], rtn[1]))
+            groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(groups[i].groupIdSt[-1].groupId)
         except:
             print(f"No {g} group found for {groups[i].name} group.")
 
@@ -283,17 +286,27 @@ posY = METER_VIEW_STARTY
 # Create unique joinedId for each group frame and meters
 proj_c.execute(f'SELECT JoinedId FROM "main"."Controls" ORDER BY JoinedId DESC LIMIT 1')
 jId = proj_c.fetchone()[0]+1
+
+
+groups2 = []
 for g in groups:
+    if len(g.groupIdSt) < 1:
+        groups2.append(g)
+    else:
+        for sg in g.groupIdSt:
+            groups2.append(sg)
+
+print(len(groups2))
+
+for g in groups2:
 
     for row in temps[METER_GROUP_TEMPLATE_INDEX].contents: # Create overall group frame
-        print(row)
         s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(posX)}", "{str(posY)}", "{str(row[4])}", "{str(row[5])}", "{meterViewId}", "{str(g.name)}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(row[22])}", "{str(row[23])}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")'
         proj_c.execute(s)
 
     posY = 40
 
     for d in g.targetChannels:
-        print(d)
         for row in temps[METER_TEMPLATE_INDEX].contents: # Create channel meters
             #22 23
             dname = row[7]
@@ -307,14 +320,13 @@ for g in groups:
                 chId = 0
 
             s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{meterViewId}", "{str(dname)}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(d[3])}", "{str(chId)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")'
-            
+
             proj_c.execute(s)
 
         posY += METER_SPACING_Y
     posX += METER_GROUP_SPACING
     posY = METER_VIEW_STARTY
     jId += 1
-
 
 dbTemplate.commit()
 dbTemplate.close()
