@@ -4,5 +4,6 @@
 
 #d&b files
 *.dbpr
+*.dbpr-journal
 *.dblock
 *.r2t
