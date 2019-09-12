@@ -8,6 +8,7 @@ import sys
 
 VIEWS_REMOVE_TEXT = 'Remove all views and groups? (y/n)'
 INPUT_GROUP_TEXT = 'Create input groups? (y/n)'
+SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group?'
 FALLBACK_TEXT = 'Create fallback controls? (y/n)'
 METERS_TEXT = 'Create meters view? (y/n)'
 METERS_REMOVE_TEXT = 'Remove meters view? (y/n)'
@@ -97,7 +98,7 @@ def findDevicesInGroups(parentId):
     return ch
 
 def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c):
-    print(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel}')
+    #print(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel}')
 
     for row in getTempContents(temps, tempName):
         print({row[7]})
@@ -107,8 +108,6 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
             targetChannel = row[23]
         if (displayName is not None) and (row[1] == 12):
             dName = displayName
-            print("YEAH BOI")
-            print(dName)
         else:
             dName = row[7]
         proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{str(viewId)}", "{dName}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(targetId)}", "{str(targetChannel)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
@@ -242,8 +241,38 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
             asdasd = 1;
             #print(f"No {g} group found for {groups[i].name} group.")
 
+    if groups[i].name == "SUBarray": # Create LR groups for SUBarray
+        userIp = " "
+        while (userIp != "y") and (userIp != "n") and (userIp != ""):
+            userIp = input(SUBARRAY_GROUP_TEXT)
 
+        if (userIp == "y") or (userIp == ""):
+            groupL = []
+            groupR = []
+            for tc in groups[i].targetChannels:
+                if " L" in tc[1]:
+                    groupL.append(tc)
+                else:
+                    groupR.append(tc)
 
+            proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{"SUBarray LR"}",1,0,-1,0,0);')
+            proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{"SUBarray LR"}"')
+            pId = proj_c.fetchone()[0]
+
+            gStr = ["SUBarray L", "SUBarray R"]
+            g = groupL
+            for s in gStr:
+                proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{pId},0,-1,0,0);')
+                proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{s}"')
+                rtn = proj_c.fetchone()
+
+                for tc in g:
+                    proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{tc[1]}",{rtn[0]},{tc[3]},{tc[4]},1,0);')
+
+                groups[i].groupIdSt.append(Group(rtn[0], rtn[1]))
+                groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(groups[i].groupIdSt[-1].groupId)
+
+                g = groupR
 
 
 ##################### FALLBACK CONTROLS #####################
@@ -314,9 +343,9 @@ if (userIp == "y") or (userIp == ""):
             posX = 307
             posY = 228
 
-            proj_c.execute(f'SELECT "ControlId" FROM "main"."Controls" WHERE DisplayName = "{groups[i].name} TOPs" ORDER BY ControlId ASC LIMIT 1;')
-            cId = proj_c.fetchone()[0]
-            proj_c.execute(f'UPDATE "main"."Controls" SET Height = {505} WHERE ControlId = {cId}')
+            #proj_c.execute(f'SELECT "ControlId" FROM "main"."Controls" WHERE DisplayName = "{groups[i].name} TOPs" ORDER BY ControlId ASC LIMIT 1;')
+            #cId = proj_c.fetchone()[0]
+            #proj_c.execute(f'UPDATE "main"."Controls" SET Height = {505} WHERE ControlId = {cId}')
 
         insertTemplate(temps, template, posX, posY, groups[i].viewId, None, groups[i].groupId, None, proj_c);
 
@@ -393,7 +422,8 @@ if (userIp == "y") or (userIp == ""):
         jId += 1
 
 #####################  #####################
-
+for g in groups:
+    g.print()
 dbTemplate.commit()
 dbTemplate.close()
 dbProj.commit()
