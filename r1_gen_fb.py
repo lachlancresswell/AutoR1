@@ -14,7 +14,7 @@ METERS_TEXT = 'Create meters view? (y/n)'
 METERS_REMOVE_TEXT = 'Remove meters view? (y/n)'
 INPUT_SNAPSHOT = "Inputs"
 ARRAYCALC_SNAPSHOT = 1
-TEMPLATE_NAMES = ['fallback', 'fallbacklr', 'fbmaster', 'mute', 'dsd1stat', 'dsd2stat', 'meters', 'metersgroup']
+TEMPLATE_NAMES = ['Fallback', 'Fallback LR', 'Fallback Overview', 'Mute', 'DS D1 Status', 'DS D2 Status', 'Meter', 'Meters Group']
 METER_WINDOW_TITLE = "Meters"
 METER_VIEW_WIDTH = 2000
 METER_VIEW_HEIGHT = 7000
@@ -107,7 +107,6 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         if targetChannel is None:
             targetChannel = row[23]
         if (displayName is not None) and (row[1] == 12):
-            print(displayName)
             dName = displayName
         else:
             dName = row[7]
@@ -298,9 +297,9 @@ if (userIp == "y") or (userIp == ""):
 
     proj_c.execute(f'UPDATE "main"."Views" SET VRes = {1500} WHERE ViewId = {overviewId}')
 
-    insertTemplate(temps, "fbmaster", 429, 823, overviewId, None, masterId, None, proj_c);
-    insertTemplate(temps, "dsd1stat", 429, 1205, overviewId, None, ipId[4], None, proj_c);
-    insertTemplate(temps, "dsd2stat", 603, 1205, overviewId, None, ipId[4], None, proj_c);
+    insertTemplate(temps, "Fallback Overview", 429, 823, overviewId, None, masterId, None, proj_c);
+    insertTemplate(temps, "DS D1 Status", 429, 1205, overviewId, None, ipId[4], None, proj_c);
+    insertTemplate(temps, "DS D2 Status", 603, 1205, overviewId, None, ipId[4], None, proj_c);
 
 
 
@@ -323,7 +322,7 @@ if (userIp == "y") or (userIp == ""):
         posX = 0
         posY = 0
         if len(groups[i].groupIdSt) > 0: #Stero group
-            template = "fallbacklr"
+            template = "Fallback LR"
             posX = 485
             posY = 227
 
@@ -334,14 +333,14 @@ if (userIp == "y") or (userIp == ""):
                     sideText = "Right"
                     sideX = 770
 
-                insertTemplate(temps, "mute", sideX, 110, groups[i].viewId, sideText, groups[i].groupIdSt[side].groupId, None, proj_c);
+                insertTemplate(temps, "Mute", sideX, 110, groups[i].viewId, sideText, groups[i].groupIdSt[side].groupId, None, proj_c);
 
         elif groups[i].name.find("SUB") > -1 and groups[i].name.find("array") > -1: #Subs
-            template = "fallback"
+            template = "Fallback"
             posX = 365
             posY = 117
         else:
-            template = "fallback" #Point sources
+            template = "Fallback" #Point sources
             posX = 307
             posY = 228
 
@@ -398,7 +397,7 @@ if (userIp == "y") or (userIp == ""):
 
     for g in groups2:
 
-        insertTemplate(temps, 'metersgroup', posX, posY, meterViewId, g.name, None, None, proj_c);
+        insertTemplate(temps, 'Meters Group', posX, posY, meterViewId, g.name, None, None, proj_c);
 
         posY = 40
 
