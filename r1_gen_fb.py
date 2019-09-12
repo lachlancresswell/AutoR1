@@ -23,7 +23,8 @@ METER_VIEW_STARTY = 15
 METER_GROUP_TEMPLATE_INDEX = 7
 METER_TEMPLATE_INDEX = 6
 METER_GROUP_SPACING = 230
-METER_SPACING_Y = 155
+METER_SPACING_X = 15
+METER_SPACING_Y = 15
 
 PROPERTY_TYPE_INDEX = -9
 
@@ -101,12 +102,12 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
     #print(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel}')
 
     for row in getTempContents(temps, tempName):
-        print({row[7]})
         if targetId is None:
             targetId = row[22]
         if targetChannel is None:
             targetChannel = row[23]
         if (displayName is not None) and (row[1] == 12):
+            print(displayName)
             dName = displayName
         else:
             dName = row[7]
@@ -168,6 +169,7 @@ if (userIp == "y") or (userIp == ""):
     i = 1
     for row in rtn:
         print(f'[{i}] - {row[2]}')
+        i += 1;
     userIp = input('Select snapshot to retrieve input patch from (default 1):')
     if userIp == "":
         userIp = ARRAYCALC_SNAPSHOT
@@ -297,8 +299,8 @@ if (userIp == "y") or (userIp == ""):
     proj_c.execute(f'UPDATE "main"."Views" SET VRes = {1500} WHERE ViewId = {overviewId}')
 
     insertTemplate(temps, "fbmaster", 429, 823, overviewId, None, masterId, None, proj_c);
-    insertTemplate(temps, "dsd1stat", 429, 1042, overviewId, None, ipId[4], None, proj_c);
-    insertTemplate(temps, "dsd2stat", 603, 1042, overviewId, None, ipId[4], None, proj_c);
+    insertTemplate(temps, "dsd1stat", 429, 1205, overviewId, None, ipId[4], None, proj_c);
+    insertTemplate(temps, "dsd2stat", 603, 1205, overviewId, None, ipId[4], None, proj_c);
 
 
 
@@ -375,13 +377,15 @@ if (userIp == "y") or (userIp == ""):
     proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
     meterViewId = proj_c.fetchone()[0]
 
-    print(f'Meters ViewId: {meterViewId}')
-
     posX = METER_VIEW_STARTX
     posY = METER_VIEW_STARTY
     # Create unique joinedId for each group frame and meters
     proj_c.execute(f'SELECT JoinedId FROM "main"."Controls" ORDER BY JoinedId DESC LIMIT 1')
     jId = proj_c.fetchone()[0]+1
+    template_c.execute(f'SELECT Width, Height FROM "main"."Controls" WHERE DisplayName = "METERS_TITLE"')
+    rtn = template_c.fetchall()[0]
+    spacingX = rtn[0]+METER_SPACING_X
+    spacingY = rtn[1]+METER_SPACING_Y
 
 
     groups2 = []
@@ -392,8 +396,6 @@ if (userIp == "y") or (userIp == ""):
             for sg in g.groupIdSt:
                 groups2.append(sg)
 
-    print(len(groups2))
-
     for g in groups2:
 
         insertTemplate(temps, 'metersgroup', posX, posY, meterViewId, g.name, None, None, proj_c);
@@ -403,7 +405,7 @@ if (userIp == "y") or (userIp == ""):
         for d in g.targetChannels:
             for row in temps[METER_TEMPLATE_INDEX].contents: # Create channel meters
                 dname = row[7]
-                if dname == "TITLE":
+                if dname == "METERS_TITLE":
                     dname = d[1]
 
                 # DS10 info is provided on a per device basis and will not work if a channel id is provided
@@ -416,14 +418,13 @@ if (userIp == "y") or (userIp == ""):
 
                 proj_c.execute(s)
 
-            posY += METER_SPACING_Y
-        posX += METER_GROUP_SPACING
+            posY += spacingY
+        posX += spacingX
         posY = METER_VIEW_STARTY
         jId += 1
 
 #####################  #####################
-for g in groups:
-    g.print()
+
 dbTemplate.commit()
 dbTemplate.close()
 dbProj.commit()
