@@ -9,12 +9,12 @@ import sys
 
 
 ############################## CONSTANTS ##############################
-DEBUG = 1
+DEBUG = 0
 PARENT_GROUP_TITLE = 'AUTO'
 SUBARRAY_GROUP_TITLE = 'SUBarray LR'
 VIEWS_REMOVE_TEXT = 'Remove all views and groups? (y/n)'
 INPUT_GROUP_TEXT = 'Create input groups? (y/n)'
-SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group?'
+SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)'
 FALLBACK_TEXT = 'Create fallback controls? (y/n)'
 DS_TEXT = 'Create DS info? (y/n)'
 METERS_TEXT = 'Create meters view? (y/n)'
