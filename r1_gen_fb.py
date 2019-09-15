@@ -10,11 +10,12 @@ VIEWS_REMOVE_TEXT = 'Remove all views and groups? (y/n)'
 INPUT_GROUP_TEXT = 'Create input groups? (y/n)'
 SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group?'
 FALLBACK_TEXT = 'Create fallback controls? (y/n)'
+DS_TEXT = 'Create DS info? (y/n)'
 METERS_TEXT = 'Create meters view? (y/n)'
 METERS_REMOVE_TEXT = 'Remove meters view? (y/n)'
 INPUT_SNAPSHOT = "Inputs"
 ARRAYCALC_SNAPSHOT = 1
-TEMPLATE_NAMES = ['Fallback', 'Fallback LR', 'Fallback Overview', 'Mute', 'DS D1 Status', 'DS D2 Status', 'Meter', 'Meters Group']
+TEMPLATE_NAMES = ['Fallback', 'Fallback LR', 'Fallback Overview', 'Mute', 'DS D1 Status', 'DS D2 Status', 'Meter', 'Meters Group', 'Meter NODS']
 METER_WINDOW_TITLE = "Meters"
 METER_VIEW_WIDTH = 2000
 METER_VIEW_HEIGHT = 7000
@@ -98,7 +99,7 @@ def findDevicesInGroups(parentId):
 
     return ch
 
-def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c):
+def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c, width, height):
     #print(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel}')
 
     for row in getTempContents(temps, tempName):
@@ -110,11 +111,21 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
             dName = displayName
         else:
             dName = row[7]
-        proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{str(viewId)}", "{dName}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(targetId)}", "{str(targetChannel)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
+        w = row[4]
+        if width is not None:
+            if width > 0:
+                w = width
+        h = row[5]
+        if height is not None:
+            if height > 0:
+                h = height
+        proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(targetId)}", "{str(targetChannel)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
 
 
 views = []
 filename = "r1.dbpr"
+
+globDS = 1
 
 # SQL Setup
 dbTemplate = sqlite3.connect('templates.r2t')
@@ -134,6 +145,8 @@ for row in rtn:
             temps[i].joinedId = row[3]
             template_c.execute(f'SELECT * FROM "main"."Controls" WHERE JoinedId = {temps[i].joinedId}')
             temps[i].contents = template_c.fetchall()
+
+            temps[i].print();
 
 
 userIp = " "
@@ -297,10 +310,17 @@ if (userIp == "y") or (userIp == ""):
 
     proj_c.execute(f'UPDATE "main"."Views" SET VRes = {1500} WHERE ViewId = {overviewId}')
 
-    insertTemplate(temps, "Fallback Overview", 429, 823, overviewId, None, masterId, None, proj_c);
-    insertTemplate(temps, "DS D1 Status", 429, 1205, overviewId, None, ipId[4], None, proj_c);
-    insertTemplate(temps, "DS D2 Status", 603, 1205, overviewId, None, ipId[4], None, proj_c);
+    userIp = " "
+    while (userIp != "y") and (userIp != "n") and (userIp != ""):
+        userIp = input(DS_TEXT)
 
+
+    if (userIp == "y") or (userIp == ""):
+        globDS = 0
+        insertTemplate(temps, "DS D1 Status", 429, 1205, overviewId, None, ipId[4], None, proj_c, None, None);
+        insertTemplate(temps, "DS D2 Status", 603, 1205, overviewId, None, ipId[4], None, proj_c, None, None);
+
+    insertTemplate(temps, "Fallback Overview", 429, 823, overviewId, None, masterId, None, proj_c, None, None);
 
 
 
@@ -333,7 +353,7 @@ if (userIp == "y") or (userIp == ""):
                     sideText = "Right"
                     sideX = 770
 
-                insertTemplate(temps, "Mute", sideX, 110, groups[i].viewId, sideText, groups[i].groupIdSt[side].groupId, None, proj_c);
+                insertTemplate(temps, "Mute", sideX, 110, groups[i].viewId, sideText, groups[i].groupIdSt[side].groupId, None, proj_c, None, None);
 
         elif groups[i].name.find("SUB") > -1 and groups[i].name.find("array") > -1: #Subs
             template = "Fallback"
@@ -348,7 +368,7 @@ if (userIp == "y") or (userIp == ""):
             #cId = proj_c.fetchone()[0]
             #proj_c.execute(f'UPDATE "main"."Controls" SET Height = {505} WHERE ControlId = {cId}')
 
-        insertTemplate(temps, template, posX, posY, groups[i].viewId, None, groups[i].groupId, None, proj_c);
+        insertTemplate(temps, template, posX, posY, groups[i].viewId, None, groups[i].groupId, None, proj_c, None, None);
 
 #####################  #####################
 
@@ -378,13 +398,21 @@ if (userIp == "y") or (userIp == ""):
 
     posX = METER_VIEW_STARTX
     posY = METER_VIEW_STARTY
+
     # Create unique joinedId for each group frame and meters
     proj_c.execute(f'SELECT JoinedId FROM "main"."Controls" ORDER BY JoinedId DESC LIMIT 1')
     jId = proj_c.fetchone()[0]+1
-    template_c.execute(f'SELECT Width, Height FROM "main"."Controls" WHERE DisplayName = "METERS_TITLE"')
-    rtn = template_c.fetchall()[0]
-    spacingX = rtn[0]+METER_SPACING_X
-    spacingY = rtn[1]+METER_SPACING_Y
+
+    if globDS == 0:
+        template_c.execute(f'SELECT Width, Height FROM "main"."Controls" WHERE DisplayName = "METERS_TITLE_NODS"')
+    else:
+        template_c.execute(f'SELECT Width, Height FROM "main"."Controls" WHERE DisplayName = "METERS_TITLE"')
+    rtn = template_c.fetchone()
+    print(rtn)
+    meterW = rtn[0]
+    meterH = rtn[1]
+    spacingX = meterW+METER_SPACING_X
+    spacingY = meterH+METER_SPACING_Y
 
 
     groups2 = []
@@ -397,12 +425,15 @@ if (userIp == "y") or (userIp == ""):
 
     for g in groups2:
 
-        insertTemplate(temps, 'Meters Group', posX, posY, meterViewId, g.name, None, None, proj_c);
+        insertTemplate(temps, 'Meters Group', posX, posY, meterViewId, g.name, None, None, proj_c, meterW, None);
 
         posY = 40
 
         for d in g.targetChannels:
-            for row in temps[METER_TEMPLATE_INDEX].contents: # Create channel meters
+            i = METER_TEMPLATE_INDEX
+            if globDS == 0:
+                i = 8
+            for row in temps[i].contents: # Create channel meters
                 dname = row[7]
                 if dname == "METERS_TITLE":
                     dname = d[1]
