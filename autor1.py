@@ -6,13 +6,13 @@ from shutil import copyfile
 ############################## CONSTANTS ##############################
 PARENT_GROUP_TITLE = 'AUTO'
 SUBARRAY_GROUP_TITLE = 'SUBarray LR'
-VIEWS_REMOVE_TEXT = 'Remove all views and groups? (y/n)'
-INPUT_GROUP_TEXT = 'Create input groups? (y/n)'
-SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)'
-FALLBACK_TEXT = 'Create fallback controls? (y/n)'
-DS_TEXT = 'Create DS info? (y/n)'
-METERS_TEXT = 'Create meters view? (y/n)'
-METERS_REMOVE_TEXT = 'Remove meters view? (y/n)'
+VIEWS_REMOVE_TEXT = 'Remove all views and groups? (y/n)\n(default: n): '
+INPUT_GROUP_TEXT = 'Create input groups? (y/n)\n(default: y): '
+SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)\n(default: y): '
+FALLBACK_TEXT = 'Create fallback controls? (y/n)\n(default: y): '
+DS_TEXT = 'Create DS info? (y/n)\n(default: y): '
+METERS_TEXT = 'Create meters view? (y/n)\n(default: y): '
+METERS_REMOVE_TEXT = 'Remove meters view? (y/n)\n(default: n): '
 INPUT_SNAPSHOT = "Inputs"
 INPUT_TYPES = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"]
 ARRAYCALC_SNAPSHOT = 1
@@ -153,6 +153,7 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         tChannel = targetChannel
         tId = targetId
         w = width
+        dName = row[7]
 
         if tId is None:
             tId = row[22]
@@ -167,7 +168,7 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         if height is not None:
             if height > 0:
                 h = height
-        dName = row[7]
+
         if row[1] == 12: # If item is a Frame
             frameW = w
             frameH = h
@@ -199,7 +200,7 @@ def dprint(s):
 ##########################################################################################
 
 
-
+# Janky but simplifies deployment for the moment
 copyfile("../../../r1.dbpr", "../../../r1_AUTO.dbpr")
 fn = "../../../r1_AUTO.dbpr"
 
@@ -233,6 +234,7 @@ except:
     sys.exit();
 
 
+##################### Delete Views and Groups #####################
 userIp = " "
 while (userIp != "y") and (userIp != "n") and (userIp != ""):
     userIp = input(VIEWS_REMOVE_TEXT)
@@ -250,6 +252,7 @@ if (userIp == "y"):
     dbProj.close()
     sys.exit()
 
+###############################################################
 
 ##################### Create input groups #####################
 userIp = " "
@@ -357,8 +360,7 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
             groups[i].groupIdSt.append(Group(rtn[0], rtn[1]))
             groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(groups[i].groupIdSt[-1].groupId)
         except:
-            asdasd = 1;
-            #dprint(f"No {g} group found for {groups[i].name} group.")
+            dprint(f"No {g} group found for {groups[i].name} group.")
 
     if groups[i].name == "SUBarray": # Create LR groups for SUBarray
         userIp = " "

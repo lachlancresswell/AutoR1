@@ -1,4 +1,4 @@
 CURDIR=`dirname "$0"`
-APP='/dist/r1_gen_fb.app/Contents/MacOS/r1_gen_fb'
+APP='/autor1.app/Contents/MacOS/autor1'
 
 $CURDIR$APP
