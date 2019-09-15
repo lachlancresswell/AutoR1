@@ -6,6 +6,12 @@ from tkinter.filedialog import askopenfilename
 import shutil
 import sys
 
+
+
+############################## CONSTANTS ##############################
+DEBUG = 1
+PARENT_GROUP_TITLE = 'AUTO'
+SUBARRAY_GROUP_TITLE = 'SUBarray LR'
 VIEWS_REMOVE_TEXT = 'Remove all views and groups? (y/n)'
 INPUT_GROUP_TEXT = 'Create input groups? (y/n)'
 SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group?'
@@ -37,7 +43,11 @@ TARGET_ID = 3
 
 ctrlStr = 'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") '
 
-#CLASS OVERVIEW
+##########################################################################################
+
+
+
+####################### CLASSES  ##############################
 class Channel:
     def __init__(self, targetId, targetChannel):
         self.targetId = targetId
@@ -46,8 +56,8 @@ class Channel:
         self.name = "name"
 
     def print(self):
-        print(f'CHANNEL: id - {self.targetId} / channel - {self.targetChannel} / name - {self.name}')
-        print(self.inputEnable)
+        dprint(f'CHANNEL: id - {self.targetId} / channel - {self.targetChannel} / name - {self.name}')
+        dprint(self.inputEnable)
 
 class Group:
     def __init__(self, groupId, name):
@@ -58,11 +68,11 @@ class Group:
         self.targetDevices = []
 
     def print(self):
-        print(f'GROUP: {self.name} / {self.groupId} / Subgroups: {len(self.groupIdSt)}')
+        dprint(f'GROUP: {self.name} / {self.groupId} / Subgroups: {len(self.groupIdSt)}')
         for g in self.groupIdSt:
-            print(g.name)
+            dprint(g.name)
         for d in self.targetChannels:
-            print(d)
+            dprint(d)
 
     @property
     def viewId(self):
@@ -79,7 +89,16 @@ class Template:
         self.contents = []
 
     def print(self):
-        print(f'{self.name} - JoinedId: {self.joinedId} - Contents Length: {len(self.contents)}')
+        dprint(f'{self.name} - JoinedId: {self.joinedId} - Contents Length: {len(self.contents)}')
+
+
+##########################################################################################
+
+
+
+
+
+############################## METHODS ##############################
 
 def getTempContents(tempArray, tempName):
     for t in tempArray:
@@ -100,7 +119,7 @@ def findDevicesInGroups(parentId):
     return ch
 
 def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c, width, height):
-    #print(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel}')
+    #dprint(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel}')
 
     for row in getTempContents(temps, tempName):
         if targetId is None:
@@ -122,10 +141,24 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(targetId)}", "{str(targetChannel)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
 
 
+def dprint(s):
+    if DEBUG > 0:
+        print(s)
+
+##########################################################################################
+
+
+
+############################## GLOBALS ##############################
 views = []
 filename = "r1.dbpr"
+glDS = 1
+glParentId = 1
+##########################################################################################
 
-globDS = 1
+
+
+
 
 # SQL Setup
 dbTemplate = sqlite3.connect('templates.r2t')
@@ -145,8 +178,6 @@ for row in rtn:
             temps[i].joinedId = row[3]
             template_c.execute(f'SELECT * FROM "main"."Controls" WHERE JoinedId = {temps[i].joinedId}')
             temps[i].contents = template_c.fetchall()
-
-            temps[i].print();
 
 
 userIp = " "
@@ -207,11 +238,32 @@ if (userIp == "y") or (userIp == ""):
             rtn = proj_c.fetchall()
             c.inputEnable.append(len(rtn));
 
+    ## Create 'Auto' group
+    # Create group if it does not already exist
+    proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{PARENT_GROUP_TITLE}"')
+    try:
+        glParentId = proj_c.fetchone()[0]
+    except:
+        proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{PARENT_GROUP_TITLE}",1,0,-1,0,0);')
+        proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{PARENT_GROUP_TITLE}"')
+        glParentId = proj_c.fetchone()[0]
+
+
     ## Create groups
+    #Delete groups if already existing
     ipStr = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"]
     ipId = []
     for s in ipStr:
-        proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",1,0,-1,0,0);')
+        proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{s}" AND ParentId = {glParentId}')
+        try:
+            rtn = proj_c.fetchone()
+            dprint(f'Deleting existing input group: {s} - {rtn[0]}')
+            proj_c.execute(f'DELETE FROM "main"."Groups" WHERE GroupId = {rtn[0]}')
+            proj_c.execute(f'DELETE FROM "main"."Groups" WHERE ParentId = {rtn[0]}')
+        except:
+            dprint(f'No existing input group found for {s} {glParentId}')
+
+        proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{glParentId},0,-1,0,0);')
         proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{s}"')
         ipId.append(proj_c.fetchone()[0])
 
@@ -242,7 +294,7 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
     try:
         groups[i].viewId = rtn[0]
     except:
-        print(f"Could not find view for {groups[i].name} group.")
+        dprint(f"Could not find view for {groups[i].name} group.")
 
     # Find any L/R or SUB L/R subgroups
     for g in [" TOPs L", " TOPs R", " SUBs L", " SUBs R"]:
@@ -253,7 +305,7 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
             groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(groups[i].groupIdSt[-1].groupId)
         except:
             asdasd = 1;
-            #print(f"No {g} group found for {groups[i].name} group.")
+            #dprint(f"No {g} group found for {groups[i].name} group.")
 
     if groups[i].name == "SUBarray": # Create LR groups for SUBarray
         userIp = " "
@@ -269,8 +321,24 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
                 else:
                     groupR.append(tc)
 
-            proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{"SUBarray LR"}",1,0,-1,0,0);')
-            proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{"SUBarray LR"}"')
+            ## Create SUBarray LR group
+            # If group already exists, delete and then recreate with new device list
+            proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{SUBARRAY_GROUP_TITLE}" AND ParentId = "{glParentId}"')
+            try:
+                pId = proj_c.fetchone()[0]
+
+                proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE ParentId = "{pId}"') #Get L+R groups
+                rtn = proj_c.fetchall()
+                dprint(f'Deleting existing SUBarray groups - {pId} - {rtn[0][0]} / {rtn[1][0]}')
+                proj_c.execute(f'DELETE FROM "main"."Groups" WHERE GroupId = {pId};')
+                for row in rtn:
+                    proj_c.execute(f'DELETE FROM "main"."Groups" WHERE ParentId = {row[0]};')
+                    proj_c.execute(f'DELETE FROM "main"."Groups" WHERE GroupId = {row[0]};')
+            except:
+                dprint('No existing SUBarray groups found.')
+
+            proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{SUBARRAY_GROUP_TITLE}",{glParentId},0,-1,0,0);')
+            proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{SUBARRAY_GROUP_TITLE}"')
             pId = proj_c.fetchone()[0]
 
             gStr = ["SUBarray L", "SUBarray R"]
@@ -316,9 +384,10 @@ if (userIp == "y") or (userIp == ""):
 
 
     if (userIp == "y") or (userIp == ""):
-        globDS = 0
         insertTemplate(temps, "DS D1 Status", 429, 1205, overviewId, None, ipId[4], None, proj_c, None, None);
         insertTemplate(temps, "DS D2 Status", 603, 1205, overviewId, None, ipId[4], None, proj_c, None, None);
+    else:
+        glDS = 0
 
     insertTemplate(temps, "Fallback Overview", 429, 823, overviewId, None, masterId, None, proj_c, None, None);
 
@@ -336,7 +405,7 @@ if (userIp == "y") or (userIp == ""):
                 for row in proj_c.fetchall():
                     proj_c.execute(f'DELETE FROM "main"."Controls" WHERE JoinedId = {row[0]};')
             except:
-                print(f"Could not find {d} info for {groups[i].name}")
+                dprint(f"Could not find {d} info for {groups[i].name}")
 
 
         posX = 0
@@ -403,12 +472,12 @@ if (userIp == "y") or (userIp == ""):
     proj_c.execute(f'SELECT JoinedId FROM "main"."Controls" ORDER BY JoinedId DESC LIMIT 1')
     jId = proj_c.fetchone()[0]+1
 
-    if globDS == 0:
+    if glDS == 0:
         template_c.execute(f'SELECT Width, Height FROM "main"."Controls" WHERE DisplayName = "METERS_TITLE_NODS"')
     else:
         template_c.execute(f'SELECT Width, Height FROM "main"."Controls" WHERE DisplayName = "METERS_TITLE"')
     rtn = template_c.fetchone()
-    print(rtn)
+    dprint(rtn)
     meterW = rtn[0]
     meterH = rtn[1]
     spacingX = meterW+METER_SPACING_X
@@ -431,7 +500,7 @@ if (userIp == "y") or (userIp == ""):
 
         for d in g.targetChannels:
             i = METER_TEMPLATE_INDEX
-            if globDS == 0:
+            if glDS == 0:
                 i = 8
             for row in temps[i].contents: # Create channel meters
                 dname = row[7]
