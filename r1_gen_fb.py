@@ -32,6 +32,18 @@ METER_TEMPLATE_INDEX = 6
 METER_GROUP_SPACING = 230
 METER_SPACING_X = 15
 METER_SPACING_Y = 15
+#LR group mute buttons
+LR_MUTE_TEXT = ['Left', 'Right']
+LR_MUTE_POSX = [700, 770]
+LR_MUTE_POSY = 56
+LR_FB_POSX = 485
+LR_FB_POSY = 227
+#SUBarray LR group mute buttons
+SUBLR_MUTE_TEXT = ['Left', 'Right']
+SUBLR_MUTE_POSX = [96, 166]
+SUBLR_MUTE_POSY = 230
+SUBLR_FB_POSX = 382
+SUBLR_FB_POSY = 16
 
 PROPERTY_TYPE_INDEX = -9
 
@@ -128,9 +140,15 @@ def findDevicesInGroups(parentId):
 
     return ch
 
-def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c, width, height):
+def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c, width, height, joinedId):
     #dprint(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel}')
     global glJoinedId
+    if joinedId is not None:
+        jId = joinedId
+    else:
+        jId = glJoinedId
+        glJoinedId = glJoinedId + 1
+
     for row in getTempContents(temps, tempName):
         if targetId is None:
             targetId = row[22]
@@ -140,6 +158,9 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
             dName = displayName
         else:
             dName = row[7]
+        if dName == None:
+            dName = ""
+        dprint(dName)
         w = row[4]
         if width is not None:
             if width > 0:
@@ -148,8 +169,10 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         if height is not None:
             if height > 0:
                 h = height
-        proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(glJoinedId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(targetId)}", "{str(targetChannel)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
-    glJoinedId = glJoinedId + 1
+        if (row[PROPERTY_TYPE_INDEX] == "Input_Digital_TxStream") or (row[PROPERTY_TYPE_INDEX] == "Input_Digital_DsDataPri") or (row[PROPERTY_TYPE_INDEX] == "Input_Digital_DsDataSec"):
+            targetChannel = 0
+
+        proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(targetId)}", "{str(targetChannel)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
 
 
 def dprint(s):
@@ -395,12 +418,12 @@ if (userIp == "y") or (userIp == ""):
 
 
     if (userIp == "y") or (userIp == ""):
-        insertTemplate(temps, "DS D1 Status", 429, 1205, overviewId, None, ipId[4], None, proj_c, None, None);
-        insertTemplate(temps, "DS D2 Status", 603, 1205, overviewId, None, ipId[4], None, proj_c, None, None);
+        insertTemplate(temps, "DS D1 Status", 429, 1205, overviewId, None, ipId[4], None, proj_c, None, None, None);
+        insertTemplate(temps, "DS D2 Status", 603, 1205, overviewId, None, ipId[4], None, proj_c, None, None, None);
     else:
         glDS = 0
 
-    insertTemplate(temps, "Fallback Overview", 429, 823, overviewId, None, masterId, None, proj_c, None, None);
+    insertTemplate(temps, "Fallback Overview", 429, 823, overviewId, None, masterId, None, proj_c, None, None, None);
 
 
 
@@ -419,36 +442,37 @@ if (userIp == "y") or (userIp == ""):
                 dprint(f"Could not find {d} info for {groups[i].name}")
 
 
-        posX = 0
-        posY = 0
-        if len(groups[i].groupIdSt) > 0: #Stero group
+        fbX = 0
+        fbY = 0
+        if (len(groups[i].groupIdSt) > 0): #LR group
             template = "Fallback LR"
-            posX = 485
-            posY = 227
 
-            for side in range(2):
-                sideText = "Left"
-                sideX = 700
-                if side == 1:
-                    sideText = "Right"
-                    sideX = 770
+            if(groups[i].name.find("SUB") > -1) and (groups[i].name.find("array") > -1):#SUBarray group
+                fbX = SUBLR_FB_POSX
+                fbY = SUBLR_FB_POSY
+                muteX = SUBLR_MUTE_POSX
+                muteY = SUBLR_MUTE_POSY
+                muteText = SUBLR_MUTE_TEXT
 
-                insertTemplate(temps, "Mute", sideX, 110, groups[i].viewId, sideText, groups[i].groupIdSt[side].groupId, None, proj_c, None, None);
+            else:
+                fbX = LR_FB_POSX
+                fbY = LR_FB_POSY
+                muteX = LR_MUTE_POSX
+                muteY = LR_MUTE_POSY
+                muteText = LR_MUTE_TEXT
 
-        elif groups[i].name.find("SUB") > -1 and groups[i].name.find("array") > -1: #Subs
-            template = "Fallback"
-            posX = 365
-            posY = 117
+            for j in range(len(muteText)):
+                insertTemplate(temps, 'Mute', muteX[j], muteY, groups[i].viewId, muteText[j], groups[i].groupIdSt[j].groupId, None, proj_c, None, None, None);
         else:
             template = "Fallback" #Point sources
-            posX = 307
-            posY = 228
+            fbX = 307
+            fbY = 228
 
             #proj_c.execute(f'SELECT "ControlId" FROM "main"."Controls" WHERE DisplayName = "{groups[i].name} TOPs" ORDER BY ControlId ASC LIMIT 1;')
             #cId = proj_c.fetchone()[0]
             #proj_c.execute(f'UPDATE "main"."Controls" SET Height = {505} WHERE ControlId = {cId}')
 
-        insertTemplate(temps, template, posX, posY, groups[i].viewId, None, groups[i].groupId, None, proj_c, None, None);
+        insertTemplate(temps, template, fbX, fbY, groups[i].viewId, None, groups[i].groupId, None, proj_c, None, None, None);
 
 #####################  #####################
 
@@ -479,10 +503,6 @@ if (userIp == "y") or (userIp == ""):
     posX = METER_VIEW_STARTX
     posY = METER_VIEW_STARTY
 
-    # Create unique joinedId for each group frame and meters
-    proj_c.execute(f'SELECT JoinedId FROM "main"."Controls" ORDER BY JoinedId DESC LIMIT 1')
-    jId = proj_c.fetchone()[0]+1
-
     if glDS == 0:
         template_c.execute(f'SELECT Width, Height FROM "main"."Controls" WHERE DisplayName = "METERS_TITLE_NODS"')
     else:
@@ -505,34 +525,23 @@ if (userIp == "y") or (userIp == ""):
 
     for g in groups2:
 
-        insertTemplate(temps, 'Meters Group', posX, posY, meterViewId, g.name, None, None, proj_c, meterW, None);
+        insertTemplate(temps, 'Meters Group', posX, posY, meterViewId, g.name, None, None, proj_c, meterW, None, None);
 
         posY = 40
 
+        jId = glJoinedId
         for d in g.targetChannels:
-            i = METER_TEMPLATE_INDEX
             if glDS == 0:
-                i = 8
-            for row in temps[i].contents: # Create channel meters
-                dname = row[7]
-                if dname == "METERS_TITLE":
-                    dname = d[1]
+                s = "Meter NODS"
+            else:
+                s = "Meter"
 
-                # DS10 info is provided on a per device basis and will not work if a channel id is provided
-                chId = d[4]
-                propType = row[PROPERTY_TYPE_INDEX]
-                if (propType == "Input_Digital_TxStream") or (propType == "Input_Digital_DsDataPri") or (propType == "Input_Digital_DsDataSec"):
-                    chId = 0
-
-                s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{meterViewId}", "{str(dname)}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(d[3])}", "{str(chId)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")'
-
-                proj_c.execute(s)
+            insertTemplate(temps, s, posX, posY, meterViewId, d[1], d[3], d[4], proj_c, None, None, jId);
 
             posY += spacingY
         posX += spacingX
         posY = METER_VIEW_STARTY
-        jId += 1
-
+        glJoinedId = glJoinedId + 1
 #####################  #####################
 
 dbTemplate.commit()
