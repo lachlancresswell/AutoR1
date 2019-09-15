@@ -409,7 +409,7 @@ if (userIp == "y") or (userIp == ""):
 
 
         # Delete input routing and clock selection views
-        dsplyNames = ["Input Routing", "Digital Input Clock", "Digital Input Clock Left", "Digital Input Clock Right"]
+        dsplyNames = ["Input Routing"]#, "Digital Input Clock", "Digital Input Clock Left", "Digital Input Clock Right"]
         for d in dsplyNames:
             proj_c.execute(f'SELECT "JoinedId" FROM "main"."Controls" WHERE DisplayName = "{d}" AND ViewId = "{groups[i].viewId}"')
             try:
