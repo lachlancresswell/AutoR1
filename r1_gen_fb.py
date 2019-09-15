@@ -9,7 +9,7 @@ import sys
 
 
 ############################## CONSTANTS ##############################
-DEBUG = 0
+DEBUG = 1
 PARENT_GROUP_TITLE = 'AUTO'
 SUBARRAY_GROUP_TITLE = 'SUBarray LR'
 VIEWS_REMOVE_TEXT = 'Remove all views and groups? (y/n)'
@@ -20,18 +20,21 @@ DS_TEXT = 'Create DS info? (y/n)'
 METERS_TEXT = 'Create meters view? (y/n)'
 METERS_REMOVE_TEXT = 'Remove meters view? (y/n)'
 INPUT_SNAPSHOT = "Inputs"
+INPUT_TYPES = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"]
 ARRAYCALC_SNAPSHOT = 1
-TEMPLATE_NAMES = ['Fallback', 'Fallback LR', 'Fallback Overview', 'Mute', 'DS D1 Status', 'DS D2 Status', 'Meter', 'Meters Group', 'Meter NODS']
-METER_WINDOW_TITLE = "Meters"
+TEMPLATE_NAMES = ['Fallback', 'Fallback LR', 'Fallback Overview', 'Mute', 'DS Status', 'Meter', 'Meters Group', 'Meter NODS']
+METER_WINDOW_TITLE = "AUTO - Meters"
 METER_VIEW_WIDTH = 2000
 METER_VIEW_HEIGHT = 7000
 METER_VIEW_STARTX = 15
 METER_VIEW_STARTY = 15
-METER_GROUP_TEMPLATE_INDEX = 7
-METER_TEMPLATE_INDEX = 6
 METER_GROUP_SPACING = 230
 METER_SPACING_X = 15
 METER_SPACING_Y = 15
+FB_OVERVIEW_POSX = 842
+FB_OVERVIEW_POSY = 16
+DS_STATUS_STARTX = FB_OVERVIEW_POSX
+DS_STATUS_STARTY = 400
 #LR group mute buttons
 LR_MUTE_TEXT = ['Left', 'Right']
 LR_MUTE_POSX = [700, 770]
@@ -44,8 +47,6 @@ SUBLR_MUTE_POSX = [96, 166]
 SUBLR_MUTE_POSY = 230
 SUBLR_FB_POSX = 382
 SUBLR_FB_POSY = 16
-
-PROPERTY_TYPE_INDEX = -9
 
 GROUPID = 0
 SUBGROUP = 0
@@ -140,8 +141,11 @@ def findDevicesInGroups(parentId):
 
     return ch
 
-def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c, width, height, joinedId):
-    #dprint(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel}')
+def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c, width, height, joinedId, targetProp, targetRec):
+    dprint(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel} / {width} / {height} / {joinedId} / {targetProp} / {targetRec}')
+    frameW = 0
+    frameH = 0
+
     global glJoinedId
     if joinedId is not None:
         jId = joinedId
@@ -150,30 +154,49 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         glJoinedId = glJoinedId + 1
 
     for row in getTempContents(temps, tempName):
-        if targetId is None:
-            targetId = row[22]
-        if targetChannel is None:
-            targetChannel = row[23]
-        if (displayName is not None) and (row[1] == 12):
-            dName = displayName
-        else:
-            dName = row[7]
-        if dName == None:
-            dName = ""
-        dprint(dName)
-        w = row[4]
-        if width is not None:
-            if width > 0:
-                w = width
+        tProp = targetProp
+        tRec = targetRec
+        tChannel = targetChannel
+        tId = targetId
+        w = width
+
+        if tId is None:
+            tId = row[22]
+
+        if tChannel is None:
+            tChannel = row[23]
+
+        if w is None:
+            w = row[4]
+
         h = row[5]
         if height is not None:
             if height > 0:
                 h = height
-        if (row[PROPERTY_TYPE_INDEX] == "Input_Digital_TxStream") or (row[PROPERTY_TYPE_INDEX] == "Input_Digital_DsDataPri") or (row[PROPERTY_TYPE_INDEX] == "Input_Digital_DsDataSec"):
-            targetChannel = 0
+        dName = row[7]
+        if row[1] == 12: # If item is a Frame
+            frameW = w
+            frameH = h
+            if (displayName is not None):
+                dName = displayName
+        if dName == None:
+            dName = ""
 
-        proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(targetId)}", "{str(targetChannel)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
+        if tProp == None:
+            tProp = row[24]
+        if tRec == None:
+            tRec = row[25]
 
+        if (tProp == "Input_Digital_TxStream") or (tProp == "Input_Digital_DsDataPri") or (tProp == "Input_Digital_DsDataSec") or (tProp == "Input_Digital_Sync"):
+            if tChannel > -1:
+                tChannel = 0 #Dante + digital info require channel ID to be 0
+
+        if tProp is not None:
+            if len(tProp) > 1:
+                dprint(f'tProp - {tProp} / tRec - {tRec} / tId - {tId} / tChannel - {tChannel}')
+
+        proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(tProp)}", {tRec}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
+    return [frameW, frameH]
 
 def dprint(s):
     if DEBUG > 0:
@@ -237,7 +260,7 @@ userIp = " "
 while (userIp != "y") and (userIp != "n") and (userIp != ""):
     userIp = input(INPUT_GROUP_TEXT)
 
-ipId = [0,0,0,0,0,0,0,0]
+ipGroupId = [0,0,0,0,0,0,0,0]
 if (userIp == "y") or (userIp == ""):
 
     #Create channel list
@@ -250,25 +273,26 @@ if (userIp == "y") or (userIp == ""):
     userIp = input('Select snapshot to retrieve input patch from (default 1):')
     if userIp == "":
         userIp = ARRAYCALC_SNAPSHOT
+    dprint('Snapshot chosen:')
+    dprint(rtn[int(userIp)-1])
     snapId = rtn[int(userIp)-1][0]
 
+    #Load all channels. Pass ' TargetProperty = "Config_InputEnable1"' in the SQL request to retrieve every channel once in the query
     channels = []
     proj_c.execute(f'SELECT TargetId, TargetNode FROM "main"."SnapshotValues" WHERE SnapshotId = {snapId} AND TargetProperty = "Config_InputEnable1" ORDER BY TargetId ASC')
     rtn = proj_c.fetchall()
     for row in rtn:
         channels.append(Channel(row[0], row[1]))
-    for i in range(len(channels)):
+    for i in range(len(channels)): # Find name for all channels
         proj_c.execute(f'SELECT Name FROM "main"."AmplifierChannels" WHERE DeviceId = {channels[i].targetId} AND AmplifierChannel = {channels[i].targetChannel}')
         channels[i].name = proj_c.fetchone()[0]
 
 
     #Find ip routing for each channel
     ipStr = ["Config_InputEnable1", "Config_InputEnable2", "Config_InputEnable3", "Config_InputEnable4", "Config_InputEnable5", "Config_InputEnable6", "Config_InputEnable7", "Config_InputEnable8"]
-    proj_c.execute(f'SELECT SnapshotId FROM "main"."Snapshots" WHERE Name = "{INPUT_SNAPSHOT}"')
-    #ipSnId = proj_c.fetchone()[0]
     for c in channels:
         for s in ipStr:
-            proj_c.execute(f'SELECT * FROM "main"."SnapshotValues" WHERE SnapshotId = {1} AND TargetId = {c.targetId} AND TargetNode = {c.targetChannel} AND TargetProperty = "{s}" AND Value = 1 ORDER BY TargetId')
+            proj_c.execute(f'SELECT * FROM "main"."SnapshotValues" WHERE SnapshotId = {snapId} AND TargetId = {c.targetId} AND TargetNode = {c.targetChannel} AND TargetProperty = "{s}" AND Value = 1 ORDER BY TargetId')
             rtn = proj_c.fetchall()
             c.inputEnable.append(len(rtn));
 
@@ -285,9 +309,8 @@ if (userIp == "y") or (userIp == ""):
 
     ## Create groups
     #Delete groups if already existing
-    ipStr = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"]
-    ipId = []
-    for s in ipStr:
+    ipGroupId = []
+    for s in INPUT_TYPES:
         proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{s}" AND ParentId = {glParentId}')
         try:
             rtn = proj_c.fetchone()
@@ -299,12 +322,12 @@ if (userIp == "y") or (userIp == ""):
 
         proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{glParentId},0,-1,0,0);')
         proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{s}"')
-        ipId.append(proj_c.fetchone()[0])
+        ipGroupId.append(proj_c.fetchone()[0])
 
     for c in channels:
         for i in range(len(c.inputEnable)):
             if c.inputEnable[i] > 0:
-                proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{c.name}",{ipId[i]},{c.targetId},{c.targetChannel},1,0);')
+                proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{c.name}",{ipGroupId[i]},{c.targetId},{c.targetChannel},1,0);')
 
 ###############################################################
 
@@ -410,7 +433,7 @@ if (userIp == "y") or (userIp == ""):
     proj_c.execute(f'SELECT "GroupId" FROM "main"."Groups" WHERE ParentId = "1" AND Name = "Master";') # Get view IDs
     masterId = proj_c.fetchone()[0]
 
-    proj_c.execute(f'UPDATE "main"."Views" SET VRes = {1500} WHERE ViewId = {overviewId}')
+    proj_c.execute(f'UPDATE "main"."Views" SET HRes = {1200} WHERE ViewId = {overviewId}')
 
     userIp = " "
     while (userIp != "y") and (userIp != "n") and (userIp != ""):
@@ -418,19 +441,21 @@ if (userIp == "y") or (userIp == ""):
 
 
     if (userIp == "y") or (userIp == ""):
-        insertTemplate(temps, "DS D1 Status", 429, 1205, overviewId, None, ipId[4], None, proj_c, None, None, None);
-        insertTemplate(temps, "DS D2 Status", 603, 1205, overviewId, None, ipId[4], None, proj_c, None, None, None);
+        posX = DS_STATUS_STARTX
+        posY = DS_STATUS_STARTY
+        for i in range(len(INPUT_TYPES[4:])):
+            dprint(f'i - {i} / INPUT_TYPES[4+i] - {INPUT_TYPES[4+i]} / ipGroupId[4+i] - {ipGroupId[4+i]} /')
+            w = insertTemplate(temps, "DS Status", posX, posY, overviewId, INPUT_TYPES[4+i], ipGroupId[4+i], -1, proj_c, None, None, None, None, i+1);
+            posX += w[0]
     else:
         glDS = 0
 
-    insertTemplate(temps, "Fallback Overview", 429, 823, overviewId, None, masterId, None, proj_c, None, None, None);
+    insertTemplate(temps, "Fallback Overview", FB_OVERVIEW_POSX, FB_OVERVIEW_POSY, overviewId, None, masterId, None, proj_c, None, None, None, None, None);
 
 
 
 
     for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get view ids
-
-
         # Delete input routing and clock selection views
         dsplyNames = ["Input Routing"]#, "Digital Input Clock", "Digital Input Clock Left", "Digital Input Clock Right"]
         for d in dsplyNames:
@@ -462,29 +487,31 @@ if (userIp == "y") or (userIp == ""):
                 muteText = LR_MUTE_TEXT
 
             for j in range(len(muteText)):
-                insertTemplate(temps, 'Mute', muteX[j], muteY, groups[i].viewId, muteText[j], groups[i].groupIdSt[j].groupId, None, proj_c, None, None, None);
+                insertTemplate(temps, 'Mute', muteX[j], muteY, groups[i].viewId, muteText[j], groups[i].groupIdSt[j].groupId, None, proj_c, None, None, None, None, None);
         else:
             template = "Fallback" #Point sources
             fbX = 307
             fbY = 228
 
-            #proj_c.execute(f'SELECT "ControlId" FROM "main"."Controls" WHERE DisplayName = "{groups[i].name} TOPs" ORDER BY ControlId ASC LIMIT 1;')
-            #cId = proj_c.fetchone()[0]
-            #proj_c.execute(f'UPDATE "main"."Controls" SET Height = {505} WHERE ControlId = {cId}')
 
-        insertTemplate(temps, template, fbX, fbY, groups[i].viewId, None, groups[i].groupId, None, proj_c, None, None, None);
+        insertTemplate(temps, template, fbX, fbY, groups[i].viewId, None, groups[i].groupId, None, proj_c, None, None, None, None, None);
 
 #####################  #####################
 
-userIp = " "
-while (userIp != "y") and (userIp != "n") and (userIp != ""):
-    userIp = input(METERS_REMOVE_TEXT)
 
-if (userIp == "y"):
-    proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
-    meterViewId = proj_c.fetchone()[0]
-    proj_c.execute(f'DELETE FROM "main"."Controls" WHERE ViewId = {meterViewId};')
-    proj_c.execute(f'DELETE FROM "main"."Views" WHERE ViewId = {meterViewId};')
+proj_c.execute(f'SELECT * FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
+if proj_c.fetchone() is not None:
+    dprint(f'Found existing {METER_WINDOW_TITLE} view.')
+    userIp = " "
+    while (userIp != "y") and (userIp != "n") and (userIp != ""):
+        userIp = input(METERS_REMOVE_TEXT)
+
+    if (userIp == "y"):
+        dprint(f'Deleting existing {METER_WINDOW_TITLE} view.')
+        proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
+        meterViewId = proj_c.fetchone()[0]
+        proj_c.execute(f'DELETE FROM "main"."Controls" WHERE ViewId = {meterViewId};')
+        proj_c.execute(f'DELETE FROM "main"."Views" WHERE ViewId = {meterViewId};')
 
 
 
@@ -525,7 +552,7 @@ if (userIp == "y") or (userIp == ""):
 
     for g in groups2:
 
-        insertTemplate(temps, 'Meters Group', posX, posY, meterViewId, g.name, None, None, proj_c, meterW, None, None);
+        insertTemplate(temps, 'Meters Group', posX, posY, meterViewId, g.name, None, None, proj_c, meterW, None, None, None, None);
 
         posY = 40
 
@@ -536,7 +563,7 @@ if (userIp == "y") or (userIp == ""):
             else:
                 s = "Meter"
 
-            insertTemplate(temps, s, posX, posY, meterViewId, d[1], d[3], d[4], proj_c, None, None, jId);
+            insertTemplate(temps, s, posX, posY, meterViewId, d[1], d[3], d[4], proj_c, None, None, jId, None, None);
 
             posY += spacingY
         posX += spacingX
