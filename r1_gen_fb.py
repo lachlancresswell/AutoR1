@@ -1,15 +1,8 @@
 import sqlite3
-import tkinter
-from tkinter import filedialog
-from tkinter import *
-from tkinter.messagebox import showerror
-import shutil
 import sys
-
-
+import os
 
 ############################## CONSTANTS ##############################
-DEBUG = 1
 PARENT_GROUP_TITLE = 'AUTO'
 SUBARRAY_GROUP_TITLE = 'SUBarray LR'
 VIEWS_REMOVE_TEXT = 'Remove all views and groups? (y/n)'
@@ -61,8 +54,8 @@ ctrlStr = 'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Heig
 
 
 ############################## GLOBALS ##############################
+DEBUG = 0
 views = []
-filename = "r1.dbpr"
 glDS = 1
 glParentId = 1
 glJoinedId = 1
@@ -206,21 +199,14 @@ def dprint(s):
 
 
 
-
-
-
-
-
+fn = "../../../r1.dbpr"
 
 # SQL Setup
-dbTemplate = sqlite3.connect('templates.r2t')
-dbProj = sqlite3.connect(filename)
+dbTemplate = sqlite3.connect('./templates.r2t')
+dbProj = sqlite3.connect(fn)
 template_c = dbTemplate.cursor()
 proj_c = dbProj.cursor()
 
-#root = Tk()
-#root.filename =  filedialog.askopenfilename(initialdir = "/Desktop",title = "Select project file",filetypes = (("d&b files","*.dbpr"),("all files","*.*")))
-#print (root.filename)
 
 ##### LOAD TEMPLATES
 temps = []

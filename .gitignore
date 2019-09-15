@@ -7,3 +7,7 @@
 *.dbpr-journal
 *.dblock
 *.r2t
+/build
+/dist
+
+/.eggs
