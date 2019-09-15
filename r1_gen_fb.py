@@ -47,6 +47,16 @@ ctrlStr = 'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Heig
 
 
 
+############################## GLOBALS ##############################
+views = []
+filename = "r1.dbpr"
+glDS = 1
+glParentId = 1
+glJoinedId = 1
+##########################################################################################
+
+
+
 ####################### CLASSES  ##############################
 class Channel:
     def __init__(self, targetId, targetChannel):
@@ -120,7 +130,7 @@ def findDevicesInGroups(parentId):
 
 def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c, width, height):
     #dprint(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel}')
-
+    global glJoinedId
     for row in getTempContents(temps, tempName):
         if targetId is None:
             targetId = row[22]
@@ -138,7 +148,8 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         if height is not None:
             if height > 0:
                 h = height
-        proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(row[9])}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(targetId)}", "{str(targetChannel)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
+        proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(glJoinedId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(targetId)}", "{str(targetChannel)}", "{str(row[24])}", "{str(row[25])}", NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
+    glJoinedId = glJoinedId + 1
 
 
 def dprint(s):
@@ -149,12 +160,7 @@ def dprint(s):
 
 
 
-############################## GLOBALS ##############################
-views = []
-filename = "r1.dbpr"
-glDS = 1
-glParentId = 1
-##########################################################################################
+
 
 
 
@@ -178,6 +184,11 @@ for row in rtn:
             temps[i].joinedId = row[3]
             template_c.execute(f'SELECT * FROM "main"."Controls" WHERE JoinedId = {temps[i].joinedId}')
             temps[i].contents = template_c.fetchall()
+
+# Set joinedId start
+proj_c.execute('SELECT JoinedId from "main"."Controls" ORDER BY JoinedId DESC LIMIT 1')
+glJoinedId = proj_c.fetchone()[0] + 1
+dprint(f'glJoined - {glJoinedId}')
 
 
 userIp = " "
