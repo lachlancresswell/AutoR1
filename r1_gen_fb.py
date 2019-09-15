@@ -1,8 +1,8 @@
 import sqlite3
 import tkinter
-import tkinter as tk
-import tkinter.ttk as ttk
-from tkinter.filedialog import askopenfilename
+from tkinter import filedialog
+from tkinter import *
+from tkinter.messagebox import showerror
 import shutil
 import sys
 
@@ -218,6 +218,10 @@ dbProj = sqlite3.connect(filename)
 template_c = dbTemplate.cursor()
 proj_c = dbProj.cursor()
 
+#root = Tk()
+#root.filename =  filedialog.askopenfilename(initialdir = "/Desktop",title = "Select project file",filetypes = (("d&b files","*.dbpr"),("all files","*.*")))
+#print (root.filename)
+
 ##### LOAD TEMPLATES
 temps = []
 template_c.execute('SELECT * FROM "main"."Sections" ORDER BY JoinedId ASC')
@@ -233,8 +237,12 @@ for row in rtn:
 
 # Set joinedId start
 proj_c.execute('SELECT JoinedId from "main"."Controls" ORDER BY JoinedId DESC LIMIT 1')
-glJoinedId = proj_c.fetchone()[0] + 1
-dprint(f'glJoined - {glJoinedId}')
+try:
+    glJoinedId = proj_c.fetchone()[0] + 1
+    dprint(f'glJoined - {glJoinedId}')
+except:
+    print("Views have not been generated. Please run initial setup in R1 first.")
+    sys.exit();
 
 
 userIp = " "
@@ -264,22 +272,22 @@ ipGroupId = [0,0,0,0,0,0,0,0]
 if (userIp == "y") or (userIp == ""):
 
     #Create channel list
-    proj_c.execute(f'SELECT * FROM "main"."Snapshots" ORDER BY SnapshotId ASC')
-    rtn = proj_c.fetchall()
-    i = 1
-    for row in rtn:
-        print(f'[{i}] - {row[2]}')
-        i += 1;
-    userIp = input('Select snapshot to retrieve input patch from (default 1):')
-    if userIp == "":
-        userIp = ARRAYCALC_SNAPSHOT
-    dprint('Snapshot chosen:')
-    dprint(rtn[int(userIp)-1])
-    snapId = rtn[int(userIp)-1][0]
+    #proj_c.execute(f'SELECT * FROM "main"."Snapshots" ORDER BY SnapshotId ASC')
+    #rtn = proj_c.fetchall()
+    #i = 1
+    #for row in rtn:
+    #    print(f'[{i}] - {row[2]}')
+    #    i += 1;
+    #userIp = input('Select snapshot to retrieve input patch from (default 1):')
+    #if userIp == "":
+    #    userIp = ARRAYCALC_SNAPSHOT
+    #dprint('Snapshot chosen:')
+    #dprint(rtn[int(userIp)-1])
+    #snapId = rtn[int(userIp)-1][0]
 
     #Load all channels. Pass ' TargetProperty = "Config_InputEnable1"' in the SQL request to retrieve every channel once in the query
     channels = []
-    proj_c.execute(f'SELECT TargetId, TargetNode FROM "main"."SnapshotValues" WHERE SnapshotId = {snapId} AND TargetProperty = "Config_InputEnable1" ORDER BY TargetId ASC')
+    proj_c.execute(f'SELECT TargetId, TargetNode FROM "main"."SnapshotValues" WHERE SnapshotId = {ARRAYCALC_SNAPSHOT} AND TargetProperty = "Config_InputEnable1" ORDER BY TargetId ASC')
     rtn = proj_c.fetchall()
     for row in rtn:
         channels.append(Channel(row[0], row[1]))
@@ -292,7 +300,7 @@ if (userIp == "y") or (userIp == ""):
     ipStr = ["Config_InputEnable1", "Config_InputEnable2", "Config_InputEnable3", "Config_InputEnable4", "Config_InputEnable5", "Config_InputEnable6", "Config_InputEnable7", "Config_InputEnable8"]
     for c in channels:
         for s in ipStr:
-            proj_c.execute(f'SELECT * FROM "main"."SnapshotValues" WHERE SnapshotId = {snapId} AND TargetId = {c.targetId} AND TargetNode = {c.targetChannel} AND TargetProperty = "{s}" AND Value = 1 ORDER BY TargetId')
+            proj_c.execute(f'SELECT * FROM "main"."SnapshotValues" WHERE SnapshotId = {ARRAYCALC_SNAPSHOT} AND TargetId = {c.targetId} AND TargetNode = {c.targetChannel} AND TargetProperty = "{s}" AND Value = 1 ORDER BY TargetId')
             rtn = proj_c.fetchall()
             c.inputEnable.append(len(rtn));
 
@@ -443,7 +451,7 @@ if (userIp == "y") or (userIp == ""):
     if (userIp == "y") or (userIp == ""):
         posX = DS_STATUS_STARTX
         posY = DS_STATUS_STARTY
-        for i in range(len(INPUT_TYPES[4:])):
+        for i in range(len(INPUT_TYPES[6:])):
             dprint(f'i - {i} / INPUT_TYPES[4+i] - {INPUT_TYPES[4+i]} / ipGroupId[4+i] - {ipGroupId[4+i]} /')
             w = insertTemplate(temps, "DS Status", posX, posY, overviewId, INPUT_TYPES[4+i], ipGroupId[4+i], -1, proj_c, None, None, None, None, i+1);
             posX += w[0]
