@@ -7,8 +7,8 @@ Usage:
 
 from setuptools import setup
 
-APP = ['r1_gen_fb.py']
-DATA_FILES = ['templates.r2t']
+APP = ['autor1.py']
+DATA_FILES = []
 OPTIONS = {}
 
 setup(
