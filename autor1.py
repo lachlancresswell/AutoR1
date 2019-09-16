@@ -33,13 +33,15 @@ DS_STATUS_STARTY = 400
 LR_MUTE_TEXT = ['Left', 'Right']
 LR_MUTE_POSX = [700, 770]
 LR_MUTE_POSY = 56
-LR_FB_POSX = 485
-LR_FB_POSY = 227
+L_FB_POSX = 485
+L_FB_POSY = 265
+R_FB_POSX = 784
+R_FB_POSY = 265
 #SUBarray LR group mute buttons
 SUBLR_MUTE_TEXT = ['Left', 'Right']
 SUBLR_MUTE_POSX = [96, 166]
 SUBLR_MUTE_POSY = 230
-SUBLR_FB_POSX = 382
+SUBLR_FB_POSX = 365
 SUBLR_FB_POSY = 16
 
 GROUPID = 0
@@ -55,7 +57,7 @@ ctrlStr = 'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Heig
 
 
 ############################## GLOBALS ##############################
-DEBUG = 0
+DEBUG = 1
 views = []
 glDS = 1
 glParentId = 1
@@ -182,7 +184,7 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         if tRec == None:
             tRec = row[25]
 
-        if (tProp == "Input_Digital_TxStream") or (tProp == "Input_Digital_DsDataPri") or (tProp == "Input_Digital_DsDataSec") or (tProp == "Input_Digital_Sync"):
+        if (tProp == "Input_Digital_TxStream") or (tProp == "Input_Digital_DsDataPri") or (tProp == "Input_Digital_DsDataSec") or (tProp == "Input_Digital_Sync") or (tProp == "Status_StatusText"):
             if tChannel > -1:
                 tChannel = 0 #Dante + digital info require channel ID to be 0
 
@@ -467,32 +469,35 @@ if (userIp == "y") or (userIp == ""):
 
         fbX = 0
         fbY = 0
-        if (len(groups[i].groupIdSt) > 0): #LR group
-            template = "Fallback LR"
 
+
+        if (len(groups[i].groupIdSt) > 0): #LR group
             if(groups[i].name.find("SUB") > -1) and (groups[i].name.find("array") > -1):#SUBarray group
-                fbX = SUBLR_FB_POSX
-                fbY = SUBLR_FB_POSY
+                fbX = [SUBLR_FB_POSX]
+                fbY = [SUBLR_FB_POSY]
                 muteX = SUBLR_MUTE_POSX
                 muteY = SUBLR_MUTE_POSY
                 muteText = SUBLR_MUTE_TEXT
+                fbG = [groups[i]]
 
             else:
-                fbX = LR_FB_POSX
-                fbY = LR_FB_POSY
+                fbX = [L_FB_POSX, R_FB_POSX]
+                fbY = [L_FB_POSY, R_FB_POSY]
                 muteX = LR_MUTE_POSX
                 muteY = LR_MUTE_POSY
                 muteText = LR_MUTE_TEXT
+                fbG = groups[i].groupIdSt
 
             for j in range(len(muteText)):
                 insertTemplate(temps, 'Mute', muteX[j], muteY, groups[i].viewId, muteText[j], groups[i].groupIdSt[j].groupId, None, proj_c, None, None, None, None, None);
         else:
-            template = "Fallback" #Point sources
-            fbX = 307
-            fbY = 228
+            fbX = [307]
+            fbY = [225]
+            fbG = [groups[i]]
 
-
-        insertTemplate(temps, template, fbX, fbY, groups[i].viewId, None, groups[i].groupId, None, proj_c, None, None, None, None, None);
+        for j in range(len(fbX)):
+            dprint(f'{fbG[j].name}')
+            insertTemplate(temps, "Fallback", fbX[j], fbY[j], groups[i].viewId, None, fbG[j].groupId, None, proj_c, None, None, None, None, None);
 
 #####################  #####################
 
