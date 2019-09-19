@@ -1,5 +1,15 @@
 **Note: Mac only.**
 
+**Meter View**
+![Meter View](https://i.imgur.com/tSDfxEx.png)
+
+
+**Overview**
+![Overview](https://imgur.com/cNPPtNd.png)
+
+**Source View**
+![Source View](https://imgur.com/Z1T5Gdf.png)
+
 ## Using AutoR1
 1. Name R1 project 'R1.dbpr'
 2. Run R1 initial setup to generate all standard views
