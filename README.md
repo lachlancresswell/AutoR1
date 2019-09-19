@@ -1,3 +1,5 @@
+**Note: Mac only.**
+
 ## Using AutoR1
 1. Name R1 project 'R1.dbpr'
 2. Run R1 initial setup to generate all standard views
