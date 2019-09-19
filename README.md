@@ -1,5 +1,7 @@
 **Note: Mac only.**
 
+**[Download](https://github.com/lachyc/AutoR1/releases)**
+
 **Meter View**
 ![Meter View](https://i.imgur.com/tSDfxEx.png)
 
