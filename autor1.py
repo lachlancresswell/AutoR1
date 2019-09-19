@@ -33,6 +33,7 @@ DS_STATUS_STARTY = 400
 LR_MUTE_TEXT = ['Left', 'Right']
 LR_MUTE_POSX = [700, 770]
 LR_MUTE_POSY = 56
+#LR group fallback display
 L_FB_POSX = 485
 L_FB_POSY = 265
 R_FB_POSX = 784
@@ -41,6 +42,7 @@ R_FB_POSY = 265
 SUBLR_MUTE_TEXT = ['Left', 'Right']
 SUBLR_MUTE_POSX = [96, 166]
 SUBLR_MUTE_POSY = 230
+#Sub group fallback display
 SUBLR_FB_POSX = 365
 SUBLR_FB_POSY = 16
 
@@ -57,7 +59,12 @@ ctrlStr = 'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Heig
 
 
 ############################## GLOBALS ##############################
-DEBUG = 1
+
+try:
+    if sys.argv[1] == '-d':
+        DEBUG = 1
+except:
+    DEBUG = 0
 views = []
 glDS = 1
 glParentId = 1
@@ -155,6 +162,7 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         tChannel = targetChannel
         tId = targetId
         w = width
+        h = height
         dName = row[7]
 
         if tId is None:
@@ -166,22 +174,20 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         if w is None:
             w = row[4]
 
-        h = row[5]
-        if height is not None:
-            if height > 0:
-                h = height
+        if height is None:
+            h = row[5]
 
         if row[1] == 12: # If item is a Frame
             frameW = w
             frameH = h
             if (displayName is not None):
                 dName = displayName
-        if dName == None:
+        if dName is None:
             dName = ""
 
-        if tProp == None:
+        if tProp is None:
             tProp = row[24]
-        if tRec == None:
+        if tRec is None:
             tRec = row[25]
 
         if (tProp == "Input_Digital_TxStream") or (tProp == "Input_Digital_DsDataPri") or (tProp == "Input_Digital_DsDataSec") or (tProp == "Input_Digital_Sync") or (tProp == "Status_StatusText"):
@@ -278,7 +284,7 @@ if (userIp == "y") or (userIp == ""):
     #dprint(rtn[int(userIp)-1])
     #snapId = rtn[int(userIp)-1][0]
 
-    #Load all channels. Pass ' TargetProperty = "Config_InputEnable1"' in the SQL request to retrieve every channel once in the query
+    #Load all channels. Pass any 'TargetProperty' in the SQL request to retrieve every channel once in the query
     channels = []
     proj_c.execute(f'SELECT TargetId, TargetNode FROM "main"."SnapshotValues" WHERE SnapshotId = {ARRAYCALC_SNAPSHOT} AND TargetProperty = "Config_InputEnable1" ORDER BY TargetId ASC')
     rtn = proj_c.fetchall()
