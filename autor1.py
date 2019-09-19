@@ -56,13 +56,37 @@ ctrlStr = 'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Heig
 
 ##########################################################################################
 
+class Transcript(object):
+
+    def __init__(self, filename):
+        self.terminal = sys.stdout
+        self.logfile = open(filename, "a")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.logfile.write(message)
+
+    def flush(self):
+        # this flush method is needed for python 3 compatibility.
+        # this handles the flush command by doing nothing.
+        # you might want to specify some extra behavior here.
+        pass
+
+def start(filename):
+    """Start transcript, appending print output to given filename"""
+    sys.stdout = Transcript(filename)
+
+def stop():
+    """Stop transcript and return print functionality to normal"""
+    sys.stdout.logfile.close()
+    sys.stdout = sys.stdout.terminal
 
 
 ############################## GLOBALS ##############################
-
 try:
     if sys.argv[1] == '-d':
         DEBUG = 1
+        start('../../../log.txt')
 except:
     DEBUG = 0
 views = []
@@ -581,6 +605,11 @@ if (userIp == "y") or (userIp == ""):
         posY = METER_VIEW_STARTY
         glJoinedId = glJoinedId + 1
 #####################  #####################
+
+try:
+    stop()
+except:
+    dprint("Couldn't close log file")
 
 dbTemplate.commit()
 dbTemplate.close()
