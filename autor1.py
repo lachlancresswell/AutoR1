@@ -308,10 +308,12 @@ if (userIp == "y") or (userIp == ""):
     proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{PARENT_GROUP_TITLE}"')
     try:
         glParentId = proj_c.fetchone()[0]
+        dprint('Found existing AUTO group.')
     except:
         proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{PARENT_GROUP_TITLE}",1,0,-1,0,0);')
         proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{PARENT_GROUP_TITLE}"')
         glParentId = proj_c.fetchone()[0]
+        dprint('Created AUTO group.')
 
 
     ## Create groups
@@ -370,7 +372,7 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
         except:
             dprint(f"No {g} group found for {groups[i].name} group.")
 
-    if groups[i].name == "SUBarray": # Create LR groups for SUBarray
+    if ("sub" in groups[i].name.lower()) and ("array" in groups[i].name.lower()): # Create LR groups for SUBarray
         userIp = " "
         while (userIp != "y") and (userIp != "n") and (userIp != ""):
             userIp = input(SUBARRAY_GROUP_TEXT)
@@ -462,8 +464,8 @@ if (userIp == "y") or (userIp == ""):
 
 
     for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get view ids
-        # Delete input routing and clock selection views
-        dsplyNames = ["Input Routing"]#, "Digital Input Clock", "Digital Input Clock Left", "Digital Input Clock Right"]
+        # Delete input routing views
+        dsplyNames = ["Input Routing"]
         for d in dsplyNames:
             proj_c.execute(f'SELECT "JoinedId" FROM "main"."Controls" WHERE DisplayName = "{d}" AND ViewId = "{groups[i].viewId}"')
             try:
