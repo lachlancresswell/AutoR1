@@ -8,7 +8,6 @@
 *.dblock
 *.r2t
 /build
-/dist
 /LOGS
 /__pycache__/
 *.spec
