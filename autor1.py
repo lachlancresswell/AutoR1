@@ -110,11 +110,8 @@ glDS = 1
 glParentId = 1
 glJoinedId = 1
 dateTimeObj = datetime.now()
-if platform.system() == 'Windows':
-    glDir = './'
-else:
-    glDir = '../../../'
 
+glDir = './'
 LOGDIR = glDir+LOGDIR
 PROJ_FILE = glDir+PROJ_FILE
 MOD_FILE = glDir+MOD_FILE
