@@ -3,4 +3,4 @@ APP='/autor1'
 ARG=" $CURDIR"
 $CURDIR$APP$ARG
 
-read -p "\n\nPress enter to continue."
+read -p "Press enter to continue."
