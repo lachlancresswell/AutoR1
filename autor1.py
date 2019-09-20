@@ -2,8 +2,14 @@ import sqlite3
 import sys
 import os
 from shutil import copyfile
+from datetime import datetime
+import platform
 
 ############################## CONSTANTS ##############################
+LOGDIR = 'LOGS/'
+PROJ_FILE = 'r1.dbpr'
+MOD_FILE = 'R1_AUTO.dbpr'
+TEMP_FILE = 'templates.r2t'
 PARENT_GROUP_TITLE = 'AUTO'
 SUBARRAY_GROUP_TITLE = 'SUBarray LR'
 VIEWS_REMOVE_TEXT = 'Remove all views and groups? (y/n)\n(default: n): '
@@ -103,6 +109,16 @@ views = []
 glDS = 1
 glParentId = 1
 glJoinedId = 1
+dateTimeObj = datetime.now()
+if platform.system() == 'Windows':
+    glDir = './'
+else:
+    glDir = '../../../'
+
+LOGDIR = glDir+LOGDIR
+PROJ_FILE = glDir+PROJ_FILE
+MOD_FILE = glDir+MOD_FILE
+TEMP_FILE = glDir+TEMP_FILE
 ##########################################################################################
 
 
@@ -254,31 +270,34 @@ def checkFile(path):
 ##########################################################################################
 
 #Start logging
-transcript = Transcript('../../../log.txt')
-start('../../../log.txt', transcript)
-if not checkFile('../../../log.txt'):
-    dprint('Could not access log.txt')
+if not os.path.exists(LOGDIR):
+    os.makedirs(LOGDIR)
+timestamp = dateTimeObj.strftime("%d-%b-%Y-%H-%M-%S")
+logfn = LOGDIR+timestamp+'-autor1log.txt'
+transcript = Transcript(logfn)
+start(logfn, transcript)
+if not checkFile(logfn):
+    print(f'Could not access {logfn}')
 
 
-if not checkFile("../../../r1.dbpr"):
-    dprint('Could not access R1.dbpr')
+if not checkFile(PROJ_FILE):
+    print(f'Could not access {PROJ_FILE}')
     sys.exit()
 
-if not checkFile("../../../templates.r2t"):
-    dprint('Could not access templates.r2t')
+if not checkFile(TEMP_FILE):
+    print(f'Could not access {TEMP_FILE}')
     sys.exit()
 
 # Janky but simplifies deployment for the moment
-copyfile("../../../r1.dbpr", "../../../r1_AUTO.dbpr")
-fn = "../../../r1_AUTO.dbpr"
+copyfile(PROJ_FILE, MOD_FILE)
 
-if not checkFile(fn):
-    dprint('Could not access R1_AUTO.dbpr')
+if not checkFile(MOD_FILE):
+    print(f'Could not access {MOD_FILE}')
     sys.exit()
 
 # SQL Setup
-dbTemplate = sqlite3.connect("../../../templates.r2t")
-dbProj = sqlite3.connect(fn)
+dbTemplate = sqlite3.connect(TEMP_FILE)
+dbProj = sqlite3.connect(MOD_FILE)
 template_c = dbTemplate.cursor()
 proj_c = dbProj.cursor()
 
@@ -290,7 +309,7 @@ try:
     template_c.execute('SELECT * FROM "main"."Sections" ORDER BY JoinedId ASC')
     rtn  = template_c.fetchall()
 except:
-    dprint('Could not load templates.')
+    print('Could not load templates.')
     sys.exit()
 
 
@@ -590,14 +609,11 @@ userIp = " "
 while (userIp != "y") and (userIp != "n") and (userIp != ""):
     userIp = input(METERS_TEXT)
 
+
+
 if (userIp == "y") or (userIp == ""):
-    proj_c.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,{METER_VIEW_WIDTH},{METER_VIEW_HEIGHT},100,NULL,NULL,NULL,NULL);')
-    proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
-    meterViewId = proj_c.fetchone()[0]
 
-    posX = METER_VIEW_STARTX
-    posY = METER_VIEW_STARTY
-
+    ## Get width of meter frame
     if glDS == 0:
         template_c.execute(f'SELECT Width, Height FROM "main"."Controls" WHERE DisplayName = "METERS_TITLE_NODS"')
     else:
@@ -608,6 +624,29 @@ if (userIp == "y") or (userIp == ""):
     meterH = rtn[1]
     spacingX = meterW+METER_SPACING_X
     spacingY = meterH+METER_SPACING_Y
+
+    gCount = 0
+    aCount = 1
+    for g in groups:
+        gCount += 1;
+        if len(g.groupIdSt) > 1:
+            gCount += 1;
+            for k in g.groupIdSt:
+                if len(k.targetChannels) > aCount:
+                    aCount = len(k.targetChannels)
+        else:
+            if len(g.targetChannels) > aCount:
+                aCount = len(g.targetChannels)
+
+    print(aCount)
+    proj_c.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,{(spacingX*gCount)+METER_SPACING_X},{(spacingY*aCount)+100},100,NULL,NULL,NULL,NULL);')
+    proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
+    meterViewId = proj_c.fetchone()[0]
+
+    posX = METER_VIEW_STARTX
+    posY = METER_VIEW_STARTY
+
+
 
 
     groups2 = []
@@ -643,6 +682,8 @@ try:
     stop()
 except:
     dprint("Couldn't close log file")
+
+print("Finished generating views, controls and groups.")
 
 dbTemplate.commit()
 dbTemplate.close()
