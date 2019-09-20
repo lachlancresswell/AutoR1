@@ -54,13 +54,10 @@ SUBLR_FB_POSY = 16
 
 GROUPID = 0
 SUBGROUP = 0
-TARGET_CHANNEL = 4
 TARGET_ID = 3
 
 
-ctrlStr = 'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") '
-
-##########################################################################################
+####################### CLASSES  ##############################
 
 class Transcript(object):
 
@@ -98,29 +95,6 @@ def stop():
     sys.stdout.logfile.close()
     sys.stdout = sys.stdout.terminal
 
-
-############################## GLOBALS ##############################
-try:
-    if sys.argv[1] == '-d':
-        DEBUG = 1
-except:
-    DEBUG = 0
-views = []
-glDS = 1
-glParentId = 1
-glJoinedId = 1
-dateTimeObj = datetime.now()
-
-glDir = './'
-LOGDIR = glDir+LOGDIR
-PROJ_FILE = glDir+PROJ_FILE
-MOD_FILE = glDir+MOD_FILE
-TEMP_FILE = glDir+TEMP_FILE
-##########################################################################################
-
-
-
-####################### CLASSES  ##############################
 class Channel:
     def __init__(self, targetId, targetChannel):
         self.targetId = targetId
@@ -264,7 +238,34 @@ def checkFile(path):
         return False
     return True
 
+clear = lambda : os.system('tput reset')
+clear()
+print('AutoR1\n')
 ##########################################################################################
+
+############################## GLOBALS ##############################
+try:
+    if sys.argv[2] == '-d':
+        DEBUG = 1
+except:
+    DEBUG = 0
+views = []
+glDS = 1
+glParentId = 1
+glJoinedId = 1
+dateTimeObj = datetime.now()
+
+
+try:
+    glDir = sys.argv[1]+'/'
+    os.chdir(glDir)
+except:
+    print('Could not get current working directory.')
+
+LOGDIR = './'+LOGDIR
+PROJ_FILE = './'+PROJ_FILE
+MOD_FILE = './'+MOD_FILE
+TEMP_FILE = './'+TEMP_FILE
 
 #Start logging
 if not os.path.exists(LOGDIR):
@@ -275,6 +276,10 @@ transcript = Transcript(logfn)
 start(logfn, transcript)
 if not checkFile(logfn):
     print(f'Could not access {logfn}')
+
+dprint(f'cwd - {os.getcwd()}')
+##########################################################################################
+
 
 
 if not checkFile(PROJ_FILE):
@@ -330,22 +335,22 @@ except:
 
 
 ##################### Delete Views and Groups #####################
-userIp = " "
-while (userIp != "y") and (userIp != "n") and (userIp != ""):
-    userIp = input(VIEWS_REMOVE_TEXT)
+#userIp = " "
+#while (userIp != "y") and (userIp != "n") and (userIp != ""):
+#    userIp = input(VIEWS_REMOVE_TEXT)
 
-if (userIp == "y"):
-    proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE Type = 1000')
-    rtn = proj_c.fetchall()
-    for row in rtn:
-        proj_c.execute(f'DELETE FROM "main"."Controls" WHERE ViewId = {row[0]};')
-        proj_c.execute(f'DELETE FROM "main"."Views" WHERE ViewId = {row[0]};')
-    proj_c.execute(f'DELETE FROM "main"."Groups" WHERE NOT GroupId = 1')
+#if (userIp == "y"):
+#    proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE Type = 1000')
+#    rtn = proj_c.fetchall()
+#    for row in rtn:
+#        proj_c.execute(f'DELETE FROM "main"."Controls" WHERE ViewId = {row[0]};')
+#        proj_c.execute(f'DELETE FROM "main"."Views" WHERE ViewId = {row[0]};')
+#    proj_c.execute(f'DELETE FROM "main"."Groups" WHERE NOT GroupId = 1')
 
-    dbTemplate.close()
-    dbProj.commit()
-    dbProj.close()
-    sys.exit()
+#    dbTemplate.close()
+#    dbProj.commit()
+#    dbProj.close()
+#    sys.exit()
 
 ###############################################################
 
@@ -635,7 +640,6 @@ if (userIp == "y") or (userIp == ""):
             if len(g.targetChannels) > aCount:
                 aCount = len(g.targetChannels)
 
-    print(aCount)
     proj_c.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,{(spacingX*gCount)+METER_SPACING_X},{(spacingY*aCount)+100},100,NULL,NULL,NULL,NULL);')
     proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
     meterViewId = proj_c.fetchone()[0]
@@ -678,7 +682,7 @@ if (userIp == "y") or (userIp == ""):
 try:
     stop()
 except:
-    dprint("Couldn't close log file")
+    print("Couldn't close log file")
 
 print("Finished generating views, controls and groups.")
 

@@ -9,6 +9,8 @@
 *.r2t
 /build
 /LOGS
+/dist/LOGS/
 /__pycache__/
 *.spec
 /.eggs
+autor1

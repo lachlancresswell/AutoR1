@@ -1,4 +1,4 @@
 CURDIR=`dirname "$0"`
 APP='/autor1'
-ARG=" $1"
+ARG=" $CURDIR"
 $CURDIR$APP$ARG
