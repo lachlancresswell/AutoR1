@@ -238,10 +238,16 @@ def checkFile(path):
         return False
     return True
 
-clear = lambda : os.system('tput reset')
-clear()
-print('AutoR1\n')
+
+
 ##########################################################################################
+
+if platform.system() == 'Windows':
+    os.system('cls')
+else:
+    os.system('clear')
+print('**AutoR1**\n')
+
 
 ############################## GLOBALS ##############################
 try:

@@ -1,1 +1,1 @@
-autor1.exe
+autor1.exe %0
