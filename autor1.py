@@ -62,9 +62,19 @@ class Transcript(object):
         self.terminal = sys.stdout
         self.logfile = open(filename, "a")
 
+    def log(self, message):
+        if isinstance(message, tuple):
+            s = '('
+            for m in message:
+                s += f'{m}, '
+            s += ')'
+        else:
+            s = message
+        self.logfile.write(s)
+
     def write(self, message):
         self.terminal.write(message)
-        self.logfile.write(message)
+        self.log(message)
 
     def flush(self):
         # this flush method is needed for python 3 compatibility.
@@ -72,9 +82,10 @@ class Transcript(object):
         # you might want to specify some extra behavior here.
         pass
 
-def start(filename):
+
+def start(filename, ts):
     """Start transcript, appending print output to given filename"""
-    sys.stdout = Transcript(filename)
+    sys.stdout = ts#Transcript(filename)
 
 def stop():
     """Stop transcript and return print functionality to normal"""
@@ -86,7 +97,6 @@ def stop():
 try:
     if sys.argv[1] == '-d':
         DEBUG = 1
-        start('../../../log.txt')
 except:
     DEBUG = 0
 views = []
@@ -225,16 +235,46 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(tProp)}", {tRec}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
     return [frameW, frameH]
 
+
 def dprint(s):
     if DEBUG > 0:
         print(s)
+    else:
+        transcript.log(s)
+    transcript.log('\n')
+
+def checkFile(path):
+    try:
+        f = open(path, 'r')
+        f.close()
+    except IOError:
+        return False
+    return True
 
 ##########################################################################################
 
+#Start logging
+transcript = Transcript('../../../log.txt')
+start('../../../log.txt', transcript)
+if not checkFile('../../../log.txt'):
+    dprint('Could not access log.txt')
+
+
+if not checkFile("../../../r1.dbpr"):
+    dprint('Could not access R1.dbpr')
+    sys.exit()
+
+if not checkFile("../../../templates.r2t"):
+    dprint('Could not access templates.r2t')
+    sys.exit()
 
 # Janky but simplifies deployment for the moment
 copyfile("../../../r1.dbpr", "../../../r1_AUTO.dbpr")
 fn = "../../../r1_AUTO.dbpr"
+
+if not checkFile(fn):
+    dprint('Could not access R1_AUTO.dbpr')
+    sys.exit()
 
 # SQL Setup
 dbTemplate = sqlite3.connect("../../../templates.r2t")
@@ -245,8 +285,15 @@ proj_c = dbProj.cursor()
 
 ##### LOAD TEMPLATES
 temps = []
-template_c.execute('SELECT * FROM "main"."Sections" ORDER BY JoinedId ASC')
-rtn  = template_c.fetchall()
+
+try:
+    template_c.execute('SELECT * FROM "main"."Sections" ORDER BY JoinedId ASC')
+    rtn  = template_c.fetchall()
+except:
+    dprint('Could not load templates.')
+    sys.exit()
+
+
 for t in TEMPLATE_NAMES:
     temps.append(Template(t))
 for row in rtn:
@@ -293,20 +340,6 @@ while (userIp != "y") and (userIp != "n") and (userIp != ""):
 
 ipGroupId = [0,0,0,0,0,0,0,0]
 if (userIp == "y") or (userIp == ""):
-
-    #Create channel list
-    #proj_c.execute(f'SELECT * FROM "main"."Snapshots" ORDER BY SnapshotId ASC')
-    #rtn = proj_c.fetchall()
-    #i = 1
-    #for row in rtn:
-    #    print(f'[{i}] - {row[2]}')
-    #    i += 1;
-    #userIp = input('Select snapshot to retrieve input patch from (default 1):')
-    #if userIp == "":
-    #    userIp = ARRAYCALC_SNAPSHOT
-    #dprint('Snapshot chosen:')
-    #dprint(rtn[int(userIp)-1])
-    #snapId = rtn[int(userIp)-1][0]
 
     #Load all channels. Pass any 'TargetProperty' in the SQL request to retrieve every channel once in the query
     channels = []
