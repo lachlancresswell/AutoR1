@@ -75,6 +75,9 @@ DEV_PROP_TYPES = [
 ,'Input_Digital_Mode'
 ,'Input_Digital_Sync'
 ,'Input_Digital_SampleStatus'
+,'Input_Digital_DsDataPri'
+,'Input_Digital_DsDataSec'
+,'Input_Digital_TxStream'
 ,'Error_GnrlErr'
 ,'Error_SmpsTempOff'
 ,'Error_SmpsTempWarn']
@@ -174,6 +177,8 @@ class Group:
         self.groupIdSt = []
         self.targetDevices = []
 
+        dprint(f'Created group - {groupId} / {name}')
+
     def print(self):
         dprint(f'GROUP: {self.name} / {self.groupId} / Subgroups: {len(self.groupIdSt)}')
         for g in self.groupIdSt:
@@ -271,9 +276,11 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         if tRec is None:
             tRec = row[25]
 
-        if (tProp == "Input_Digital_TxStream") or (tProp == "Input_Digital_DsDataPri") or (tProp == "Input_Digital_DsDataSec") or (tProp == "Input_Digital_Sync") or (tProp == "Status_StatusText"):
-            if tChannel > -1:
-                tChannel = 0 #Dante + digital info require channel ID to be 0
+        for p in DEV_PROP_TYPES:
+            if tProp == p:
+                if tChannel > -1:
+                    tChannel = 0 #Dante + digital info require channel ID to be 0
+                    break
 
         if tProp is not None:
             if len(tProp) > 1:
