@@ -805,7 +805,7 @@ if (userIp == "y") or (userIp == ""):
     masterH = rtn[1]
     dprint(f'Master frame w - {masterW}')
     spacingX = masterW+METER_SPACING_X
-
+    AsId = 0
     userIp = " "
     while (userIp != "y") and (userIp != "n") and (userIp != ""):
         userIp = input(ARRAYSIGHT_TEXT)
