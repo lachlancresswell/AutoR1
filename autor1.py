@@ -455,12 +455,12 @@ except:
 ###############################################################
 
 ##################### Create input groups #####################
-userIp = " "
-while (userIp != "y") and (userIp != "n") and (userIp != ""):
-    userIp = input(INPUT_GROUP_TEXT)
+#userIp = " "
+#while (userIp != "y") and (userIp != "n") and (userIp != ""):
+#    userIp = input(INPUT_GROUP_TEXT)
 
 ipGroupId = [0,0,0,0,0,0,0,0]
-if (userIp == "y") or (userIp == ""):
+if True:#(userIp == "y") or (userIp == ""):
 
     #Load all channels. Pass any 'TargetProperty' in the SQL request to retrieve every channel once in the query
     channels = []
@@ -528,9 +528,12 @@ proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "ParentId" = {priGrpId}')
 rtn = proj_c.fetchall()
 # Find if AP is on or not
 for row in rtn:
-    print(row)
     proj_c.execute(f'SELECT ArrayProcessingEnable FROM "main"."SourceGroups" WHERE "Name" = "{row[1]}"')
-    ap = proj_c.fetchone()[0]
+    try:
+        ap = proj_c.fetchone()[0]
+    except NoneType:
+        print(f'Failed to find {row[1]} in SourceGroups. Try re-generating all groups and views with R1 AutoCreate.')
+        sys.exit()
     proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE "Name" = "{row[1]}"')
     vId = proj_c.fetchone()[0]
     groups.append(Group(row[0], row[1], ap, vId)) #First is GroupId, second is Name
@@ -558,11 +561,11 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
             dprint(f"No {g} group found for {groups[i].name} group.")
 
     if ("sub" in groups[i].name.lower()) and ("array" in groups[i].name.lower()): # Create LR groups for SUBarray
-        userIp = " "
-        while (userIp != "y") and (userIp != "n") and (userIp != ""):
-            userIp = input(SUBARRAY_GROUP_TEXT)
+        #userIp = " "
+        #while (userIp != "y") and (userIp != "n") and (userIp != ""):
+        #    userIp = input(SUBARRAY_GROUP_TEXT)
 
-        if (userIp == "y") or (userIp == ""):
+        if True:#(userIp == "y") or (userIp == ""):
             groupL = []
             groupR = []
             for tc in groups[i].targetChannels:
@@ -795,7 +798,7 @@ while (userIp != "y") and (userIp != "n") and (userIp != ""):
 if (userIp == "y") or (userIp == ""):
 
     ## Get width of widest control in master template
-    rtn = getTempSize(template_c, "M_Master")
+    rtn = getTempSize(template_c, "Master Main")
     masterW = rtn[0]
     masterH = rtn[1]
     dprint(f'Master frame w - {masterW}')
@@ -811,7 +814,7 @@ if (userIp == "y") or (userIp == ""):
         except:
             dprint("Could not find ArraySight device.")
         ## Get width of widest control in ArraySight template
-        rtn = getTempSize(template_c, "AS_Master")
+        rtn = getTempSize(template_c, "Master ArraySight")
         asW = rtn[0]
         asH = rtn[1]
         dprint(f'ArraySight frame w - {asW}')
@@ -827,13 +830,13 @@ if (userIp == "y") or (userIp == ""):
             gCount += 1;
 
     ## Get width of stereo group frame
-    rtn = getTempSize(template_c, "GrStAP_Master")
+    rtn = getTempSize(template_c, "Group LR AP")
     meterW = rtn[0]
     meterH = rtn[1]
     dprint(f'LR group frame w - {meterW}')
     spacingX += (meterW+METER_SPACING_X)*gStCount
     ## Get width of group frame
-    rtn = getTempSize(template_c, "GrAP_Master")
+    rtn = getTempSize(template_c, "Group AP")
     meterW = rtn[0]
     meterH = rtn[1]
     dprint(f'Group frame w - {meterW}')
@@ -851,23 +854,24 @@ if (userIp == "y") or (userIp == ""):
 
     posX = 10
     posY = 10
-    posY += insertTemplate(temps, 'T_Master', posX, posY, masterViewId, None, None, None, proj_c, None, None, None, None, None, template_c)[1]+METER_SPACING_Y
-    posX += insertTemplate(temps, 'M_Master', posX, posY, masterViewId, None, masterGroupId, None, proj_c, None, None, None, None, None, template_c)[0]+METER_SPACING_X;
-    posX += insertTemplate(temps, 'AS_Master', posX, posY, masterViewId, None, AsId, None, proj_c, None, None, None, None, None, template_c)[0]+(METER_SPACING_X*4);
+    posY += insertTemplate(temps, 'Master Title', posX, posY, masterViewId, None, None, None, proj_c, None, None, None, None, None, template_c)[1]+METER_SPACING_Y
+    posX += insertTemplate(temps, 'Master Main', posX, posY, masterViewId, None, masterGroupId, None, proj_c, None, None, None, None, None, template_c)[0]+METER_SPACING_X;
+    if userIp is not 'n':
+        posX += insertTemplate(temps, 'Master ArraySight', posX, posY, masterViewId, None, AsId, None, proj_c, None, None, None, None, None, template_c)[0]+(METER_SPACING_X*4);
 
     for g in groups:
         jId = glJoinedId
 
         if g.AP > 0:
             if len(g.groupIdSt) > 0:
-                template = 'GrStAP_Master'
+                template = 'Group LR AP'
             else:
-                template = 'GrAP_Master'
+                template = 'Group AP'
         else:
             if len(g.groupIdSt) > 0:
-                template = 'GrSt_Master'
+                template = 'Group LR'
             else:
-                template = 'Gr_Master'
+                template = 'Group'
 
 
         tempContents = getTempContents(temps, template)
@@ -890,7 +894,7 @@ if (userIp == "y") or (userIp == ""):
             if (row[1] == 7): #Meters, these require a TargetChannel
                 tId = g.targetChannels[0][3]
                 tChannel = g.targetChannels[0][4]
-            if template == 'GrSt_Master' or template == 'GrStAP_Master':
+            if template == 'Group LR' or template == 'Group LR AP':
                 if (row[1] == 7): #Meters, these require a TargetChannel
                     tId = g.groupIdSt[metCh].targetChannels[0][3]
                     tChannel = g.groupIdSt[metCh].targetChannels[0][4]
