@@ -358,6 +358,9 @@ try:
     glDir = sys.argv[1]+'/'
     os.chdir(glDir)
 except:
+    dprint('Sys Args:')
+    dprint(sys.argv)
+    dprint(f'glDir - {glDir}')
     print('Could not get current working directory.')
 
 LOGDIR = './'+LOGDIR
