@@ -334,12 +334,6 @@ def checkFile(path):
 
 ##########################################################################################
 
-if platform.system() == 'Windows':
-    os.system('cls')
-else:
-    os.system('clear')
-print('**AutoR1**\n')
-
 
 ############################## GLOBALS ##############################
 try:
@@ -352,6 +346,19 @@ glDS = 1
 glParentId = 1
 glJoinedId = 1
 dateTimeObj = datetime.now()
+
+if platform.system() == 'Windows':
+    os.system('cls')
+else:
+    os.system('clear')
+    try:
+        glDir = sys.argv[1]+'/'
+        os.chdir(glDir)
+    except:
+        print('Could not get current working directory.')
+print('**AutoR1**\n')
+
+
 
 LOGDIR = './'+LOGDIR
 PROJ_FILE = './'+PROJ_FILE
@@ -370,6 +377,7 @@ if not checkFile(logfn):
 dprint('Sys Args:')
 for a in sys.argv:
     dprint(f'{a}')
+dprint(f'glDir - {glDir}')
 dprint(f'cwd - {os.getcwd()}')
 ##########################################################################################
 
