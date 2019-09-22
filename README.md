@@ -1,6 +1,10 @@
 ## Download
 
+### Combined Mac + Windows package:
 **[Link](https://github.com/lachyc/AutoR1/releases)**
+
+**Master View**
+![Master View](https://i.imgur.com/CynNs0d.png)
 
 **Meter View**
 ![Meter View](https://i.imgur.com/tSDfxEx.png)
@@ -19,29 +23,21 @@
 
 
 ## Overview
-- Create input groups
-
-  Groups amp channels based on their input setting (e.g A1, A2, D1, D4 ). Inputs are taken from the ArrayCalc snapshot. Required for the DS10 D1/D2 info on the overview page.
-
-- Create SUBarray LR groups
-
-  Adds addition sub groups for L and R sides. Required for the Meter page.
-
 - Create fallback controls
 
   Adds fallback controls to all group pages and the overview page.
 
 - Create DS info
 
-  Enables/disables ds info (D1/D2 pri/sec readouts on Overview, channel info on Meter page)
-
-- Remove meter view
-
-  Removes the meter page
+  Enables/disables ds info (D1/D2 pri/sec readouts on Overview, channel info on Meter page).
 
 - Create meters view
 
-  Creates a meter for each channel in the project grouped by the standard/ArrayCalc grouping
+  Creates a meter for each channel in the project grouped by the standard/ArrayCalc grouping.
+
+- Create master view
+
+  Creates a view with meters for each group and overall PA management and monitoring controls.
 
 
 ## Notes
