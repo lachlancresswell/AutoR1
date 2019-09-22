@@ -22,8 +22,10 @@ METERS_REMOVE_TEXT = 'Remove meters view? (y/n)\n(default: n): '
 INPUT_SNAPSHOT = "Inputs"
 INPUT_TYPES = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"]
 ARRAYCALC_SNAPSHOT = 1
-TEMPLATE_NAMES = ['Fallback', 'Fallback LR', 'Fallback Overview', 'Mute', 'DS Status', 'Meter', 'Meters Group', 'Meter NODS']
 METER_WINDOW_TITLE = "AUTO - Meters"
+MASTER_WINDOW_TITLE = "AUTO - Master"
+MASTER_TEXT = "Create master view? (y/n)\n(default: y): "
+ARRAYSIGHT_TEXT = "Create ArraySight controls? (y/n)\n(default: y): "
 METER_VIEW_WIDTH = 2000
 METER_VIEW_HEIGHT = 7000
 METER_VIEW_STARTX = 15
@@ -387,9 +389,10 @@ except:
     print('Could not load templates.')
     sys.exit()
 
-
-for t in TEMPLATE_NAMES:
-    temps.append(Template(t))
+template_c.execute(f'SELECT Name FROM "main"."Sections"')
+rtn = template_c.fetchall()
+for row in rtn:
+    temps.append(Template(row[0]))
 for row in rtn:
     for i in range(len(temps)):
         if row[1] == temps[i].name:
@@ -751,6 +754,83 @@ if (userIp == "y") or (userIp == ""):
         posY = METER_VIEW_STARTY
         glJoinedId = glJoinedId + 1
 #####################  #####################
+
+
+##################### GENERATE MASTER VIEW #####################
+
+userIp = " "
+while (userIp != "y") and (userIp != "n") and (userIp != ""):
+    userIp = input(MASTER_TEXT)
+if (userIp == "y") or (userIp == ""):
+
+    posX = 0
+
+    ## Get height of title frame
+    template_c.execute(f'SELECT Height FROM "main"."Controls" WHERE DisplayName = "Master" AND Type = 11')
+    rtn = template_c.fetchone()
+    dprint(rtn)
+    posY = rtn[0]+20
+
+    ## Get width of meter frame
+    template_c.execute(f'SELECT Width FROM "main"."Controls" WHERE DisplayName = "Overview"')
+    rtn = template_c.fetchone()
+    dprint(rtn)
+    meterW = rtn[0]
+    spacingX = meterW+METER_SPACING_X
+
+    while (userIp != "y") and (userIp != "n") and (userIp != ""):
+        userIp = input(ARRAYSIGHT_TEXT)
+    if (userIp == "y") or (userIp == ""):
+        ## Get width of ArraySight frame
+        template_c.execute(f'SELECT Width FROM "main"."Controls" WHERE DisplayName = "ArraySight"')
+        rtn = template_c.fetchone()
+        dprint(rtn)
+        meterW = rtn[0]
+        spacingX += meterW+METER_SPACING_X
+
+    spacingX += 80
+
+    # Find count of mono and stereo groups
+    gCount = 0
+    gStCount = 0
+    for g in groups:
+        if len(g.groupIdSt) > 1:
+            gStCount += 1;
+        else:
+            gCount += 1;
+
+    ## Get width of stereo group frame
+    template_c.execute(f'SELECT Width FROM "main"."Controls" WHERE DisplayName = "GROUP_TITLE_ST"')
+    rtn = template_c.fetchone()
+    dprint(rtn)
+    meterW = rtn[0]
+    spacingX += (meterW+METER_SPACING_X)*gStCount
+    ## Get width of group frame
+    template_c.execute(f'SELECT Width FROM "main"."Controls" WHERE DisplayName = "GROUP_TITLE"')
+    rtn = template_c.fetchone()
+    dprint(rtn)
+    meterW = rtn[0]
+    spacingX += (meterW+METER_SPACING_X)*gCount
+
+    proj_c.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{MASTER_WINDOW_TITLE}",NULL,4,NULL,-1,{(spacingX)+METER_SPACING_X},1000,100,NULL,NULL,NULL,NULL);')
+    proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{MASTER_WINDOW_TITLE}"')
+    masterViewId = proj_c.fetchone()[0]
+    proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "Master"')
+    masterGroupId = proj_c.fetchone()[0]
+
+    #def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c, width, height, joinedId, targetProp, targetRec):
+    insertTemplate(temps, 'T_master', 0, 0, masterViewId, None, None, None, proj_c, None, None, None, None, None);
+    insertTemplate(temps, 'M_master', 0, posY, masterViewId, None, masterGroupId, None, proj_c, None, None, None, None, None);
+    insertTemplate(temps, 'AS_master', 200, posY, masterViewId, None, None, None, proj_c, None, None, None, None, None);
+    posX = 400
+
+    for g in groups:
+        jId = glJoinedId
+        w = insertTemplate(temps, 'Gr_Master', posX, posY, masterViewId, g.name, g.groupId, None, proj_c, meterW, None, jId, None, None);
+        posX += w+METER_SPACING_X
+
+        glJoinedId = glJoinedId + 1
+
 
 try:
     stop()
