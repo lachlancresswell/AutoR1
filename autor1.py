@@ -358,9 +358,6 @@ try:
     glDir = sys.argv[1]+'/'
     os.chdir(glDir)
 except:
-    dprint('Sys Args:')
-    dprint(sys.argv)
-    dprint(f'glDir - {glDir}')
     print('Could not get current working directory.')
 
 LOGDIR = './'+LOGDIR
@@ -377,7 +374,9 @@ transcript = Transcript(logfn)
 start(logfn, transcript)
 if not checkFile(logfn):
     print(f'Could not access {logfn}')
-
+dprint('Sys Args:')
+dprint(sys.argv)
+dprint(f'glDir - {glDir}')
 dprint(f'cwd - {os.getcwd()}')
 ##########################################################################################
 
