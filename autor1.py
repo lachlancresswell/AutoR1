@@ -377,7 +377,6 @@ if not checkFile(logfn):
 dprint('Sys Args:')
 for a in sys.argv:
     dprint(f'{a}')
-dprint(f'glDir - {glDir}')
 dprint(f'cwd - {os.getcwd()}')
 ##########################################################################################
 
