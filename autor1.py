@@ -353,13 +353,6 @@ glParentId = 1
 glJoinedId = 1
 dateTimeObj = datetime.now()
 
-
-try:
-    glDir = sys.argv[1]+'/'
-    os.chdir(glDir)
-except:
-    print('Could not get current working directory.')
-
 LOGDIR = './'+LOGDIR
 PROJ_FILE = './'+PROJ_FILE
 MOD_FILE = './'+MOD_FILE
@@ -377,7 +370,6 @@ if not checkFile(logfn):
 dprint('Sys Args:')
 for a in sys.argv:
     dprint(f'{a}')
-dprint(f'glDir - {glDir}')
 dprint(f'cwd - {os.getcwd()}')
 ##########################################################################################
 
