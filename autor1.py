@@ -375,7 +375,8 @@ start(logfn, transcript)
 if not checkFile(logfn):
     print(f'Could not access {logfn}')
 dprint('Sys Args:')
-dprint(sys.argv)
+for a in sys.argv:
+    dprint()
 dprint(f'glDir - {glDir}')
 dprint(f'cwd - {os.getcwd()}')
 ##########################################################################################
