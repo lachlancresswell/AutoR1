@@ -172,12 +172,13 @@ class Channel:
         dprint(self.inputEnable)
 
 class Group:
-    def __init__(self, groupId, name):
+    def __init__(self, groupId, name, ap, vId):
         self.groupId = groupId
         self.name = name
         self.viewId = None
         self.groupIdSt = []
-        self.targetDevices = []
+        self.AP = ap
+        self.viewId = vId
 
         dprint(f'Created group - {groupId} / {name}')
 
@@ -232,10 +233,31 @@ def findDevicesInGroups(parentId):
 
     return ch
 
-def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c, width, height, joinedId, targetProp, targetRec):
+def getTempSize(template_c, tempName):
+    try:
+        template_c.execute(f'SELECT JoinedId FROM "main"."Sections" WHERE Name = "{tempName}"')
+        jId = template_c.fetchone()[0]
+    except:
+        return -1
+
+    try:
+        template_c.execute(f'SELECT PosX, PosY, Width, Height FROM "main"."Controls" WHERE JoinedId = {jId}')
+
+        rtn = template_c.fetchall()
+        w = 0
+        h = 0
+        for row in rtn:
+            if row[0]+row[2] > w:
+                w = row[0]+row[2]
+            if row[1]+row[3] > h:
+                h = row[1]+row[3]
+        return [w,h]
+    except:
+        print(f'Could not find {tempName} controls in {TEMP_FILE}.')
+        return -1
+
+def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c, width, height, joinedId, targetProp, targetRec, template_c):
     dprint(f'TEMPLATE: {tempName} / {posX} / {posY} / {viewId} / {displayName} / {targetId} / {targetChannel} / {width} / {height} / {joinedId} / {targetProp} / {targetRec}')
-    frameW = 0
-    frameH = 0
 
     global glJoinedId
     if joinedId is not None:
@@ -244,53 +266,54 @@ def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, t
         jId = glJoinedId
         glJoinedId = glJoinedId + 1
 
-    for row in getTempContents(temps, tempName):
-        tProp = targetProp
-        tRec = targetRec
-        tChannel = targetChannel
-        tId = targetId
-        w = width
-        h = height
-        dName = row[7]
+    tempContents = getTempContents(temps, tempName)
+    try:
+        for row in tempContents:
+            tProp = targetProp
+            tRec = targetRec
+            tChannel = targetChannel
+            tId = targetId
+            w = width
+            h = height
+            dName = row[7]
 
-        if tId is None:
-            tId = row[22]
+            if tId is None:
+                tId = row[22]
 
-        if tChannel is None:
-            tChannel = row[23]
+            if tChannel is None:
+                tChannel = row[23]
 
-        if w is None:
-            w = row[4]
+            if w is None:
+                w = row[4]
 
-        if height is None:
-            h = row[5]
+            if height is None:
+                h = row[5]
 
-        if row[1] == 12: # If item is a Frame
-            frameW = w
-            frameH = h
-            if (displayName is not None):
-                dName = displayName
-        if dName is None:
-            dName = ""
+            if row[1] == 12: # If item is a Frame
+                if (displayName is not None):
+                    dName = displayName
+            if dName is None:
+                dName = ""
 
-        if tProp is None:
-            tProp = row[24]
-        if tRec is None:
-            tRec = row[25]
+            if tProp is None:
+                tProp = row[24]
+            if tRec is None:
+                tRec = row[25]
 
-        for p in DEV_PROP_TYPES:
-            if tProp == p:
-                if tChannel > -1:
-                    tChannel = 0 #Dante + digital info require channel ID to be 0
-                    break
+            for p in DEV_PROP_TYPES:
+                if tProp == p:
+                    if tChannel > -1:
+                        tChannel = 0 #Dante + digital info require channel ID to be 0
+                        break
 
-        if tProp is not None:
-            if len(tProp) > 1:
-                dprint(f'tProp - {tProp} / tRec - {tRec} / tId - {tId} / tChannel - {tChannel}')
+            if tProp is not None:
+                if len(tProp) > 1:
+                    dprint(f'tProp - {tProp} / tRec - {tRec} / tId - {tId} / tChannel - {tChannel}')
 
-        proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(tProp)}", {tRec}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
-    return [frameW, frameH]
-
+            proj_c.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(tProp)}", {tRec}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
+        return getTempSize(template_c, tempName)
+    except:
+        return tempContents
 
 def dprint(s):
     if DEBUG > 0:
@@ -378,6 +401,8 @@ dbProj = sqlite3.connect(MOD_FILE)
 template_c = dbTemplate.cursor()
 proj_c = dbProj.cursor()
 
+dprint(f'Loaded template file - {TEMP_FILE}')
+dprint(f'Loaded project file - {MOD_FILE}')
 
 ##### LOAD TEMPLATES
 temps = []
@@ -390,9 +415,8 @@ except:
     sys.exit()
 
 template_c.execute(f'SELECT Name FROM "main"."Sections"')
-rtn = template_c.fetchall()
-for row in rtn:
-    temps.append(Template(row[0]))
+for r in template_c.fetchall():
+    temps.append(Template(r[0]))
 for row in rtn:
     for i in range(len(temps)):
         if row[1] == temps[i].name:
@@ -500,9 +524,16 @@ if (userIp == "y") or (userIp == ""):
 proj_c.execute('SELECT "GroupId" FROM "main"."Groups" ORDER BY "GroupId" ASC LIMIT 3')
 priGrpId = proj_c.fetchall()[1][0]
 groups = []
-rtn = proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "ParentId" = {priGrpId}')
+proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "ParentId" = {priGrpId}')
+rtn = proj_c.fetchall()
+# Find if AP is on or not
 for row in rtn:
-    groups.append(Group(row[0], row[1])) #First is GroupId, second is Name
+    print(row)
+    proj_c.execute(f'SELECT ArrayProcessingEnable FROM "main"."SourceGroups" WHERE "Name" = "{row[1]}"')
+    ap = proj_c.fetchone()[0]
+    proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE "Name" = "{row[1]}"')
+    vId = proj_c.fetchone()[0]
+    groups.append(Group(row[0], row[1], ap, vId)) #First is GroupId, second is Name
 
 for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get view ids
     g = groups[i]
@@ -521,7 +552,7 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
         proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{groups[i].name + g}"')
         try:
             rtn = proj_c.fetchone()
-            groups[i].groupIdSt.append(Group(rtn[0], rtn[1]))
+            groups[i].groupIdSt.append(Group(rtn[0], rtn[1], groups[i].AP, groups[i].viewId))
             groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(groups[i].groupIdSt[-1].groupId)
         except:
             dprint(f"No {g} group found for {groups[i].name} group.")
@@ -570,7 +601,7 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
                 for tc in g:
                     proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{tc[1]}",{rtn[0]},{tc[3]},{tc[4]},1,0);')
 
-                groups[i].groupIdSt.append(Group(rtn[0], rtn[1]))
+                groups[i].groupIdSt.append(Group(rtn[0], rtn[1], groups[i].AP, groups[i].viewId))
                 groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(groups[i].groupIdSt[-1].groupId)
 
                 g = groupR
@@ -607,12 +638,12 @@ if (userIp == "y") or (userIp == ""):
         posY = DS_STATUS_STARTY
         for i in range(len(INPUT_TYPES[6:])):
             dprint(f'i - {i} / INPUT_TYPES[4+i] - {INPUT_TYPES[4+i]} / ipGroupId[4+i] - {ipGroupId[4+i]} /')
-            w = insertTemplate(temps, "DS Status", posX, posY, overviewId, INPUT_TYPES[4+i], ipGroupId[4+i], -1, proj_c, None, None, None, None, i+1);
+            w = insertTemplate(temps, 'DS Status', posX, posY, overviewId, INPUT_TYPES[4+i], ipGroupId[4+i], -1, proj_c, None, None, None, None, i+1, template_c);
             posX += w[0]
     else:
         glDS = 0
 
-    insertTemplate(temps, "Fallback Overview", FB_OVERVIEW_POSX, FB_OVERVIEW_POSY, overviewId, None, masterId, None, proj_c, None, None, None, None, None);
+    insertTemplate(temps, "Fallback Overview", FB_OVERVIEW_POSX, FB_OVERVIEW_POSY, overviewId, None, masterId, None, proj_c, None, None, None, None, None, template_c);
 
 
 
@@ -651,7 +682,7 @@ if (userIp == "y") or (userIp == ""):
                 fbG = groups[i].groupIdSt
 
             for j in range(len(muteText)):
-                insertTemplate(temps, 'Mute', muteX[j], muteY, groups[i].viewId, muteText[j], groups[i].groupIdSt[j].groupId, None, proj_c, None, None, None, None, None);
+                insertTemplate(temps, 'Mute', muteX[j], muteY, groups[i].viewId, muteText[j], groups[i].groupIdSt[j].groupId, None, proj_c, None, None, None, None, None, template_c);
         else:
             fbX = [307]
             fbY = [225]
@@ -659,7 +690,7 @@ if (userIp == "y") or (userIp == ""):
 
         for j in range(len(fbX)):
             dprint(f'{fbG[j].name}')
-            insertTemplate(temps, "Fallback", fbX[j], fbY[j], groups[i].viewId, None, fbG[j].groupId, None, proj_c, None, None, None, None, None);
+            insertTemplate(temps, "Fallback", fbX[j], fbY[j], groups[i].viewId, None, fbG[j].groupId, None, proj_c, None, None, None, None, None, template_c);
 
 #####################  #####################
 
@@ -736,7 +767,7 @@ if (userIp == "y") or (userIp == ""):
 
     for g in groups2:
 
-        insertTemplate(temps, 'Meters Group', posX, posY, meterViewId, g.name, None, None, proj_c, meterW, None, None, None, None);
+        insertTemplate(temps, 'Meters Group', posX, posY, meterViewId, g.name, None, None, proj_c, meterW, None, None, None, None, template_c);
 
         posY = 40
 
@@ -747,7 +778,7 @@ if (userIp == "y") or (userIp == ""):
             else:
                 s = "Meter"
 
-            insertTemplate(temps, s, posX, posY, meterViewId, d[1], d[3], d[4], proj_c, None, None, jId, None, None);
+            insertTemplate(temps, s, posX, posY, meterViewId, d[1], d[3], d[4], proj_c, None, None, jId, None, None, template_c);
 
             posY += spacingY
         posX += spacingX
@@ -763,32 +794,28 @@ while (userIp != "y") and (userIp != "n") and (userIp != ""):
     userIp = input(MASTER_TEXT)
 if (userIp == "y") or (userIp == ""):
 
-    posX = 0
+    ## Get width of widest control in master template
+    rtn = getTempSize(template_c, "M_Master")
+    masterW = rtn[0]
+    masterH = rtn[1]
+    dprint(f'Master frame w - {masterW}')
+    spacingX = masterW+METER_SPACING_X
 
-    ## Get height of title frame
-    template_c.execute(f'SELECT Height FROM "main"."Controls" WHERE DisplayName = "Master" AND Type = 11')
-    rtn = template_c.fetchone()
-    dprint(rtn)
-    posY = rtn[0]+20
-
-    ## Get width of meter frame
-    template_c.execute(f'SELECT Width FROM "main"."Controls" WHERE DisplayName = "Overview"')
-    rtn = template_c.fetchone()
-    dprint(rtn)
-    meterW = rtn[0]
-    spacingX = meterW+METER_SPACING_X
-
+    userIp = " "
     while (userIp != "y") and (userIp != "n") and (userIp != ""):
         userIp = input(ARRAYSIGHT_TEXT)
     if (userIp == "y") or (userIp == ""):
-        ## Get width of ArraySight frame
-        template_c.execute(f'SELECT Width FROM "main"."Controls" WHERE DisplayName = "ArraySight"')
-        rtn = template_c.fetchone()
-        dprint(rtn)
-        meterW = rtn[0]
-        spacingX += meterW+METER_SPACING_X
-
-    spacingX += 80
+        try:
+            proj_c.execute(f'SELECT DeviceId FROM "main"."Devices" WHERE Model = "ArraySight"')
+            AsId = proj_c.fetchone()[0]
+        except:
+            dprint("Could not find ArraySight device.")
+        ## Get width of widest control in ArraySight template
+        rtn = getTempSize(template_c, "AS_Master")
+        asW = rtn[0]
+        asH = rtn[1]
+        dprint(f'ArraySight frame w - {asW}')
+        spacingX += asW+METER_SPACING_X
 
     # Find count of mono and stereo groups
     gCount = 0
@@ -800,33 +827,94 @@ if (userIp == "y") or (userIp == ""):
             gCount += 1;
 
     ## Get width of stereo group frame
-    template_c.execute(f'SELECT Width FROM "main"."Controls" WHERE DisplayName = "GROUP_TITLE_ST"')
-    rtn = template_c.fetchone()
-    dprint(rtn)
+    rtn = getTempSize(template_c, "GrStAP_Master")
     meterW = rtn[0]
+    meterH = rtn[1]
+    dprint(f'LR group frame w - {meterW}')
     spacingX += (meterW+METER_SPACING_X)*gStCount
     ## Get width of group frame
-    template_c.execute(f'SELECT Width FROM "main"."Controls" WHERE DisplayName = "GROUP_TITLE"')
-    rtn = template_c.fetchone()
-    dprint(rtn)
+    rtn = getTempSize(template_c, "GrAP_Master")
     meterW = rtn[0]
+    meterH = rtn[1]
+    dprint(f'Group frame w - {meterW}')
     spacingX += (meterW+METER_SPACING_X)*gCount
+
+    spacingX += METER_SPACING_X*4
 
     proj_c.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{MASTER_WINDOW_TITLE}",NULL,4,NULL,-1,{(spacingX)+METER_SPACING_X},1000,100,NULL,NULL,NULL,NULL);')
     proj_c.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{MASTER_WINDOW_TITLE}"')
     masterViewId = proj_c.fetchone()[0]
+    dprint(f'Master View ID - {masterViewId}')
     proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "Master"')
     masterGroupId = proj_c.fetchone()[0]
+    dprint(f'Master Group ID - {masterGroupId}')
 
-    #def insertTemplate(temps, tempName, posX, posY, viewId, displayName, targetId, targetChannel, proj_c, width, height, joinedId, targetProp, targetRec):
-    insertTemplate(temps, 'T_master', 0, 0, masterViewId, None, None, None, proj_c, None, None, None, None, None);
-    insertTemplate(temps, 'M_master', 0, posY, masterViewId, None, masterGroupId, None, proj_c, None, None, None, None, None);
-    insertTemplate(temps, 'AS_master', 200, posY, masterViewId, None, None, None, proj_c, None, None, None, None, None);
-    posX = 400
+    posX = 10
+    posY = 10
+    posY += insertTemplate(temps, 'T_Master', posX, posY, masterViewId, None, None, None, proj_c, None, None, None, None, None, template_c)[1]+METER_SPACING_Y
+    posX += insertTemplate(temps, 'M_Master', posX, posY, masterViewId, None, masterGroupId, None, proj_c, None, None, None, None, None, template_c)[0]+METER_SPACING_X;
+    posX += insertTemplate(temps, 'AS_Master', posX, posY, masterViewId, None, AsId, None, proj_c, None, None, None, None, None, template_c)[0]+(METER_SPACING_X*4);
 
     for g in groups:
         jId = glJoinedId
-        w = insertTemplate(temps, 'Gr_Master', posX, posY, masterViewId, g.name, g.groupId, None, proj_c, meterW, None, jId, None, None);
+
+        if g.AP > 0:
+            if len(g.groupIdSt) > 0:
+                template = 'GrStAP_Master'
+            else:
+                template = 'GrAP_Master'
+        else:
+            if len(g.groupIdSt) > 0:
+                template = 'GrSt_Master'
+            else:
+                template = 'Gr_Master'
+
+
+        tempContents = getTempContents(temps, template)
+        metCh = 0
+        mutCh = 0
+        w = 0
+        for row in tempContents:
+            proj_c.execute(f'SELECT TargetProperty FROM "main"."Controls" WHERE ViewId = {g.viewId} AND TargetProperty = "Config_Filter3"')#Check if CPL exists on group view
+            cpl = proj_c.fetchone()
+            dName = row[7]
+            tChannel = row[23]
+            tId = g.groupId
+
+            if cpl is None and dName == "CUT":
+                dName = 'Infra'
+                dprint(f"{g.name} - Enabling Infra")
+
+            if (row[1] == 12): #Get frame Width
+                w = row[4]
+            if (row[1] == 7): #Meters, these require a TargetChannel
+                tId = g.targetChannels[0][3]
+                tChannel = g.targetChannels[0][4]
+            if template == 'GrSt_Master' or template == 'GrStAP_Master':
+                if (row[1] == 7): #Meters, these require a TargetChannel
+                    tId = g.groupIdSt[metCh].targetChannels[0][3]
+                    tChannel = g.groupIdSt[metCh].targetChannels[0][4]
+                    metCh += 1
+                if (row[1] == 4) and (row[24] == "Config_Mute"): #Mute
+                    tId = g.groupIdSt[mutCh].groupId
+                    mutCh += 1
+
+            if row[1] == 12:
+                dName = g.name
+
+            if dName is None:
+                dName = ""
+
+            s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{str(masterViewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(row[24])}", {row[25]}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", "  ")'
+
+            if row[1] == 3 and row[24] == 'Config_Filter3': # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
+                if cpl is None:
+                    s = ""
+                    dprint(f"{g.name} - Removing CPL")
+
+
+            proj_c.execute(s)
+
         posX += w+METER_SPACING_X
 
         glJoinedId = glJoinedId + 1
