@@ -585,7 +585,6 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
             patchIO = proj_c.fetchall()
             ctr = -1
             for tc in groups[i].targetChannels:
-                print(tc)
                 proj_c.execute(f'SELECT Name FROM "main"."Groups" WHERE GroupId = {tc[7]}')
                 rtn = proj_c.fetchone()[0]
 
@@ -929,7 +928,6 @@ if (userIp == "y") or (userIp == ""):
                 tChannel = g.targetChannels[0][4]
             if template == 'Group LR' or template == 'Group LR AP':
                 if (row[1] == 7): #Meters, these require a TargetChannel
-                    print(f'Group LR Meter: metCh - {metCh}')
                     dprint('LR Group:')
                     g.print()
                     dprint('SubGroup:')
