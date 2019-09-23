@@ -230,8 +230,8 @@ def findDevicesInGroups(parentId):
         if row[TARGET_ID] == SUBGROUP: # If entry is not a device but a subgroup
             ch += findDevicesInGroups(row[GROUPID])
         else:
+            dprint(f'Found device - {rtn}')
             return rtn
-
     return ch
 
 def getTempSize(template_c, tempName):
@@ -573,49 +573,52 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
         #while (userIp != "y") and (userIp != "n") and (userIp != ""):
         #    userIp = input(SUBARRAY_GROUP_TEXT)
 
+        SUBARRAY_GROUP_TITLE = groups[i].name + " LR"
+
         if True:#(userIp == "y") or (userIp == ""):
             groupL = []
             groupR = []
             for tc in groups[i].targetChannels:
-                if " L" in tc[1]:
-                    groupL.append(tc)
-                else:
+                if " R" in tc[1]:
                     groupR.append(tc)
+                elif " L" in tc[1]:
+                    groupL.append(tc)
 
-            ## Create SUBarray LR group
-            # If group already exists, delete and then recreate with new device list
-            proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{SUBARRAY_GROUP_TITLE}" AND ParentId = "{glParentId}"')
-            try:
+            if len(groupL) > 0 and len(groupR) > 0:
+                ## Create SUBarray LR group
+                # If group already exists, delete and then recreate with new device list
+                proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{SUBARRAY_GROUP_TITLE}" AND ParentId = "{glParentId}"')
+                try:
+                    pId = proj_c.fetchone()[0]
+
+                    proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE ParentId = "{pId}"') #Get L+R groups
+                    rtn = proj_c.fetchall()
+                    dprint(f'Deleting existing SUBarray groups - {pId} - {rtn[0][0]} / {rtn[1][0]}')
+                    proj_c.execute(f'DELETE FROM "main"."Groups" WHERE GroupId = {pId};')
+                    for row in rtn:
+                        proj_c.execute(f'DELETE FROM "main"."Groups" WHERE ParentId = {row[0]};')
+                        proj_c.execute(f'DELETE FROM "main"."Groups" WHERE GroupId = {row[0]};')
+                except:
+                    dprint(f'No existing {groups[i].name} LR groups found.')
+
+                proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{SUBARRAY_GROUP_TITLE}",{glParentId},0,-1,0,0);')
+                proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{SUBARRAY_GROUP_TITLE}"')
                 pId = proj_c.fetchone()[0]
 
-                proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE ParentId = "{pId}"') #Get L+R groups
-                rtn = proj_c.fetchall()
-                dprint(f'Deleting existing SUBarray groups - {pId} - {rtn[0][0]} / {rtn[1][0]}')
-                proj_c.execute(f'DELETE FROM "main"."Groups" WHERE GroupId = {pId};')
-                for row in rtn:
-                    proj_c.execute(f'DELETE FROM "main"."Groups" WHERE ParentId = {row[0]};')
-                    proj_c.execute(f'DELETE FROM "main"."Groups" WHERE GroupId = {row[0]};')
-            except:
-                dprint('No existing SUBarray groups found.')
+                gStr = [groups[i].name+" L", groups[i].name+" R"]
+                g = groupL
+                for s in gStr:
+                    proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{pId},0,-1,0,0);')
+                    proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{s}"')
+                    rtn = proj_c.fetchone()
 
-            proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{SUBARRAY_GROUP_TITLE}",{glParentId},0,-1,0,0);')
-            proj_c.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{SUBARRAY_GROUP_TITLE}"')
-            pId = proj_c.fetchone()[0]
+                    for tc in g:
+                        proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{tc[1]}",{rtn[0]},{tc[3]},{tc[4]},1,0);')
 
-            gStr = ["SUBarray L", "SUBarray R"]
-            g = groupL
-            for s in gStr:
-                proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{pId},0,-1,0,0);')
-                proj_c.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{s}"')
-                rtn = proj_c.fetchone()
+                    groups[i].groupIdSt.append(Group(rtn[0], rtn[1], groups[i].AP, groups[i].viewId))
+                    groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(groups[i].groupIdSt[-1].groupId)
 
-                for tc in g:
-                    proj_c.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{tc[1]}",{rtn[0]},{tc[3]},{tc[4]},1,0);')
-
-                groups[i].groupIdSt.append(Group(rtn[0], rtn[1], groups[i].AP, groups[i].viewId))
-                groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(groups[i].groupIdSt[-1].groupId)
-
-                g = groupR
+                    g = groupR
 
 
 ##################### FALLBACK CONTROLS #####################
@@ -676,24 +679,23 @@ if (userIp == "y") or (userIp == ""):
 
 
         if (len(groups[i].groupIdSt) > 0): #LR group
-            if(groups[i].name.find("SUB") > -1) and (groups[i].name.find("array") > -1):#SUBarray group
-                fbX = [SUBLR_FB_POSX]
-                fbY = [SUBLR_FB_POSY]
-                muteX = SUBLR_MUTE_POSX
-                muteY = SUBLR_MUTE_POSY
-                muteText = SUBLR_MUTE_TEXT
-                fbG = [groups[i]]
-
-            else:
-                fbX = [L_FB_POSX, R_FB_POSX]
-                fbY = [L_FB_POSY, R_FB_POSY]
-                muteX = LR_MUTE_POSX
-                muteY = LR_MUTE_POSY
-                muteText = LR_MUTE_TEXT
-                fbG = groups[i].groupIdSt
+            fbX = [L_FB_POSX, R_FB_POSX]
+            fbY = [L_FB_POSY, R_FB_POSY]
+            muteX = LR_MUTE_POSX
+            muteY = LR_MUTE_POSY
+            muteText = LR_MUTE_TEXT
+            fbG = groups[i].groupIdSt
 
             for j in range(len(muteText)):
                 insertTemplate(temps, 'Mute', muteX[j], muteY, groups[i].viewId, muteText[j], groups[i].groupIdSt[j].groupId, None, proj_c, None, None, None, None, None, template_c);
+        elif(groups[i].name.lower().find("sub") > -1) and (groups[i].name.lower().find("array") > -1):#SUBarray group
+            fbX = [SUBLR_FB_POSX]
+            fbY = [SUBLR_FB_POSY]
+            muteX = SUBLR_MUTE_POSX
+            muteY = SUBLR_MUTE_POSY
+            muteText = SUBLR_MUTE_TEXT
+            fbG = [groups[i]]
+
         else:
             fbX = [307]
             fbY = [225]
@@ -904,6 +906,11 @@ if (userIp == "y") or (userIp == ""):
                 tChannel = g.targetChannels[0][4]
             if template == 'Group LR' or template == 'Group LR AP':
                 if (row[1] == 7): #Meters, these require a TargetChannel
+                    print(f'Group LR Meter: metCh - {metCh}')
+                    dprint('LR Group:')
+                    g.print()
+                    dprint('SubGroup:')
+                    g.groupIdSt[metCh].print()
                     tId = g.groupIdSt[metCh].targetChannels[0][3]
                     tChannel = g.groupIdSt[metCh].targetChannels[0][4]
                     metCh += 1
