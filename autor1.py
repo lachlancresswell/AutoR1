@@ -16,6 +16,7 @@ SUBARRAY_GROUP_TITLE = 'SUBarray LR'
 VIEWS_REMOVE_TEXT = 'Remove all views and groups? (y/n)\n(default: n): '
 INPUT_GROUP_TEXT = 'Create input groups? (y/n)\n(default: y): '
 SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)\n(default: y): '
+SUBARRAY_CTR_TEXT = 'Assign SUB Array C channel to L or R? (l/r)\n(default: l): '
 FALLBACK_TEXT = 'Create fallback controls? (y/n)\n(default: y): '
 DS_TEXT = 'Create DS info? (y/n)\n(default: y): '
 METERS_TEXT = 'Create meters view? (y/n)\n(default: y): '
@@ -230,6 +231,8 @@ def findDevicesInGroups(parentId):
         if row[TARGET_ID] == SUBGROUP: # If entry is not a device but a subgroup
             ch += findDevicesInGroups(row[GROUPID])
         else:
+            for i in range(len(rtn)):
+                rtn[i] = rtn[i]+(parentId,)
             dprint(f'Found device - {rtn}')
             return rtn
     return ch
@@ -569,20 +572,40 @@ for i in range(len(groups)): # Determine stereo (Main L/R) and mono groups + get
             dprint(f"No {g} group found for {groups[i].name} group.")
 
     if ("sub" in groups[i].name.lower()) and ("array" in groups[i].name.lower()): # Create LR groups for SUBarray
-        #userIp = " "
-        #while (userIp != "y") and (userIp != "n") and (userIp != ""):
-        #    userIp = input(SUBARRAY_GROUP_TEXT)
+        userIp = " "
+        while (userIp != "y") and (userIp != "n") and (userIp != ""):
+            userIp = input(SUBARRAY_GROUP_TEXT)
 
         SUBARRAY_GROUP_TITLE = groups[i].name + " LR"
 
-        if True:#(userIp == "y") or (userIp == ""):
+        if (userIp == "y") or (userIp == ""):
             groupL = []
             groupR = []
+            proj_c.execute(f'SELECT Name FROM "main"."PatchIOChannels"')
+            patchIO = proj_c.fetchall()
+            ctr = -1
             for tc in groups[i].targetChannels:
-                if " R" in tc[1]:
+                print(tc)
+                proj_c.execute(f'SELECT Name FROM "main"."Groups" WHERE GroupId = {tc[7]}')
+                rtn = proj_c.fetchone()[0]
+
+                if "R" in rtn:
                     groupR.append(tc)
-                elif " L" in tc[1]:
+                elif "L" in rtn:
                     groupL.append(tc)
+                elif "C" in rtn:
+                    if ctr < 0:
+                        userIp = " "
+                        while (userIp != "l") and (userIp != "r") and (userIp != ""):
+                            userIp = input(SUBARRAY_CTR_TEXT)
+                        if (userIp == "l") or (userIp == ""):
+                            ctr = 0
+                        else:
+                            ctr = 1
+                    if ctr == 1:
+                        groupR.append(tc)
+                    else:
+                        groupL.append(tc)
 
             if len(groupL) > 0 and len(groupR) > 0:
                 ## Create SUBarray LR group
