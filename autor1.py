@@ -4,6 +4,7 @@ import os
 from shutil import copyfile
 from datetime import datetime
 import platform
+import traceback
 
 ############################## CONSTANTS ##############################
 LOGDIR = 'LOGS/'
@@ -330,6 +331,11 @@ def checkFile(path):
         return False
     return True
 
+def log_except_hook(*exc_info):
+    text = "".join(traceback.format_exception(*exc_info))
+    print(f"Unhandled exception: {text}")
+
+sys.excepthook = log_except_hook
 
 
 ##########################################################################################
