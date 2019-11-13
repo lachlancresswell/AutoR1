@@ -44,10 +44,12 @@ LR_MUTE_TEXT = ['Left', 'Right']
 LR_MUTE_POSX = [700, 770]
 LR_MUTE_POSY = 56
 #LR group fallback display
-L_FB_POSX = 485
+L_FB_POSX = 501
 L_FB_POSY = 265
-R_FB_POSX = 784
+R_FB_POSX = 800
 R_FB_POSY = 265
+FILL_FB_POSX = 323
+FILL_FB_POSY = 225
 #SUBarray LR group mute buttons
 SUBLR_MUTE_TEXT = ['Left', 'Right']
 SUBLR_MUTE_POSX = [96, 166]
@@ -700,7 +702,7 @@ if (userIp == "y") or (userIp == ""):
         fbY = 0
 
 
-        if (len(groups[i].groupIdSt) > 0): #LR group
+        if (len(groups[i].groupIdSt) > 0 and ((groups[i].name.lower().find("sub") < 0) and (groups[i].name.lower().find("array") < 0))): #LR group
             fbX = [L_FB_POSX, R_FB_POSX]
             fbY = [L_FB_POSY, R_FB_POSY]
             muteX = LR_MUTE_POSX
@@ -719,8 +721,8 @@ if (userIp == "y") or (userIp == ""):
             fbG = [groups[i]]
 
         else:
-            fbX = [307]
-            fbY = [225]
+            fbX = [FILL_FB_POSX]
+            fbY = [FILL_FB_POSY]
             fbG = [groups[i]]
 
         for j in range(len(fbX)):
