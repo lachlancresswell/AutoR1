@@ -1,3 +1,5 @@
+v1.5.1
+
 ## Download
 
 ### Combined Mac + Windows package:
@@ -17,10 +19,10 @@
 
 ## Using AutoR1
 1. Unzip downloaded file.
-2. Copy R1 project to unzipped folder and rename to 'R1.dbpr'
+2. Copy R1 project into unzipped folder and rename to 'R1.dbpr'
 2. Run R1 initial setup to generate all standard views
 4. Double click 'start-macos.command' or 'start-windows.bat' depending on your OS
-
+5. Modified project file will be created in this folder called 'R1_AUTO.dbpr'
 
 ## Overview
 - Create fallback controls
