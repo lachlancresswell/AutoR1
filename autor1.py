@@ -8,8 +8,6 @@ import traceback
 import r1py as r1
 import logging
 
-logging.getLogger().setLevel(logging.INFO)
-
 ############################## CONSTANTS ##############################
 LOGDIR = 'LOGS/'
 PROJ_FILE = 'r1.dbpr'
@@ -17,52 +15,17 @@ MOD_FILE = 'R1_AUTO.dbpr'
 TEMP_FILE = 'templates.r2t'
 
 
-####################### CLASSES  ##############################
-
-class Transcript(object):
-
-    def __init__(self, filename):
-        self.terminal = sys.stdout
-        self.logfile = open(filename, "a")
-
-    def log(self, message):
-        if isinstance(message, tuple):
-            s = '('
-            for m in message:
-                s += f'{m}, '
-            s += ')'
-        else:
-            s = message
-        self.logfile.write(s)
-
-    def write(self, message):
-        self.terminal.write(message)
-        self.log(message)
-
-    def flush(self):
-        # this flush method is needed for python 3 compatibility.
-        # this handles the flush command by doing nothing.
-        # you might want to specify some extra behavior here.
-        pass
-
-
-def start(filename, ts):
-    """Start transcript, appending print output to given filename"""
-    sys.stdout = ts#Transcript(filename)
-
-def stop():
-    """Stop transcript and return print functionality to normal"""
-    sys.stdout.logfile.close()
-    sys.stdout = sys.stdout.terminal
-
-
-
-##########################################################################################
-
-
-
-
-
+#Start logging
+dateTimeObj = datetime.now()
+LOGDIR = './'+LOGDIR
+if not os.path.exists(LOGDIR):
+    os.makedirs(LOGDIR)
+timestamp = dateTimeObj.strftime("%d-%b-%Y-%H-%M-%S")
+logfn = LOGDIR+timestamp+'-autor1log.txt'
+logging.basicConfig(filename=logfn,level=logging.INFO)
+logging.getLogger().setLevel(logging.ERROR)
+logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
+logging.info(sys.argv)
 ############################## METHODS ##############################
 
 def checkFile(path):
@@ -85,8 +48,6 @@ sys.excepthook = log_except_hook
 
 ############################## GLOBALS ##############################
 
-dateTimeObj = datetime.now()
-
 if platform.system() == 'Windows':
     os.system('cls')
 else:
@@ -96,18 +57,12 @@ else:
     except:
         print('Could not get current working directory.')
 
-LOGDIR = './'+LOGDIR
+
 PROJ_FILE = './'+PROJ_FILE
 MOD_FILE = './'+MOD_FILE
 TEMP_FILE = './'+TEMP_FILE
 
-#Start logging
-if not os.path.exists(LOGDIR):
-    os.makedirs(LOGDIR)
-timestamp = dateTimeObj.strftime("%d-%b-%Y-%H-%M-%S")
-logfn = LOGDIR+timestamp+'-autor1log.txt'
-transcript = Transcript(logfn)
-start(logfn, transcript)
+
 if not checkFile(logfn):
     print(f'Could not access {logfn}')
 logging.info('Sys Args:')

@@ -723,7 +723,6 @@ def createMasterView(proj, templates):
 
             proj.cursor.execute(s)
 
-        print(g.name)
         insertTemplate(proj, templates, 'Nav Button', posX, posY, masterViewId, g.name, g.viewId, -1, proj.cursor, None, None, None, None, None)
         posX += w+METER_SPACING_X
         proj.jId = proj.jId + 1
