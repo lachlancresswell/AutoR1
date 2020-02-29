@@ -16,6 +16,9 @@ DS_STATUS_STARTY = 400
 SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)\n(default: y): '
 METER_WINDOW_TITLE = "AUTO - Meters"
 MASTER_WINDOW_TITLE = "AUTO - Master"
+NAV_BUTTON_X = 230
+NAV_BUTTON_Y = 15
+
 
 #LR group mute buttons
 LR_MUTE_TEXT = ['Left', 'Right']
@@ -139,6 +142,7 @@ class ProjectFile:
         self.cursor = self.db.cursor();
         self.pId = 1;
         self.mId = 0;
+        self.meterViewId = -1;
         logging.info('Loaded project - ' + f)
 
         # Set joinedId start
@@ -253,6 +257,7 @@ def insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, t
         w = width
         h = height
         dName = row[7]
+        tType = row[21]
 
         if tId is None:
             tId = row[22]
@@ -266,9 +271,11 @@ def insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, t
         if height is None:
             h = row[5]
 
-        if row[1] == 12: # If item is a Frame
+
+        if (row[1] == 12) or (row[1] == 4 and tType == 5): # If item is a Frame or a button to swap views
             if (displayName is not None) and (dName != 'Fallback') and (dName != 'Regular'):
                 dName = displayName
+
         if dName is None:
             dName = ""
 
@@ -283,7 +290,7 @@ def insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, t
                     tChannel = 0 #Dante + digital info require channel ID to be 0
                     break
 
-        proj.cursor.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(tProp)}", {tRec}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
+        proj.cursor.execute(f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", "{str(tChannel)}", "{str(tProp)}", {tRec}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
 
     return getTempSize(templates, tempName)
     #except:
@@ -310,7 +317,7 @@ def createIpGroups(proj):
             if rtn is not None:
                 logging.info(f'Deleting existing input group: {s} - {rtn[0]}')
                 proj.deleteGroupWithId({rtn[0]})
-                proj.deleteGroupWith{rtn[0]})
+                proj.deleteGroupWith({rtn[0]})
 
             # Create groups
             proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{proj.pId},0,-1,0,0);')
@@ -534,9 +541,9 @@ def createMeterView(proj, templates):
         logging.info(f'Deleting existing {METER_WINDOW_TITLE} view.')
 
         getViewIdFromName(proj, METER_WINDOW_TITLE)
-        meterViewId = proj.cursor.fetchone()[0]
-        deleteControl(proj, meterViewId)
-        deleteView(proj, meterViewId)
+        proj.meterViewId = proj.cursor.fetchone()[0]
+        deleteControl(proj, proj.meterViewId)
+        deleteView(proj, proj.meterViewId)
 
     ## Get width of meter frame
     templates.cursor.execute(f'SELECT Width, Height FROM "main"."Controls" WHERE DisplayName = "METERS_TITLE"')
@@ -561,13 +568,13 @@ def createMeterView(proj, templates):
 
     proj.cursor.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,{(spacingX*(gCount+1))+METER_SPACING_X},{(spacingY*aCount)+100},100,NULL,NULL,NULL,NULL);')
     getViewIdFromName(proj, METER_WINDOW_TITLE)
-    meterViewId = proj.cursor.fetchone()[0]
+    proj.meterViewId = proj.cursor.fetchone()[0]
 
     posX = METER_VIEW_STARTX
     posY = METER_VIEW_STARTY
-
-
-
+    insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, proj.meterViewId, MASTER_WINDOW_TITLE, proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
+    posY += insertTemplate(proj, templates, 'Meters Title', posX, posY, proj.meterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
+    startY = posY
 
     groups2 = []
     for g in proj.groups:
@@ -579,16 +586,16 @@ def createMeterView(proj, templates):
 
     for g in groups2:
 
-        dim = insertTemplate(proj, templates, 'Meters Group', posX, posY, meterViewId, g.name, g.groupId, None, proj.cursor, None, None, None, None, None);
+        dim = insertTemplate(proj, templates, 'Meters Group', posX, posY, proj.meterViewId, g.name, g.groupId, None, proj.cursor, None, None, None, None, None);
 
         posY += dim[1]+10
 
         for d in g.targetChannels:
-            insertTemplate(proj, templates, "Meter", posX, posY, meterViewId, d[1], d[3], d[4], proj.cursor, None, None, proj.jId, None, None);
+            insertTemplate(proj, templates, "Meter", posX, posY, proj.meterViewId, d[1], d[3], d[4], proj.cursor, None, None, proj.jId, None, None);
 
             posY += spacingY
         posX += spacingX
-        posY = METER_VIEW_STARTY
+        posY = startY
         proj.jId = proj.jId + 1
 
 def getGroupIdFromName(proj, name):
@@ -598,7 +605,6 @@ def createMasterView(proj, templates):
     ## Get width of widest control in master template
     rtn = getTempSize(templates, "Master Main")
     masterW = rtn[0]
-    masterH = rtn[1]
     spacingX = masterW+METER_SPACING_X
     AsId = 0
 
@@ -646,6 +652,7 @@ def createMasterView(proj, templates):
 
     posX = 10
     posY = 10
+    insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, masterViewId, METER_WINDOW_TITLE, proj.meterViewId, -1, proj.cursor, None, None, None, None, None)
     posY += insertTemplate(proj, templates, 'Master Title', posX, posY, masterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
     posX += insertTemplate(proj, templates, 'Master Main', posX, posY, masterViewId, None, masterGroupId, None, proj.cursor, None, None, None, None, None)[0]+METER_SPACING_X;
 
@@ -689,8 +696,6 @@ def createMasterView(proj, templates):
                 tChannel = g.targetChannels[0][4]
             if template == 'Group LR' or template == 'Group LR AP':
                 if (row[1] == 7): #Meters, these require a TargetChannel
-                    logging.info('LR Group:')
-                    logging.info('SubGroup:')
                     tId = g.groupIdSt[metCh].targetChannels[0][3]
                     tChannel = g.groupIdSt[metCh].targetChannels[0][4]
                     metCh += 1
@@ -718,6 +723,7 @@ def createMasterView(proj, templates):
 
             proj.cursor.execute(s)
 
+        print(g.name)
+        insertTemplate(proj, templates, 'Nav Button', posX, posY, masterViewId, g.name, g.viewId, -1, proj.cursor, None, None, None, None, None)
         posX += w+METER_SPACING_X
-
         proj.jId = proj.jId + 1

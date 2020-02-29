@@ -133,9 +133,6 @@ if not checkFile(MOD_FILE):
     print(f'Could not access {MOD_FILE}')
     sys.exit()
 
-
-
-
 # SQL Setup
 templates = r1.TemplateFile(TEMP_FILE)
 project = r1.ProjectFile(MOD_FILE, templates)
