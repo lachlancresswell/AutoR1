@@ -93,7 +93,7 @@ templates = r1.TemplateFile(TEMP_FILE)
 project = r1.ProjectFile(MOD_FILE, templates)
 r1.createParentGroup(project);
 r1.createIpGroups(project);
-r1.createSubLrGroups(project)
+#r1.createSubLrGroups(project)
 #r1.createFbControls(project, templates);
 r1.createMeterView(project, templates);
 r1.createMasterView(project, templates);

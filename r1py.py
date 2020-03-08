@@ -157,6 +157,7 @@ class ProjectFile:
         self.close()
         self.db = sqlite3.connect(f);
         self.cursor = self.db.cursor();
+        self.subArray = []
         logging.info('Loaded project - ' + f)
 
         # Set joinedId start
@@ -213,8 +214,15 @@ class ProjectFile:
         rtn = self.cursor.fetchall()
         #Cycle through every every source group (Main, Sides .etc which all exist under Master)
         for row in rtn:
+            # Find source viewId
+            self.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE "Name" = "{row[1]}"')
+            rtn2 = self.cursor.fetchone()
+            if rtn2 is not None:
+                vId = rtn2[0]
+            else:
+                logging.error(f'Cannot find view for "{row[1]}"')
 
-            # Find if AP is enable for SourceGroups
+            # Find if AP is enabled for SourceGroups
             self.cursor.execute(f'SELECT ArrayProcessingEnable, Type FROM "main"."SourceGroups" WHERE "Name" = "{row[1]}"')
             rtn2 = self.cursor.fetchone()
             if rtn2 is not None:
@@ -223,39 +231,81 @@ class ProjectFile:
             else:
                 ap = 0;
                 type = 0;
+                logging.error(f'Cannot find SourceGroup info for {row[1]}')
 
-            # Find view id for source
-            self.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE "Name" = "{row[1]}"')
-            rtn2 = self.cursor.fetchone()
-            if rtn2 is not None:
-                vId = rtn2[0]
-                self.groups.append(Group(row[0], row[1], ap, vId, type)) #First is GroupId, second is Name
-            else:
-                logging.error(f'Cannot find view for "{row[1]}"')
+            j = 0
+            i = 0;
+            if type == 1: #Array
+                for g in [" TOPs L", " TOPs R", " SUBs L", " SUBs R", " TOPs", " SUBs"]:
+                    self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1] + g}"')
+                    rtn = self.cursor.fetchone()
+                    if rtn is not None and j < 2:
+                        self.groups.append(Group(rtn[0], rtn[1], ap, vId, i)) #First is GroupId, second is Name
+                        self.groups[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[-1].groupId)
+                        j += 1
+                    i += 1
+            elif type == 3:
+                SUBARRAY_GROUP_TITLE = rtn[1] + " LR"
+                self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1]}"')
+                rtn = self.cursor.fetchone()
 
-        # Determine stereo (Main L/R) and mono groups + get view ids
-        for i in range(len(self.groups)):
-            g = self.groups[i]
+                if rtn is not None:
+                    self.subArray = Group(rtn[0], rtn[1], ap, vId, type) #First is GroupId, second is Name
+                    self.subArray.targetChannels = findDevicesInGroups(self.cursor, self.subArray.groupId)
+                else:
+                    logging.error(f'Could not find group for {row[1]}')
 
-            self.groups[i].targetChannels = findDevicesInGroups(self.cursor, g.groupId)
-            r = findGroupType(self.cursor, g.groupId)
-            self.groups[i].srcType = r[0]
-            self.groups[i].subGroupId = r[1]
-            self.groups[i].topGroupId = r[2]
 
-            self.cursor.execute(f'SELECT "ViewId" FROM "main"."Views" WHERE Name = "{self.groups[i].name}" ORDER BY ViewId ASC LIMIT 1;') # Get view IDs
-            rtn = self.cursor.fetchone()
-            if rtn is not None:
-                self.groups[i].viewId = rtn[0]
+                groupL = []
+                groupR = []
 
-            # Find any L/R or SUB L/R subgroups
-            for g in [" TOPs L", " TOPs R", " SUBs L", " SUBs R"]:
-                self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{self.groups[i].name + g}"')
+                for tc in self.subArray.targetChannels:
+                    self.cursor.execute(f'SELECT Name FROM "main"."Groups" WHERE GroupId = {tc[7]}')
+                    gName = self.cursor.fetchone()[0]
+
+                    if "R" in gName:
+                        groupR.append(tc)
+                    elif "L" in gName:
+                        groupL.append(tc)
+                    elif "C" in gName:
+                        userIp = " "
+                        while (userIp != "l") and (userIp != "r") and (userIp != ""):
+                            userIp = input(SUBARRAY_CTR_TEXT)
+                        if (userIp == "l") or (userIp == ""):
+                            groupL.append(tc)
+                        else:
+                            groupR.append(tc)
+                logging.info(f'{len(groupL)} L / {len(groupR)} R')
+
+                if len(groupL) > 0 and len(groupR) > 0:
+                    ## Create SUBarray LR group
+                    self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{SUBARRAY_GROUP_TITLE}",{self.pId},0,-1,0,0);')
+                    pId = getGroupIdFromName(self, SUBARRAY_GROUP_TITLE)
+                    logging.info(f'Created {SUBARRAY_GROUP_TITLE} group with id {pId}')
+
+                    # Create sub L and R groups + assign channels
+                    gStr = [rtn[1]+" L", rtn[1]+" R"]
+                    g = groupL
+                    for s in gStr:
+                        self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{pId},0,-1,0,0);')
+                        logging.info(f'Created {s} group with id {pId}')
+                        self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{s}"')
+                        rtn = self.cursor.fetchone()
+
+                        for tc in g:
+                            self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{tc[1]}",{rtn[0]},{tc[3]},{tc[4]},1,0);')
+
+                        self.groups.append(Group(rtn[0], rtn[1], self.groups[i].AP, self.groups[i].viewId, self.groups[i].type))
+                        self.groups[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[-1].groupId)
+
+                        g = groupR
+            else: # Point source .etc
+                self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1]}"')
                 rtn = self.cursor.fetchone()
                 if rtn is not None:
-                    self.groups[i].groupIdSt.append(Group(rtn[0], rtn[1], self.groups[i].AP, self.groups[i].viewId, self.groups[i].type))
-                    self.groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[i].groupIdSt[-1].groupId)
-                    logging.info(f"Found {g} group for {self.groups[i].name} group.")
+                    self.groups.append(Group(rtn[0], rtn[1], ap, vId, type)) #First is GroupId, second is Name
+                    self.groups[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[-1].groupId)
+
 
     def delete(self, table, param, match):
         self.cursor.execute(f'DELETE FROM "main"."{table}" WHERE "{param}" = "{match}"')
@@ -408,7 +458,18 @@ def findDevicesInGroups(cursor, parentId):
             ch += findDevicesInGroups(cursor, row[GROUPID])
         else:
             for i in range(len(rtn)):
-                rtn[i] = rtn[i]+(parentId,)
+                cursor.execute(f'SELECT * FROM "main"."Cabinets" WHERE DeviceId = {row[3]} AND AmplifierChannel = {row[4]}')
+                cabData = cursor.fetchone()
+                if cabData is not None:
+                    cursor.execute(f'SELECT * FROM "main"."CabinetsAdditionalData" WHERE CabinetId = {cabData[0]}')
+                    cabAddData = cursor.fetchone()
+                    if cabAddData is not None:
+                        rtn[i] = rtn[i]+(parentId,cabData[3],cabAddData[1])
+                        print(rtn[i])
+                    else:
+                        logging.error(f'Cannot find additional cabinet data for {row[1]}')
+                else:
+                    logging.error(f'Cannot find cabinet data for {row[1]}')
             return rtn
     return ch
 
@@ -448,8 +509,6 @@ def createSubLrGroups(proj):
 
             groupL = []
             groupR = []
-            proj.cursor.execute(f'SELECT Name FROM "main"."PatchIOChannels"')
-            patchIO = proj.cursor.fetchall()
 
             for tc in proj.groups[i].targetChannels:
                 proj.cursor.execute(f'SELECT Name FROM "main"."Groups" WHERE GroupId = {tc[7]}')
@@ -726,7 +785,7 @@ def createMasterView(proj, templates):
             tId = g.groupId
             flag = row[19]
 
-            if g.topGroupId is 0 and dName == "CUT":
+            if g.type is 0 and dName == "CUT":
                 dName = 'Infra'
                 logging.info(f"{g.name} - Enabling Infra")
 
@@ -754,15 +813,15 @@ def createMasterView(proj, templates):
                 flag = 14
                 logging.info(f"{g.name} - Setting relative delay")
 
-            if row[1] == 3 and row[24] == 'Config_Filter3': # Point CPL at top group only
-                tId = g.topGroupId;
+            #if row[1] == 3 and row[24] == 'Config_Filter3': # Point CPL at top group only
+            #    tId = g.topGroupId;
 
             s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{str(masterViewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(flag)}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(row[24])}", {row[25]}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", "  ")'
 
             if row[1] == 3 and row[24] == 'Config_Filter3': # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
-                if g.topGroupId is 0:
-                    s = ""
-                    logging.info(f"{g.name} - Skipping CPL")
+                #if g.topGroupId is 0:
+                s = ""
+                logging.info(f"{g.name} - Skipping CPL")
 
             proj.cursor.execute(s)
 
