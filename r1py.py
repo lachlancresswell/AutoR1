@@ -240,8 +240,9 @@ class ProjectFile:
             if type != 3: # Not Sub Array
                 gCount = len(self.groups)
                 for g in [" TOPs L", " TOPs R", " SUBs L", " SUBs R", " TOPs", " SUBs", ""]:
-                    if g == "" and len(self.groups) != gCount: # Only run last condition if there haven't been any sub or top groups found
+                    if g == "" or g == " TOPs" and len(self.groups) != gCount: # Only run last condition if there haven't been any sub or top groups found
                         break;
+
                     self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1] + g}"')
                     rtn = self.cursor.fetchone()
                     if rtn is not None and j < 4:
@@ -254,7 +255,7 @@ class ProjectFile:
                 self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1]}"')
                 subCh = self.cursor.fetchone()
 
-                if rtn is not None:
+                if subCh is not None:
                     self.subArray = Group(subCh[0], subCh[1], ap, vId, type) #First is GroupId, second is Name
                     self.subArray.targetChannels = findDevicesInGroups(self.cursor, self.subArray.groupId)
                 else:
