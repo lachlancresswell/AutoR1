@@ -201,6 +201,8 @@ class ProjectFile:
             logging.info(f'Could not find existing {PARENT_GROUP_TITLE} group.')
             self.pId = -1;
 
+        createParentGroup(self)
+
         # Find Master groupId
         self.cursor.execute('SELECT "GroupId" FROM "main"."Groups" ORDER BY "GroupId" ASC LIMIT 3')
         rtn = self.cursor.fetchall()
@@ -223,7 +225,7 @@ class ProjectFile:
                 logging.error(f'Cannot find view for "{row[1]}"')
 
             # Find if AP is enabled for SourceGroups
-            self.cursor.execute(f'SELECT ArrayProcessingEnable, Type FROM "main"."SourceGroups" WHERE "Name" = "{row[1]}"')
+            self.cursor.execute(f'SELECT ArrayProcessingEnable, Type, Name FROM "main"."SourceGroups" WHERE "Name" = "{row[1]}"')
             rtn2 = self.cursor.fetchone()
             if rtn2 is not None:
                 ap = rtn2[0]
@@ -235,22 +237,25 @@ class ProjectFile:
 
             j = 0
             i = 0;
-            if type == 1: #Array
-                for g in [" TOPs L", " TOPs R", " SUBs L", " SUBs R", " TOPs", " SUBs"]:
+            if type != 3: # Not Sub Array
+                gCount = len(self.groups)
+                for g in [" TOPs L", " TOPs R", " SUBs L", " SUBs R", " TOPs", " SUBs", ""]:
+                    if g == "" and len(self.groups) != gCount: # Only run last condition if there haven't been any sub or top groups found
+                        break;
                     self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1] + g}"')
                     rtn = self.cursor.fetchone()
-                    if rtn is not None and j < 2:
+                    if rtn is not None and j < 4:
                         self.groups.append(Group(rtn[0], rtn[1], ap, vId, i)) #First is GroupId, second is Name
                         self.groups[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[-1].groupId)
                         j += 1
                     i += 1
-            elif type == 3:
-                SUBARRAY_GROUP_TITLE = rtn[1] + " LR"
+            else:
+                SUBARRAY_GROUP_TITLE = row[1] + " LR"
                 self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1]}"')
-                rtn = self.cursor.fetchone()
+                subCh = self.cursor.fetchone()
 
                 if rtn is not None:
-                    self.subArray = Group(rtn[0], rtn[1], ap, vId, type) #First is GroupId, second is Name
+                    self.subArray = Group(subCh[0], subCh[1], ap, vId, type) #First is GroupId, second is Name
                     self.subArray.targetChannels = findDevicesInGroups(self.cursor, self.subArray.groupId)
                 else:
                     logging.error(f'Could not find group for {row[1]}')
@@ -284,7 +289,7 @@ class ProjectFile:
                     logging.info(f'Created {SUBARRAY_GROUP_TITLE} group with id {pId}')
 
                     # Create sub L and R groups + assign channels
-                    gStr = [rtn[1]+" L", rtn[1]+" R"]
+                    gStr = [row[1]+" L", row[1]+" R"]
                     g = groupL
                     for s in gStr:
                         self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{pId},0,-1,0,0);')
@@ -299,13 +304,6 @@ class ProjectFile:
                         self.groups[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[-1].groupId)
 
                         g = groupR
-            else: # Point source .etc
-                self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1]}"')
-                rtn = self.cursor.fetchone()
-                if rtn is not None:
-                    self.groups.append(Group(rtn[0], rtn[1], ap, vId, type)) #First is GroupId, second is Name
-                    self.groups[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[-1].groupId)
-
 
     def delete(self, table, param, match):
         self.cursor.execute(f'DELETE FROM "main"."{table}" WHERE "{param}" = "{match}"')
@@ -498,69 +496,6 @@ def findGroupType(cursor, parentId):
                     gr[0] = 3;
                 gr[1] = row[0]
     return gr
-
-
-## Populate groups
-# Auto-Find Group ids and names
-def createSubLrGroups(proj):
-    for i in range(len(proj.groups)):
-        if proj.groups[i].type == 3: # Create LR groups for SUBarray
-            SUBARRAY_GROUP_TITLE = proj.groups[i].name + " LR"
-
-            groupL = []
-            groupR = []
-
-            for tc in proj.groups[i].targetChannels:
-                proj.cursor.execute(f'SELECT Name FROM "main"."Groups" WHERE GroupId = {tc[7]}')
-                rtn = proj.cursor.fetchone()[0]
-
-                if "R" in rtn:
-                    groupR.append(tc)
-                elif "L" in rtn:
-                    groupL.append(tc)
-                elif "C" in rtn:
-                    userIp = " "
-                    while (userIp != "l") and (userIp != "r") and (userIp != ""):
-                        userIp = input(SUBARRAY_CTR_TEXT)
-                    if (userIp == "l") or (userIp == ""):
-                        groupL.append(tc)
-                    else:
-                        groupR.append(tc)
-            logging.info(f'{len(groupL)} L / {len(groupR)} R')
-
-            if len(groupL) > 0 and len(groupR) > 0:
-                ## Create SUBarray LR group
-                # If group already exists, delete and then recreate with new device list
-                proj.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{SUBARRAY_GROUP_TITLE}" AND ParentId = "{proj.pId}"')
-                rtn = proj.cursor.fetchone()
-                if rtn is not None:
-                    logging.info(f'Found existing SUBarray group')
-                    pId = rtn[0]
-
-                    proj.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE ParentId = "{pId}"') #Get L+R groups
-                    rtn = proj.cursor.fetchall()
-
-                proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{SUBARRAY_GROUP_TITLE}",{proj.pId},0,-1,0,0);')
-                pId = getGroupIdFromName(proj, SUBARRAY_GROUP_TITLE)
-                logging.info(f'Created {SUBARRAY_GROUP_TITLE} group with id {pId}')
-
-                # Create sub L and R groups + assign channels
-                gStr = [proj.groups[i].name+" L", proj.groups[i].name+" R"]
-                g = groupL
-                for s in gStr:
-                    proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{pId},0,-1,0,0);')
-                    logging.info(f'Created {s} group with id {pId}')
-                    proj.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{s}"')
-                    rtn = proj.cursor.fetchone()
-
-                    for tc in g:
-                        proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{tc[1]}",{rtn[0]},{tc[3]},{tc[4]},1,0);')
-
-                    proj.groups[i].groupIdSt.append(Group(rtn[0], rtn[1], proj.groups[i].AP, proj.groups[i].viewId, proj.groups[i].type))
-                    proj.groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(proj.cursor, proj.groups[i].groupIdSt[-1].groupId)
-
-                    g = groupR
-
 
 def createFbControls(proj, templates):
     # Find Overview viewId + add master fallback frame
