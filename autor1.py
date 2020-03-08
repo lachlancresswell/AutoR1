@@ -23,7 +23,7 @@ if not os.path.exists(LOGDIR):
 timestamp = dateTimeObj.strftime("%d-%b-%Y-%H-%M-%S")
 logfn = LOGDIR+timestamp+'-autor1log.txt'
 logging.basicConfig(filename=logfn,level=logging.INFO)
-logging.getLogger().setLevel(logging.ERROR)
+logging.getLogger().setLevel(logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 logging.info(sys.argv)
 ############################## METHODS ##############################
@@ -91,10 +91,9 @@ if not checkFile(MOD_FILE):
 # SQL Setup
 templates = r1.TemplateFile(TEMP_FILE)
 project = r1.ProjectFile(MOD_FILE, templates)
-
 r1.createParentGroup(project);
 r1.createIpGroups(project);
-r1.createSrcGroups(project)
+r1.createSubLrGroups(project)
 #r1.createFbControls(project, templates);
 r1.createMeterView(project, templates);
 r1.createMasterView(project, templates);

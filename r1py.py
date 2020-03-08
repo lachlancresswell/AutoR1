@@ -15,7 +15,7 @@ DS_STATUS_STARTX = FB_OVERVIEW_POSX
 DS_STATUS_STARTY = 400
 SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)\n(default: y): '
 METER_WINDOW_TITLE = "AUTO - Meters"
-MASTER_WINDOW_TITLE = "AUTO - Master"
+MASTER_WINDOW_TITLE = 'AUTO - Master'
 NAV_BUTTON_X = 230
 NAV_BUTTON_Y = 15
 
@@ -87,13 +87,14 @@ class Channel:
         self.name = "name"
 
 class Group:
-    def __init__(self, groupId, name, ap, vId):
+    def __init__(self, groupId, name, ap, vId, type):
         self.groupId = groupId
         self.name = name
         self.viewId = None
         self.groupIdSt = []
         self.AP = ap
         self.viewId = vId
+        self.type = type
 
         logging.info(f'Created group - {groupId} / {name}')
 
@@ -134,6 +135,15 @@ class TemplateFile:
         self.db.commit()
         self.db.close()
 
+def deleteGroup(proj, gId):
+    proj.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE ParentId = {gId}')
+    rtn = proj.cursor.fetchone();
+    if rtn is not None:
+        deleteGroup(proj, rtn[0])
+    else:
+        logging.info(f'Deleting group {gId}.')
+        return proj.cursor.execute(f'DELETE FROM "main"."Groups" WHERE GroupId = {gId}')
+
 # Load project file + get joined id for new entries
 class ProjectFile:
     def __init__(self, f, templates):
@@ -143,6 +153,10 @@ class ProjectFile:
         self.pId = 1;
         self.mId = 0;
         self.meterViewId = -1;
+        self.clean()
+        self.close()
+        self.db = sqlite3.connect(f);
+        self.cursor = self.db.cursor();
         logging.info('Loaded project - ' + f)
 
         # Set joinedId start
@@ -177,12 +191,13 @@ class ProjectFile:
 
         logging.info(f'Loaded input routing config for all channels')
 
-        getGroupIdFromName(self, PARENT_GROUP_TITLE)
-
-        if self.cursor.fetchone() is not None:
-            self.pId = self.cursor.fetchone()[0];
-            logging.info('Found existing AUTO group.')
+        # Get id of Auto R1 groups
+        rtn = getGroupIdFromName(self, PARENT_GROUP_TITLE)
+        if rtn is not None:
+            self.pId = rtn;
+            logging.info(f'Found existing {PARENT_GROUP_TITLE} group.')
         else:
+            logging.info(f'Could not find existing {PARENT_GROUP_TITLE} group.')
             self.pId = -1;
 
         # Find Master groupId
@@ -193,21 +208,81 @@ class ProjectFile:
         self.mId = rtn[1][0]
         self.groups = []
 
+        # Find source group info
+        self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "ParentId" = {self.mId}')
+        rtn = self.cursor.fetchall()
+        #Cycle through every every source group (Main, Sides .etc which all exist under Master)
+        for row in rtn:
+
+            # Find if AP is enable for SourceGroups
+            self.cursor.execute(f'SELECT ArrayProcessingEnable, Type FROM "main"."SourceGroups" WHERE "Name" = "{row[1]}"')
+            rtn2 = self.cursor.fetchone()
+            if rtn2 is not None:
+                ap = rtn2[0]
+                type = rtn2[1]
+            else:
+                ap = 0;
+                type = 0;
+
+            # Find view id for source
+            self.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE "Name" = "{row[1]}"')
+            rtn2 = self.cursor.fetchone()
+            if rtn2 is not None:
+                vId = rtn2[0]
+                self.groups.append(Group(row[0], row[1], ap, vId, type)) #First is GroupId, second is Name
+            else:
+                logging.error(f'Cannot find view for "{row[1]}"')
+
+        # Determine stereo (Main L/R) and mono groups + get view ids
+        for i in range(len(self.groups)):
+            g = self.groups[i]
+
+            self.groups[i].targetChannels = findDevicesInGroups(self.cursor, g.groupId)
+            r = findGroupType(self.cursor, g.groupId)
+            self.groups[i].srcType = r[0]
+            self.groups[i].subGroupId = r[1]
+            self.groups[i].topGroupId = r[2]
+
+            self.cursor.execute(f'SELECT "ViewId" FROM "main"."Views" WHERE Name = "{self.groups[i].name}" ORDER BY ViewId ASC LIMIT 1;') # Get view IDs
+            rtn = self.cursor.fetchone()
+            if rtn is not None:
+                self.groups[i].viewId = rtn[0]
+
+            # Find any L/R or SUB L/R subgroups
+            for g in [" TOPs L", " TOPs R", " SUBs L", " SUBs R"]:
+                self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{self.groups[i].name + g}"')
+                rtn = self.cursor.fetchone()
+                if rtn is not None:
+                    self.groups[i].groupIdSt.append(Group(rtn[0], rtn[1], self.groups[i].AP, self.groups[i].viewId, self.groups[i].type))
+                    self.groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[i].groupIdSt[-1].groupId)
+                    logging.info(f"Found {g} group for {self.groups[i].name} group.")
+
+    def delete(self, table, param, match):
+        self.cursor.execute(f'DELETE FROM "main"."{table}" WHERE "{param}" = "{match}"')
+
     def clean(self):
-        id = getGroupIdFromName(self, METER_WINDOW_TITLE)
-        self.deleteGroupWithId(id)
-        getGroupIdFromName(self, MASTER_WINDOW_TITLE)
-        self.deleteGroupWithId(id)
+        self.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{MASTER_WINDOW_TITLE}"')
+        rtn = self.cursor.fetchone()
+
+        if rtn is not None:
+            logging.info(f'Deleting existing {MASTER_WINDOW_TITLE} view.')
+            self.delete("Views", "Name", MASTER_WINDOW_TITLE)
+        self.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
+        rtn = self.cursor.fetchone()
+        if rtn is not None:
+            logging.info(f'Deleting existing {METER_WINDOW_TITLE} view.')
+            self.delete("Views", "Name", METER_WINDOW_TITLE)
+
+        self.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{PARENT_GROUP_TITLE}"')
+        rtn = self.cursor.fetchone()
+        if rtn is not None:
+            pId = rtn[0]
+            logging.info(f'Deleting existing {PARENT_GROUP_TITLE} group.')
+            deleteGroup(self, self.pId)
 
     def close(self):
         self.db.commit()
         self.db.close()
-
-    def delete(table, param, match):
-        self.cursor.execute(f'DELETE FROM "main"."{table}" WHERE "{param}" = {match}')
-
-    def deleteGroupWithId(id):
-        self.cursor.execute(f'DELETE FROM "main"."Groups" WHERE "" = {id}')
 
 def getTempContents(templates, tempName):
     for t in templates.templates:
@@ -302,28 +377,19 @@ def insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, t
 def createParentGroup(proj):
     if proj.pId is -1:
         proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{PARENT_GROUP_TITLE}",1,0,-1,0,0);')
-        getGroupIdFromName(proj, PARENT_GROUP_TITLE)
-        proj.pId = proj.cursor.fetchone()[0]
-        logging.info(f'Created {PARENT_GROUP_TITLE} group.')
+        proj.pId = getGroupIdFromName(proj, PARENT_GROUP_TITLE)
+        logging.info(f'Created {PARENT_GROUP_TITLE} group with id {proj.pId}')
 
 # Creates input relative groups + assign channels
 def createIpGroups(proj):
     proj.ipGroupId = []
     if proj.pId is not -1:
         for s in INPUT_TYPES:
-            #Delete groups if already existing
-            proj.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{s}" AND ParentId = {proj.pId}')
-            rtn = proj.cursor.fetchone()
-            if rtn is not None:
-                logging.info(f'Deleting existing input group: {s} - {rtn[0]}')
-                proj.deleteGroupWithId({rtn[0]})
-                proj.deleteGroupWith({rtn[0]})
-
             # Create groups
             proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{proj.pId},0,-1,0,0);')
-            getGroupIdFromName(proj, s)
-            proj.ipGroupId.append(proj.cursor.fetchone()[0])
-            logging.info(f'Created {s} group.')
+            gId = getGroupIdFromName(proj, s)
+            proj.ipGroupId.append(gId)
+            logging.info(f'Created {s} group with id {gId}')
 
         # Assign channels to their input group
         for c in proj.channels:
@@ -346,61 +412,45 @@ def findDevicesInGroups(cursor, parentId):
             return rtn
     return ch
 
+# Find if group is a mix of sub + top cabinets
+# Returns:
+# 1 - Tops
+# 2 - Subs
+# 3 - Top/Subs
+def findGroupType(cursor, parentId):
+    cursor.execute(f'SELECT * FROM "main"."Groups" WHERE ParentId = {parentId}')
+    rtn = cursor.fetchall()
+    gr = [0,0,0] # Indexes: 0 - Group type, 1 - Sub GroupID if exists, 2 - Tops GroupId if exists
+    mod = 0;
+    for row in rtn:
+        if row[TARGET_ID] == SUBGROUP: # If entry is not a device but a subgroup
+            if (" TOPs" in row[1]):
+                if gr[0] < 1:
+                    gr[0] = 1;
+                elif gr[0] > 1:
+                    gr[0] = 3;
+                gr[2] = row[0]
+            if (" SUBs" in row[1]):
+                if gr[0] < 1:
+                    gr[0] = 2;
+                elif gr[0] == 1:
+                    gr[0] = 3;
+                gr[1] = row[0]
+    return gr
+
 
 ## Populate groups
 # Auto-Find Group ids and names
-def createSrcGroups(proj):
-
-    proj.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "ParentId" = {proj.mId}')
-    rtn = proj.cursor.fetchall()
-    #Cycle through every every source group (Main, Sides .etc which all exist under Master)
-    for row in rtn:
-
-        # Find if AP is enable for SourceGroups
-        proj.cursor.execute(f'SELECT ArrayProcessingEnable FROM "main"."SourceGroups" WHERE "Name" = "{row[1]}"')
-        rtn2 = proj.cursor.fetchone()
-        if rtn2 is not None:
-            ap = rtn2[0]
-        else:
-            ap = 0;
-
-        # Find view id for source
-        proj.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE "Name" = "{row[1]}"')
-        rtn2 = proj.cursor.fetchone()
-        if rtn2 is not None:
-            vId = rtn2[0]
-            proj.groups.append(Group(row[0], row[1], ap, vId)) #First is GroupId, second is Name
-        else:
-            logging.error(f'Cannot find view for "{row[1]}"')
-
-    # Determine stereo (Main L/R) and mono groups + get view ids
+def createSubLrGroups(proj):
     for i in range(len(proj.groups)):
-        g = proj.groups[i]
-
-        proj.groups[i].targetChannels = findDevicesInGroups(proj.cursor, g.groupId)
-
-        proj.cursor.execute(f'SELECT "ViewId" FROM "main"."Views" WHERE Name = "{proj.groups[i].name}" ORDER BY ViewId ASC LIMIT 1;') # Get view IDs
-        rtn = proj.cursor.fetchone()
-        if rtn is not None:
-            proj.groups[i].viewId = rtn[0]
-
-        # Find any L/R or SUB L/R subgroups
-        for g in [" TOPs L", " TOPs R", " SUBs L", " SUBs R"]:
-            proj.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{proj.groups[i].name + g}"')
-            rtn = proj.cursor.fetchone()
-            if rtn is not None:
-                proj.groups[i].groupIdSt.append(Group(rtn[0], rtn[1], proj.groups[i].AP, proj.groups[i].viewId))
-                proj.groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(proj.cursor, proj.groups[i].groupIdSt[-1].groupId)
-                logging.info(f"Found {g} group for {proj.groups[i].name} group.")
-
-        if ("sub" in proj.groups[i].name.lower()) and ("array" in proj.groups[i].name.lower()): # Create LR groups for SUBarray
+        if proj.groups[i].type == 3: # Create LR groups for SUBarray
             SUBARRAY_GROUP_TITLE = proj.groups[i].name + " LR"
 
             groupL = []
             groupR = []
             proj.cursor.execute(f'SELECT Name FROM "main"."PatchIOChannels"')
             patchIO = proj.cursor.fetchall()
-            ctr = -1
+
             for tc in proj.groups[i].targetChannels:
                 proj.cursor.execute(f'SELECT Name FROM "main"."Groups" WHERE GroupId = {tc[7]}')
                 rtn = proj.cursor.fetchone()[0]
@@ -410,18 +460,14 @@ def createSrcGroups(proj):
                 elif "L" in rtn:
                     groupL.append(tc)
                 elif "C" in rtn:
-                    if ctr < 0:
-                        userIp = " "
-                        while (userIp != "l") and (userIp != "r") and (userIp != ""):
-                            userIp = input(SUBARRAY_CTR_TEXT)
-                        if (userIp == "l") or (userIp == ""):
-                            ctr = 0
-                        else:
-                            ctr = 1
-                    if ctr == 1:
-                        groupR.append(tc)
-                    else:
+                    userIp = " "
+                    while (userIp != "l") and (userIp != "r") and (userIp != ""):
+                        userIp = input(SUBARRAY_CTR_TEXT)
+                    if (userIp == "l") or (userIp == ""):
                         groupL.append(tc)
+                    else:
+                        groupR.append(tc)
+            logging.info(f'{len(groupL)} L / {len(groupR)} R')
 
             if len(groupL) > 0 and len(groupR) > 0:
                 ## Create SUBarray LR group
@@ -429,33 +475,29 @@ def createSrcGroups(proj):
                 proj.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{SUBARRAY_GROUP_TITLE}" AND ParentId = "{proj.pId}"')
                 rtn = proj.cursor.fetchone()
                 if rtn is not None:
+                    logging.info(f'Found existing SUBarray group')
                     pId = rtn[0]
 
                     proj.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE ParentId = "{pId}"') #Get L+R groups
                     rtn = proj.cursor.fetchall()
 
-                    if rtn is not None:
-                        logging.info(f'Deleting existing SUBarray groups - {pId} - {rtn[0][0]} / {rtn[1][0]}')
-                        proj.deleteGroupWithId(pId)
-                        for row in rtn:
-                            proj.deleteGroupWithId(row[0])
-                            proj.delete("Groups", "ParentId", row[0])
-
                 proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{SUBARRAY_GROUP_TITLE}",{proj.pId},0,-1,0,0);')
-                getGroupIdFromName(proj, SUBARRAY_GROUP_TITLE)
-                pId = proj.cursor.fetchone()[0]
+                pId = getGroupIdFromName(proj, SUBARRAY_GROUP_TITLE)
+                logging.info(f'Created {SUBARRAY_GROUP_TITLE} group with id {pId}')
 
+                # Create sub L and R groups + assign channels
                 gStr = [proj.groups[i].name+" L", proj.groups[i].name+" R"]
                 g = groupL
                 for s in gStr:
                     proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{pId},0,-1,0,0);')
+                    logging.info(f'Created {s} group with id {pId}')
                     proj.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{s}"')
                     rtn = proj.cursor.fetchone()
 
                     for tc in g:
                         proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{tc[1]}",{rtn[0]},{tc[3]},{tc[4]},1,0);')
 
-                    proj.groups[i].groupIdSt.append(Group(rtn[0], rtn[1], proj.groups[i].AP, proj.groups[i].viewId))
+                    proj.groups[i].groupIdSt.append(Group(rtn[0], rtn[1], proj.groups[i].AP, proj.groups[i].viewId, proj.groups[i].type))
                     proj.groups[i].groupIdSt[-1].targetChannels = findDevicesInGroups(proj.cursor, proj.groups[i].groupIdSt[-1].groupId)
 
                     g = groupR
@@ -531,25 +573,19 @@ def deleteControl(proj, viewId):
 
 # Find a view's id from its name
 def getViewIdFromName(proj, name):
-    return proj.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{name}"')
+    proj.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{name}"')
+    rtn = proj.cursor.fetchone()[0]
+    return rtn
 
 def createMeterView(proj, templates):
-    ##################### FALLBACK CONTROLS #####################
-    proj.cursor.execute(f'SELECT * FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
-    if proj.cursor.fetchone() is not None:
-        logging.info(f'Found existing {METER_WINDOW_TITLE} view.')
-        logging.info(f'Deleting existing {METER_WINDOW_TITLE} view.')
-
-        getViewIdFromName(proj, METER_WINDOW_TITLE)
-        proj.meterViewId = proj.cursor.fetchone()[0]
-        deleteControl(proj, proj.meterViewId)
-        deleteView(proj, proj.meterViewId)
-
     ## Get width of meter frame
     templates.cursor.execute(f'SELECT Width, Height FROM "main"."Controls" WHERE DisplayName = "METERS_TITLE"')
     rtn = templates.cursor.fetchone()
     meterW = rtn[0]
     meterH = rtn[1]
+    templates.cursor.execute(f'SELECT Height FROM "main"."Controls" WHERE DisplayName = "METERS_GROUP_TITLE"')
+    rtn = templates.cursor.fetchone()
+    groupH = rtn[0]
     spacingX = meterW+METER_SPACING_X
     spacingY = meterH+METER_SPACING_Y
 
@@ -566,15 +602,28 @@ def createMeterView(proj, templates):
             if len(g.targetChannels) > aCount:
                 aCount = len(g.targetChannels)
 
-    proj.cursor.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,{(spacingX*(gCount+1))+METER_SPACING_X},{(spacingY*aCount)+100},100,NULL,NULL,NULL,NULL);')
-    getViewIdFromName(proj, METER_WINDOW_TITLE)
-    proj.meterViewId = proj.cursor.fetchone()[0]
+    mWidth = (spacingX*(gCount+1))+METER_SPACING_X
+    mHeight = (spacingY*aCount)+groupH+METER_SPACING_Y
+    print(f'spacY - {spacingY}')
+    print(f'height - {meterH}')
+    print(aCount)
+    print(gCount)
+    print(len(proj.groups))
+    for g in proj.groups:
+        print(g.name)
+        print(len(g.groupIdSt))
+    print(meterW)
+    print(mWidth)
+    proj.cursor.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,{mWidth},{mHeight},100,NULL,NULL,NULL,NULL);')
+    proj.meterViewId = getViewIdFromName(proj, METER_WINDOW_TITLE)
 
     posX = METER_VIEW_STARTX
     posY = METER_VIEW_STARTY
     insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, proj.meterViewId, MASTER_WINDOW_TITLE, proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
     posY += insertTemplate(proj, templates, 'Meters Title', posX, posY, proj.meterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
     startY = posY
+    print(f'posY - {posY}')
+    proj.cursor.execute(f'UPDATE "main"."Views" SET VRes = {posY+mHeight} WHERE ViewId = {proj.meterViewId}')
 
     groups2 = []
     for g in proj.groups:
@@ -600,6 +649,11 @@ def createMeterView(proj, templates):
 
 def getGroupIdFromName(proj, name):
     proj.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{name}"')
+    rtn = proj.cursor.fetchone()
+    if rtn is not None:
+        return rtn[0]
+    else:
+        return None
 
 def createMasterView(proj, templates):
     ## Get width of widest control in master template
@@ -645,10 +699,8 @@ def createMasterView(proj, templates):
     spacingX += METER_SPACING_X*4
 
     proj.cursor.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{MASTER_WINDOW_TITLE}",NULL,4,NULL,-1,{(spacingX)+METER_SPACING_X},1000,100,NULL,NULL,NULL,NULL);')
-    getViewIdFromName(proj, MASTER_WINDOW_TITLE)
-    masterViewId = proj.cursor.fetchone()[0]
-    getGroupIdFromName(proj, "Master")
-    masterGroupId = proj.cursor.fetchone()[0]
+    masterViewId = getViewIdFromName(proj, MASTER_WINDOW_TITLE)
+    masterGroupId = getGroupIdFromName(proj, "Master")
 
     posX = 10
     posY = 10
@@ -678,14 +730,12 @@ def createMasterView(proj, templates):
         mutCh = 0
         w = 0
         for row in tempContents:
-            proj.cursor.execute(f'SELECT TargetProperty FROM "main"."Controls" WHERE ViewId = {g.viewId} AND TargetProperty = "Config_Filter3"')#Check if CPL exists on group view
-            cpl = proj.cursor.fetchone()
             dName = row[7]
             tChannel = row[23]
             tId = g.groupId
             flag = row[19]
 
-            if cpl is None and dName == "CUT":
+            if g.topGroupId is 0 and dName == "CUT":
                 dName = 'Infra'
                 logging.info(f"{g.name} - Enabling Infra")
 
@@ -713,16 +763,19 @@ def createMasterView(proj, templates):
                 flag = 14
                 logging.info(f"{g.name} - Setting relative delay")
 
+            if row[1] == 3 and row[24] == 'Config_Filter3': # Point CPL at top group only
+                tId = g.topGroupId;
+
             s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{str(masterViewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(flag)}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(row[24])}", {row[25]}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", "  ")'
 
             if row[1] == 3 and row[24] == 'Config_Filter3': # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
-                if cpl is None:
+                if g.topGroupId is 0:
                     s = ""
-                    logging.info(f"{g.name} - Removing CPL")
-
+                    logging.info(f"{g.name} - Skipping CPL")
 
             proj.cursor.execute(s)
 
         insertTemplate(proj, templates, 'Nav Button', posX, posY, masterViewId, g.name, g.viewId, -1, proj.cursor, None, None, None, None, None)
+
         posX += w+METER_SPACING_X
         proj.jId = proj.jId + 1
