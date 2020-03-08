@@ -95,6 +95,7 @@ class Group:
         self.AP = ap
         self.viewId = vId
         self.type = type
+        self.siblingId = -1;
 
         logging.info(f'Created group - {groupId} / {name}')
 
@@ -235,21 +236,32 @@ class ProjectFile:
                 type = 0;
                 logging.error(f'Cannot find SourceGroup info for {row[1]}')
 
-            j = 0
-            i = 0;
             if type != 3: # Not Sub Array
                 gCount = len(self.groups)
-                for g in [" TOPs L", " TOPs R", " SUBs L", " SUBs R", " TOPs", " SUBs", ""]:
-                    if g == "" or g == " TOPs" and len(self.groups) != gCount: # Only run last condition if there haven't been any sub or top groups found
+                srcType = 0 # 0 - point source, 1 - mono array, 2 - stereo array
+                for g in [" TOPs L", " TOPs R", " TOPs", " SUBs L", " SUBs R", " SUBs", ""]:
+                    if g == "" and srcType == 1:
                         break;
-
                     self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1] + g}"')
                     rtn = self.cursor.fetchone()
-                    if rtn is not None and j < 4:
+                    if rtn is not None:
                         self.groups.append(Group(rtn[0], rtn[1], ap, vId, i)) #First is GroupId, second is Name
                         self.groups[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[-1].groupId)
-                        j += 1
-                    i += 1
+                        if g == " TOPs R" or g == " SUBs  R":
+                            self.groups[-1].siblingId = self.groups[-2].groupId;
+                            self.groups[-2].siblingId = self.groups[-1].groupId;
+                            srcType = 2
+                        if g == " TOPs" or g == " SUBs":
+                            if srcType < 1:
+                                srcType = 1
+                            elif srcType > 1: # Parent group of stereo pair
+                                self.groups[-1].childIdR = self.groups[-2].groupId;
+                                self.groups[-1].childIdL = self.groups[-3].groupId;
+                                self.groups[-2].parentId = self.groups[-1].groupId;
+                                self.groups[-3].parentId = self.groups[-1].groupId;
+                                print(f'{self.groups[-1].name} is parent of {self.groups[-2].name} / {self.groups[-3].name}')
+                        if g == "" and srcType == 2:
+                            self.groups.pop(len(self.groups)-1)
             else:
                 SUBARRAY_GROUP_TITLE = row[1] + " LR"
                 self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1]}"')
@@ -301,7 +313,7 @@ class ProjectFile:
                         for tc in g:
                             self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{tc[1]}",{rtn[0]},{tc[3]},{tc[4]},1,0);')
 
-                        self.groups.append(Group(rtn[0], rtn[1], self.groups[i].AP, self.groups[i].viewId, self.groups[i].type))
+                        self.groups.append(Group(rtn[0], rtn[1], ap, vId, type))
                         self.groups[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[-1].groupId)
 
                         g = groupR
@@ -464,39 +476,12 @@ def findDevicesInGroups(cursor, parentId):
                     cabAddData = cursor.fetchone()
                     if cabAddData is not None:
                         rtn[i] = rtn[i]+(parentId,cabData[3],cabAddData[1])
-                        print(rtn[i])
                     else:
                         logging.error(f'Cannot find additional cabinet data for {row[1]}')
                 else:
                     logging.error(f'Cannot find cabinet data for {row[1]}')
             return rtn
     return ch
-
-# Find if group is a mix of sub + top cabinets
-# Returns:
-# 1 - Tops
-# 2 - Subs
-# 3 - Top/Subs
-def findGroupType(cursor, parentId):
-    cursor.execute(f'SELECT * FROM "main"."Groups" WHERE ParentId = {parentId}')
-    rtn = cursor.fetchall()
-    gr = [0,0,0] # Indexes: 0 - Group type, 1 - Sub GroupID if exists, 2 - Tops GroupId if exists
-    mod = 0;
-    for row in rtn:
-        if row[TARGET_ID] == SUBGROUP: # If entry is not a device but a subgroup
-            if (" TOPs" in row[1]):
-                if gr[0] < 1:
-                    gr[0] = 1;
-                elif gr[0] > 1:
-                    gr[0] = 3;
-                gr[2] = row[0]
-            if (" SUBs" in row[1]):
-                if gr[0] < 1:
-                    gr[0] = 2;
-                elif gr[0] == 1:
-                    gr[0] = 3;
-                gr[1] = row[0]
-    return gr
 
 def createFbControls(proj, templates):
     # Find Overview viewId + add master fallback frame
@@ -611,15 +596,12 @@ def createMeterView(proj, templates):
 
     proj.cursor.execute(f'UPDATE "main"."Views" SET VRes = {posY+mHeight} WHERE ViewId = {proj.meterViewId}')
 
-    groups2 = []
+    meterGroups = []
     for g in proj.groups:
-        if len(g.groupIdSt) < 1:
-            groups2.append(g)
-        else:
-            for sg in g.groupIdSt:
-                groups2.append(sg)
+        if not hasattr(g, "childIdL"):
+            meterGroups.append(g)
 
-    for g in groups2:
+    for g in meterGroups:
 
         dim = insertTemplate(proj, templates, 'Meters Group', posX, posY, proj.meterViewId, g.name, g.groupId, None, proj.cursor, None, None, None, None, None);
 
@@ -693,22 +675,20 @@ def createMasterView(proj, templates):
     insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, masterViewId, METER_WINDOW_TITLE, proj.meterViewId, -1, proj.cursor, None, None, None, None, None)
     posY += insertTemplate(proj, templates, 'Master Title', posX, posY, masterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
     posX += insertTemplate(proj, templates, 'Master Main', posX, posY, masterViewId, None, masterGroupId, None, proj.cursor, None, None, None, None, None)[0]+METER_SPACING_X;
-
     posX += insertTemplate(proj, templates, 'Master ArraySight', posX, posY, masterViewId, None, AsId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X*4);
 
     for g in proj.groups:
         jId = proj.jId
 
+        if " TOPs " in g.name or " SUBs " in g.name: # Skip L, R and master groups
+            continue;
+        elif hasattr(g, "childIdL"): # Stereo groups
+            template = 'Group LR'
+        else: # Mono groups
+            template = 'Group'
+
         if g.AP > 0:
-            if len(g.groupIdSt) > 0:
-                template = 'Group LR AP'
-            else:
-                template = 'Group AP'
-        else:
-            if len(g.groupIdSt) > 0:
-                template = 'Group LR'
-            else:
-                template = 'Group'
+            template += " AP"
 
 
         tempContents = getTempContents(templates, template)
@@ -730,14 +710,14 @@ def createMasterView(proj, templates):
             if (row[1] == 7): #Meters, these require a TargetChannel
                 tId = g.targetChannels[0][3]
                 tChannel = g.targetChannels[0][4]
-            if template == 'Group LR' or template == 'Group LR AP':
-                if (row[1] == 7): #Meters, these require a TargetChannel
-                    tId = g.groupIdSt[metCh].targetChannels[0][3]
-                    tChannel = g.groupIdSt[metCh].targetChannels[0][4]
-                    metCh += 1
-                if (row[1] == 4) and (row[24] == "Config_Mute"): #Mute
-                    tId = g.groupIdSt[mutCh].groupId
-                    mutCh += 1
+            #if template == 'Group LR' or template == 'Group LR AP':
+                #if (row[1] == 7): #Meters, these require a TargetChannel
+                    #tId = g.groupIdSt[metCh].targetChannels[0][3]
+                    #tChannel = g.groupIdSt[metCh].targetChannels[0][4]
+                    #metCh += 1
+                #if (row[1] == 4) and (row[24] == "Config_Mute"): #Mute
+                    #tId = g.groupIdSt[mutCh].groupId
+                    #mutCh += 1
 
             if row[1] == 12:
                 dName = g.name
