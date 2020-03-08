@@ -604,16 +604,7 @@ def createMeterView(proj, templates):
 
     mWidth = (spacingX*(gCount+1))+METER_SPACING_X
     mHeight = (spacingY*aCount)+groupH+METER_SPACING_Y
-    print(f'spacY - {spacingY}')
-    print(f'height - {meterH}')
-    print(aCount)
-    print(gCount)
-    print(len(proj.groups))
-    for g in proj.groups:
-        print(g.name)
-        print(len(g.groupIdSt))
-    print(meterW)
-    print(mWidth)
+
     proj.cursor.execute(f'INSERT INTO "main"."Views"("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,{mWidth},{mHeight},100,NULL,NULL,NULL,NULL);')
     proj.meterViewId = getViewIdFromName(proj, METER_WINDOW_TITLE)
 
@@ -622,7 +613,7 @@ def createMeterView(proj, templates):
     insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, proj.meterViewId, MASTER_WINDOW_TITLE, proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
     posY += insertTemplate(proj, templates, 'Meters Title', posX, posY, proj.meterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
     startY = posY
-    print(f'posY - {posY}')
+
     proj.cursor.execute(f'UPDATE "main"."Views" SET VRes = {posY+mHeight} WHERE ViewId = {proj.meterViewId}')
 
     groups2 = []
