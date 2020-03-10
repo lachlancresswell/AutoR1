@@ -15,17 +15,28 @@ MOD_FILE = 'R1_AUTO.dbpr'
 TEMP_FILE = 'templates.r2t'
 
 
+if platform.system() == 'Windows':
+    os.system('cls')
+else:
+    os.system('clear')
+    try:
+        os.chdir(sys.argv[1]+'/')
+    except:
+        print('Could not get current working directory.')
+
+
 #Start logging
 dateTimeObj = datetime.now()
 LOGDIR = './'+LOGDIR
+
 if not os.path.exists(LOGDIR):
     os.makedirs(LOGDIR)
 timestamp = dateTimeObj.strftime("%d-%b-%Y-%H-%M-%S")
 logfn = LOGDIR+timestamp+'-autor1log.txt'
+with open(logfn, 'w'): pass
 logging.basicConfig(filename=logfn,level=logging.INFO)
 logging.getLogger().setLevel(logging.INFO)
-logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
-logging.info(sys.argv)
+#logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 ############################## METHODS ##############################
 
 def checkFile(path):
@@ -46,22 +57,11 @@ sys.excepthook = log_except_hook
 ##########################################################################################
 
 
-############################## GLOBALS ##############################
-
-if platform.system() == 'Windows':
-    os.system('cls')
-else:
-    os.system('clear')
-    try:
-        os.chdir(sys.argv[1]+'/')
-    except:
-        print('Could not get current working directory.')
 
 
 PROJ_FILE = './'+PROJ_FILE
 MOD_FILE = './'+MOD_FILE
 TEMP_FILE = './'+TEMP_FILE
-
 
 if not checkFile(logfn):
     print(f'Could not access {logfn}')
@@ -93,8 +93,6 @@ templates = r1.TemplateFile(TEMP_FILE)
 project = r1.ProjectFile(MOD_FILE, templates)
 r1.createParentGroup(project);
 r1.createIpGroups(project);
-#r1.createSubLrGroups(project)
-#r1.createFbControls(project, templates);
 r1.createMeterView(project, templates);
 r1.createMasterView(project, templates);
 

@@ -1,11 +1,12 @@
 import sqlite3
 import logging
+import sys
 
 ARRAYCALC_SNAPSHOT = 1 #Snapshot ID
 PARENT_GROUP_TITLE = 'AUTO'
 INPUT_TYPES = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"]
 ipStr = ["Config_InputEnable1", "Config_InputEnable2", "Config_InputEnable3", "Config_InputEnable4", "Config_InputEnable5", "Config_InputEnable6", "Config_InputEnable7", "Config_InputEnable8"]
-SUBARRAY_CTR_TEXT = 'Assign SUB Array C channel to L or R? (l/r)\n(default: l): '
+SUBARRAY_CTR_TEXT = 'Assign SUB Array C channel to L or R? (L/R)\n(default: L): '
 TARGET_ID = 3
 SUBGROUP = 0
 GROUPID = 0
@@ -14,6 +15,7 @@ FB_OVERVIEW_POSY = 16
 DS_STATUS_STARTX = FB_OVERVIEW_POSX
 DS_STATUS_STARTY = 400
 SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)\n(default: y): '
+EXISTING_TEXT = 'Found existing AutoR1 group. Regenerate content? (y/n)\n(default: n): '
 METER_WINDOW_TITLE = "AUTO - Meters"
 MASTER_WINDOW_TITLE = 'AUTO - Master'
 NAV_BUTTON_X = 230
@@ -99,6 +101,12 @@ class Group:
 
         logging.info(f'Created group - {groupId} / {name}')
 
+    def isSub(self):
+        return "SUBs" in self.name;
+
+    def isTop(self):
+        return "TOPs" in self.name;
+
     @property
     def viewId(self):
         return self._viewId
@@ -151,6 +159,18 @@ class ProjectFile:
         self.f = f
         self.db = sqlite3.connect(f);
         self.cursor = self.db.cursor();
+
+        # Get id of Auto R1 groups
+        rtn = getGroupIdFromName(self, PARENT_GROUP_TITLE)
+        if rtn is not None:
+            self.pId = rtn;
+            userIp = " "
+            while (userIp != "y") and (userIp != "n") and (userIp != ""):
+                userIp = input(EXISTING_TEXT)
+            if (userIp == "n") or (userIp == ""):
+                print("Closing program.")
+                sys.exit()
+
         self.pId = 1;
         self.mId = 0;
         self.meterViewId = -1;
@@ -159,6 +179,7 @@ class ProjectFile:
         self.db = sqlite3.connect(f);
         self.cursor = self.db.cursor();
         self.subArray = []
+        self.pId = -1;
         logging.info('Loaded project - ' + f)
 
         # Set joinedId start
@@ -167,6 +188,7 @@ class ProjectFile:
         if rtn is not None:
             self.jId = rtn[0] + 1
         else:
+            print("Views have not been generated. Please run initial setup in R1 first.")
             logging.critical("Views have not been generated. Please run initial setup in R1 first.")
             sys.exit()
 
@@ -192,15 +214,6 @@ class ProjectFile:
                 c.inputEnable.append(len(rtn));
 
         logging.info(f'Loaded input routing config for all channels')
-
-        # Get id of Auto R1 groups
-        rtn = getGroupIdFromName(self, PARENT_GROUP_TITLE)
-        if rtn is not None:
-            self.pId = rtn;
-            logging.info(f'Found existing {PARENT_GROUP_TITLE} group.')
-        else:
-            logging.info(f'Could not find existing {PARENT_GROUP_TITLE} group.')
-            self.pId = -1;
 
         createParentGroup(self)
 
@@ -255,11 +268,12 @@ class ProjectFile:
                             if srcType < 1:
                                 srcType = 1
                             elif srcType > 1: # Parent group of stereo pair
-                                self.groups[-1].childIdR = self.groups[-2].groupId;
-                                self.groups[-1].childIdL = self.groups[-3].groupId;
+                                self.groups[-1].childId = []
+                                self.groups[-1].childId.append(self.groups[-3].groupId); # L
+                                self.groups[-1].childId.append(self.groups[-2].groupId); # R
                                 self.groups[-2].parentId = self.groups[-1].groupId;
                                 self.groups[-3].parentId = self.groups[-1].groupId;
-                                print(f'{self.groups[-1].name} is parent of {self.groups[-2].name} / {self.groups[-3].name}')
+                                logging.info(f'{self.groups[-1].name} is parent of {self.groups[-2].name} / {self.groups[-3].name}')
                         if g == "" and srcType == 2:
                             self.groups.pop(len(self.groups)-1)
             else:
@@ -490,6 +504,7 @@ def createFbControls(proj, templates):
     if rtn is not None:
         proj.overviewId = rtn[0]
     else:
+        print("Views have not been generated. Please run initial setup in R1 first.")
         logging.critical("Views have not been generated. Please run initial setup in R1 first.")
         sys.exit();
 
@@ -598,7 +613,7 @@ def createMeterView(proj, templates):
 
     meterGroups = []
     for g in proj.groups:
-        if not hasattr(g, "childIdL"):
+        if not hasattr(g, "childId"):
             meterGroups.append(g)
 
     for g in meterGroups:
@@ -622,6 +637,12 @@ def getGroupIdFromName(proj, name):
         return rtn[0]
     else:
         return None
+
+def getGroupFromId(groups, gId):
+    for g in groups:
+        if g.groupId == gId:
+            return g
+    return -1;
 
 def createMasterView(proj, templates):
     ## Get width of widest control in master template
@@ -682,17 +703,16 @@ def createMasterView(proj, templates):
 
         if " TOPs " in g.name or " SUBs " in g.name: # Skip L, R and master groups
             continue;
-        elif hasattr(g, "childIdL"): # Stereo groups
+        elif hasattr(g, "childId"): # Stereo groups
             template = 'Group LR'
         else: # Mono groups
             template = 'Group'
-
         if g.AP > 0:
             template += " AP"
 
 
         tempContents = getTempContents(templates, template)
-        metCh = 0
+        metCh = 0 # Current channel of stereo pair
         mutCh = 0
         w = 0
         for row in tempContents:
@@ -710,14 +730,16 @@ def createMasterView(proj, templates):
             if (row[1] == 7): #Meters, these require a TargetChannel
                 tId = g.targetChannels[0][3]
                 tChannel = g.targetChannels[0][4]
-            #if template == 'Group LR' or template == 'Group LR AP':
-                #if (row[1] == 7): #Meters, these require a TargetChannel
-                    #tId = g.groupIdSt[metCh].targetChannels[0][3]
-                    #tChannel = g.groupIdSt[metCh].targetChannels[0][4]
-                    #metCh += 1
-                #if (row[1] == 4) and (row[24] == "Config_Mute"): #Mute
-                    #tId = g.groupIdSt[mutCh].groupId
-                    #mutCh += 1
+            if template == 'Group LR' or template == 'Group LR AP':
+                if (row[1] == 7): #Meters, these require a TargetChannel
+                    child = getGroupFromId(proj.groups, g.childId[metCh])
+                    tId = child.targetChannels[0][3]
+                    tChannel = child.targetChannels[0][4]
+                    metCh += 1
+                if (row[1] == 4) and (row[24] == "Config_Mute"): #Mute
+                    child = getGroupFromId(proj.groups, g.childId[mutCh])
+                    tId = child.groupId
+                    mutCh += 1
 
             if row[1] == 12:
                 dName = g.name
@@ -729,15 +751,12 @@ def createMasterView(proj, templates):
                 flag = 14
                 logging.info(f"{g.name} - Setting relative delay")
 
-            #if row[1] == 3 and row[24] == 'Config_Filter3': # Point CPL at top group only
-            #    tId = g.topGroupId;
-
             s = f'INSERT INTO "main"."Controls" ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{str(masterViewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(flag)}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(row[24])}", {row[25]}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", "  ")'
 
             if row[1] == 3 and row[24] == 'Config_Filter3': # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
-                #if g.topGroupId is 0:
-                s = ""
-                logging.info(f"{g.name} - Skipping CPL")
+                if not g.isTop():
+                    s = ""
+                    logging.info(f"{g.name} - Skipping CPL")
 
             proj.cursor.execute(s)
 
