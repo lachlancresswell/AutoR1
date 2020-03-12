@@ -3,6 +3,7 @@ import logging
 import sys
 
 PARENT_GROUP_TITLE = 'AUTO'
+AP_GROUP_TITLE = 'AP'
 METER_WINDOW_TITLE = "AUTO - Meters"
 MASTER_WINDOW_TITLE = 'AUTO - Master'
 SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)\n(default: y): '
@@ -169,6 +170,7 @@ class ProjectFile:
         self.cursor = self.db.cursor();
         self.subArray = []
         self.pId = -1;
+        self.ap = 0
         logging.info('Loaded project - ' + f)
 
         # Set joinedId start
@@ -233,6 +235,8 @@ class ProjectFile:
             if rtn2 is not None:
                 ap = rtn2[0]
                 type = rtn2[1]
+                if rtn2[0] > 0:
+                    self.ap = 1;
             else:
                 ap = 0;
                 type = 0;
@@ -321,6 +325,17 @@ class ProjectFile:
 
                         g = groupR
 
+        # Create AP group
+        if self.ap > 0:
+            self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{AP_GROUP_TITLE}",{self.pId},0,-1,0,0);')
+            self.apGroupId = getGroupIdFromName(self, AP_GROUP_TITLE)
+            logging.info(f'Created {AP_GROUP_TITLE} group with id {self.apGroupId}')
+
+            for g in self.groups:
+                if g.AP > 0:
+                    for c in g.targetChannels:
+                        self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{c[1]}",{self.apGroupId},{c[3]},{c[4]},1,0);')
+
     def delete(self, table, param, match):
         self.cursor.execute(f'DELETE FROM "main"."{table}" WHERE "{param}" = "{match}"')
 
@@ -347,6 +362,12 @@ class ProjectFile:
     def close(self):
         self.db.commit()
         self.db.close()
+
+def getTempContents(templates, tempName):
+    for t in templates.templates:
+        if t.name == tempName:
+            return t.contents
+    return -1;
 
 def getTempSize(templates, tempName):
     templates.cursor.execute(f'SELECT JoinedId FROM "main"."Sections" WHERE Name = "{tempName}"')
@@ -617,9 +638,12 @@ def createMasterView(proj, templates):
     posY = 10
     insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, masterViewId, METER_WINDOW_TITLE, proj.meterViewId, -1, proj.cursor, None, None, None, None, None)
     posY += insertTemplate(proj, templates, 'Master Title', posX, posY, masterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
-    posX += insertTemplate(proj, templates, 'Master Main', posX, posY, masterViewId, None, masterGroupId, None, proj.cursor, None, None, None, None, None)[0]+METER_SPACING_X;
-    posX += insertTemplate(proj, templates, 'Master ArraySight', posX, posY, masterViewId, None, AsId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X*4);
-
+    posX += insertTemplate(proj, templates, 'Master Main', posX, posY, masterViewId, None, masterGroupId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X/2);
+    asPos = insertTemplate(proj, templates, 'Master ArraySight', posX, posY, masterViewId, None, AsId, None, proj.cursor, None, None, None, None, None)
+    if proj.ap > 0:
+        posX += insertTemplate(proj, templates, 'THC', posX, posY+asPos[1]+(METER_SPACING_Y/2), masterViewId, None, AsId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X*4);
+    else:
+        posX += asPos[0]+(METER_SPACING_X*4);
     for g in proj.groups:
         jId = proj.jId
 
