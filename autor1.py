@@ -87,6 +87,7 @@ r1.createParentGroup(project);
 r1.createIpGroups(project);
 r1.createMeterView(project, templates);
 r1.createMasterView(project, templates);
+r1.createNavButtons(project, templates)
 
 print("Finished generating views, controls and groups.")
 templates.close();
