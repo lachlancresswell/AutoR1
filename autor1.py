@@ -5,6 +5,7 @@ from datetime import datetime
 import platform
 import r1py as r1
 import logging
+import traceback
 
 ############################## CONSTANTS ##############################
 LOGDIR = './LOGS/'
