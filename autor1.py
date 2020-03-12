@@ -1,20 +1,38 @@
-import sqlite3
 import sys
 import os
 from shutil import copyfile
 from datetime import datetime
 import platform
-import traceback
 import r1py as r1
 import logging
 
 ############################## CONSTANTS ##############################
-LOGDIR = 'LOGS/'
-PROJ_FILE = 'r1.dbpr'
-MOD_FILE = 'R1_AUTO.dbpr'
-TEMP_FILE = 'templates.r2t'
+LOGDIR = './LOGS/'
+PROJ_FILE = './r1.dbpr'
+MOD_FILE = './R1_AUTO.dbpr'
+TEMP_FILE = './templates.r2t'
+
+############################## FUNCTIONS ##############################
+def checkFile(path):
+    try:
+        f = open(path, 'r')
+        f.close()
+    except IOError:
+        return False
+    return True
+
+# Ensure exceptions are logged
+def log_except_hook(*exc_info):
+    text = "".join(traceback.format_exception(*exc_info))
+    print(f"Unhandled exception: {text}")
+
+sys.excepthook = log_except_hook
 
 
+############################## START ##############################
+
+
+# Clear screen, ensure correct cmd for OS + set CWD if on Mac
 if platform.system() == 'Windows':
     os.system('cls')
 else:
@@ -27,7 +45,6 @@ else:
 
 #Start logging
 dateTimeObj = datetime.now()
-LOGDIR = './'+LOGDIR
 
 if not os.path.exists(LOGDIR):
     os.makedirs(LOGDIR)
@@ -37,31 +54,6 @@ with open(logfn, 'w'): pass
 logging.basicConfig(filename=logfn,level=logging.INFO)
 logging.getLogger().setLevel(logging.INFO)
 #logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
-############################## METHODS ##############################
-
-def checkFile(path):
-    try:
-        f = open(path, 'r')
-        f.close()
-    except IOError:
-        return False
-    return True
-
-def log_except_hook(*exc_info):
-    text = "".join(traceback.format_exception(*exc_info))
-    print(f"Unhandled exception: {text}")
-
-sys.excepthook = log_except_hook
-
-
-##########################################################################################
-
-
-
-
-PROJ_FILE = './'+PROJ_FILE
-MOD_FILE = './'+MOD_FILE
-TEMP_FILE = './'+TEMP_FILE
 
 if not checkFile(logfn):
     print(f'Could not access {logfn}')
@@ -88,17 +80,12 @@ if not checkFile(MOD_FILE):
     print(f'Could not access {MOD_FILE}')
     sys.exit()
 
-# SQL Setup
 templates = r1.TemplateFile(TEMP_FILE)
 project = r1.ProjectFile(MOD_FILE, templates)
 r1.createParentGroup(project);
 r1.createIpGroups(project);
 r1.createMeterView(project, templates);
 r1.createMasterView(project, templates);
-
-
-###############################################################
-
 
 print("Finished generating views, controls and groups.")
 templates.close();
