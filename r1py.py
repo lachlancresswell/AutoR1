@@ -63,11 +63,13 @@ class Template:
         self.contents = []
 
 class Channel:
-    def __init__(self, targetId, targetChannel):
+    def __init__(self, targetId, targetChannel, name):
         self.targetId = targetId
         self.targetChannel = targetChannel
         self.inputEnable = []
-        self.name = "name"
+        self.name = name
+
+        logging.info(f'Created channel - {self.name}')
 
 class Group:
     def __init__(self, groupId, name, ap, vId, type):
@@ -191,11 +193,11 @@ class ProjectFile:
         self.cursor.execute(f'SELECT TargetId, TargetNode FROM "main"."SnapshotValues" WHERE SnapshotId = {ARRAYCALC_SNAPSHOT} AND TargetProperty = "Config_InputEnable1" ORDER BY TargetId ASC')
         rtn = self.cursor.fetchall()
         for row in rtn:
-            self.channels.append(Channel(row[0], row[1]))
-        for i in range(len(self.channels)): # Find name for all channels
-            self.cursor.execute(f'SELECT Name FROM "main"."AmplifierChannels" WHERE DeviceId = {self.channels[i].targetId} AND AmplifierChannel = {self.channels[i].targetChannel}')
-            self.channels[i].name = self.cursor.fetchone()[0]
-
+            tId = row[0]
+            tCh = row[1]
+            self.cursor.execute(f'SELECT Name FROM "main"."AmplifierChannels" WHERE DeviceId = {tId} AND AmplifierChannel = {tCh}')
+            name = self.cursor.fetchone()[0]
+            self.channels.append(Channel(tId, tCh, name))
         logging.info(f'{len(self.channels)} channels loaded. First: {self.channels[0].name}  /  Last: {self.channels[-1].name}')
 
 
@@ -253,11 +255,12 @@ class ProjectFile:
                     self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1] + g}"')
                     rtn = self.cursor.fetchone()
                     if rtn is not None:
-                        self.groups.append(Group(rtn[0], rtn[1], ap, vId, i)) #First is GroupId, second is Name
+                        self.groups.append(Group(rtn[0], rtn[1], ap, vId, type)) #First is GroupId, second is Name
                         self.groups[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[-1].groupId)
 
-                        if "KSL" in self.groups[-1].targetChannels[-1][9] or "GSL" in self.groups[-1].targetChannels[-1][9]:
-                            self.groups[-1].isSl = 1
+                        if len(self.groups[-1].targetChannels) > 0:
+                            if "KSL" in self.groups[-1].targetChannels[-1][9] or "GSL" in self.groups[-1].targetChannels[-1][9]:
+                                self.groups[-1].isSl = 1
                         if g == " TOPs R" or g == " SUBs  R":
                             self.groups[-1].siblingId = self.groups[-2].groupId;
                             self.groups[-2].siblingId = self.groups[-1].groupId;
