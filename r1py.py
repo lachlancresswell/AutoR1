@@ -2,50 +2,31 @@ import sqlite3
 import logging
 import sys
 
-ARRAYCALC_SNAPSHOT = 1 #Snapshot ID
 PARENT_GROUP_TITLE = 'AUTO'
+METER_WINDOW_TITLE = "AUTO - Meters"
+MASTER_WINDOW_TITLE = 'AUTO - Master'
+SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)\n(default: y): '
+EXISTING_TEXT = 'Found existing AutoR1 group. Regenerate content? (y/n)\n(default: n): '
+SUBARRAY_CTR_TEXT = 'Assign SUB Array C channel to L or R? (L/R)\n(default: L): '
+
+ARRAYCALC_SNAPSHOT = 1 #Snapshot ID
 INPUT_TYPES = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"]
 ipStr = ["Config_InputEnable1", "Config_InputEnable2", "Config_InputEnable3", "Config_InputEnable4", "Config_InputEnable5", "Config_InputEnable6", "Config_InputEnable7", "Config_InputEnable8"]
-SUBARRAY_CTR_TEXT = 'Assign SUB Array C channel to L or R? (L/R)\n(default: L): '
 TARGET_ID = 3
 SUBGROUP = 0
 GROUPID = 0
+
 FB_OVERVIEW_POSX = 842
 FB_OVERVIEW_POSY = 16
 DS_STATUS_STARTX = FB_OVERVIEW_POSX
 DS_STATUS_STARTY = 400
-SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)\n(default: y): '
-EXISTING_TEXT = 'Found existing AutoR1 group. Regenerate content? (y/n)\n(default: n): '
-METER_WINDOW_TITLE = "AUTO - Meters"
-MASTER_WINDOW_TITLE = 'AUTO - Master'
 NAV_BUTTON_X = 230
 NAV_BUTTON_Y = 15
-
-
-#LR group mute buttons
-LR_MUTE_TEXT = ['Left', 'Right']
-LR_MUTE_POSX = [700, 770]
-LR_MUTE_POSY = 56
 
 METER_VIEW_STARTX = 15
 METER_VIEW_STARTY = 15
 METER_SPACING_X = 15
 METER_SPACING_Y = 15
-
-#SUBarray LR group mute buttons
-SUBLR_MUTE_TEXT = ['Left', 'Right']
-SUBLR_MUTE_POSX = [96, 166]
-SUBLR_MUTE_POSY = 230
-#Sub group fallback display
-SUBLR_FB_POSX = 365
-SUBLR_FB_POSY = 16
-#LR group fallback display
-L_FB_POSX = 501
-L_FB_POSY = 265
-R_FB_POSX = 800
-R_FB_POSY = 265
-FILL_FB_POSX = 323
-FILL_FB_POSY = 225
 
 DEV_PROP_TYPES = [
 'Status_SmpsFrequency'
@@ -72,7 +53,6 @@ DEV_PROP_TYPES = [
 ,'Error_GnrlErr'
 ,'Error_SmpsTempOff'
 ,'Error_SmpsTempWarn']
-
 
 # Used for a template contained in a template file
 class Template:
@@ -119,7 +99,7 @@ class Group:
 # Load template file + templates within
 class TemplateFile:
     def __init__(self, f):
-        self.f = f
+        self.__set_f(f)
         self.db = sqlite3.connect(f);
         self.cursor = self.db.cursor();
         self.templates = []
@@ -140,10 +120,19 @@ class TemplateFile:
 
         logging.info(str(len(self.templates)) + ' templates loaded.')
 
+    def __get_f(self):
+        return self.__f
+
+    def __set_f(self, f):
+        self.__f = f
+
+    f = property(__get_f, __set_f)
+
     def close(self):
         self.db.commit()
         self.db.close()
 
+# Deletes a project group and its children
 def deleteGroup(proj, gId):
     proj.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE ParentId = {gId}')
     rtn = proj.cursor.fetchone();
@@ -359,12 +348,6 @@ class ProjectFile:
         self.db.commit()
         self.db.close()
 
-def getTempContents(templates, tempName):
-    for t in templates.templates:
-        if t.name == tempName:
-            return t.contents
-    return -1;
-
 def getTempSize(templates, tempName):
     templates.cursor.execute(f'SELECT JoinedId FROM "main"."Sections" WHERE Name = "{tempName}"')
     rtn = templates.cursor.fetchone()
@@ -496,67 +479,6 @@ def findDevicesInGroups(cursor, parentId):
                     logging.error(f'Cannot find cabinet data for {row[1]}')
             return rtn
     return ch
-
-def createFbControls(proj, templates):
-    # Find Overview viewId + add master fallback frame
-    proj.cursor.execute(f'SELECT "ViewId" FROM "main"."Views" WHERE Name = "Overview";') # Get view IDs
-    rtn = proj.cursor.fetchone()
-    if rtn is not None:
-        proj.overviewId = rtn[0]
-    else:
-        print("Views have not been generated. Please run initial setup in R1 first.")
-        logging.critical("Views have not been generated. Please run initial setup in R1 first.")
-        sys.exit();
-
-    proj.cursor.execute(f'SELECT "GroupId" FROM "main"."Groups" WHERE ParentId = "1" AND Name = "Master";') # Get view IDs
-    proj.cursor.execute(f'UPDATE "main"."Views" SET HRes = {1200} WHERE ViewId = {proj.overviewId}')
-
-    posX = DS_STATUS_STARTX
-    posY = DS_STATUS_STARTY
-    for i in range(len(INPUT_TYPES[6:])):
-        w = insertTemplate(proj, templates, 'DS Status', posX, posY, proj.overviewId, INPUT_TYPES[4+i], proj.ipGroupId[4+i], -1, proj.cursor, None, None, None, None, i+1);
-        posX += w[0]
-
-    insertTemplate(proj, templates, "Fallback Overview", FB_OVERVIEW_POSX, FB_OVERVIEW_POSY, proj.overviewId, None, proj.mId, None, proj.cursor, None, None, None, None, None);
-
-    for i in range(len(proj.groups)): # Determine stereo (Main L/R) and mono groups + get view ids
-
-        # Delete input routing views
-        dsplyNames = ["Input Routing"]
-        proj.cursor.execute(f'SELECT "JoinedId" FROM "main"."Controls" WHERE DisplayName = "{dsplyNames}" AND ViewId = "{proj.groups[i].viewId}"')
-        rtn = proj.cursor.fetchall()
-        if rtn is not None:
-            for row in rtn:
-                proj.delete("Controls", "JoinedId", row[0])
-
-        fbX = 0
-        fbY = 0
-
-        if (len(proj.groups[i].groupIdSt) > 0 and ((proj.groups[i].name.lower().find("sub") < 0) and (proj.groups[i].name.lower().find("array") < 0))): #LR group
-            fbX = [L_FB_POSX, R_FB_POSX]
-            fbY = [L_FB_POSY, R_FB_POSY]
-            muteX = LR_MUTE_POSX
-            muteY = LR_MUTE_POSY
-            muteText = LR_MUTE_TEXT
-            fbG = proj.groups[i].groupIdSt
-
-            for j in range(len(muteText)):
-                insertTemplate(proj, templates, 'Mute', muteX[j], muteY, proj.groups[i].viewId, muteText[j], proj.groups[i].groupIdSt[j].groupId, None, proj.cursor, None, None, None, None, None);
-        elif(proj.groups[i].name.lower().find("sub") > -1) and (proj.groups[i].name.lower().find("array") > -1):#SUBarray group
-            fbX = [SUBLR_FB_POSX]
-            fbY = [SUBLR_FB_POSY]
-            muteX = SUBLR_MUTE_POSX
-            muteY = SUBLR_MUTE_POSY
-            muteText = SUBLR_MUTE_TEXT
-            fbG = [proj.groups[i]]
-
-        else:
-            fbX = [FILL_FB_POSX]
-            fbY = [FILL_FB_POSY]
-            fbG = [proj.groups[i]]
-
-        for j in range(len(fbX)):
-            insertTemplate(proj, templates, "Fallback", fbX[j], fbY[j], proj.groups[i].viewId, None, fbG[j].groupId, None, proj.cursor, None, None, None, None, None);
 
 # Delete a view from project
 def deleteView(proj, viewId):
