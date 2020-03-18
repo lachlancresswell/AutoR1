@@ -1,6 +1,7 @@
 import sqlite3
 import logging
 import sys
+from abc import ABCMeta, abstractmethod
 
 PARENT_GROUP_TITLE = 'AUTO'
 AP_GROUP_TITLE = 'AP'
@@ -99,42 +100,55 @@ class Group:
     def viewId(self, value):
         self._viewId = value
 
-
-# Load template file + templates within
-class TemplateFile:
+class R1db(object):
+    __metaclass__ = ABCMeta
     def __init__(self, f):
-        self.__set_f(f)
+        self.f = f
         self.db = sqlite3.connect(f);
         self.cursor = self.db.cursor();
-        self.templates = []
-        logging.info('Loaded template - ' + f)
-
-        self.cursor.execute('SELECT * FROM "main"."Sections" ORDER BY JoinedId ASC')
-        rtn  = self.cursor.fetchall()
-
-        self.cursor.execute(f'SELECT Name FROM "main"."Sections"')
-        for r in self.cursor.fetchall():
-            self.templates.append(Template(r[0]))
-        for row in rtn:
-            for i in range(len(self.templates)):
-                if row[1] == self.templates[i].name:
-                    self.templates[i].joinedId = row[3]
-                    self.cursor.execute(f'SELECT * FROM "main"."Controls" WHERE JoinedId = {self.templates[i].joinedId}')
-                    self.templates[i].contents = self.cursor.fetchall()
-
-        logging.info(str(len(self.templates)) + ' templates loaded.')
-
-    def __get_f(self):
-        return self.__f
-
-    def __set_f(self, f):
-        self.__f = f
-
-    f = property(__get_f, __set_f)
+        logging.info('Loaded file - ' + f)
 
     def close(self):
         self.db.commit()
         self.db.close()
+
+
+### Load template file + templates within from .r2t file ###
+# Sections table contains template overview info
+class TemplateFile(R1db):
+    def __init__(self, f):
+        super().__init__(f) #Inherit from parent class
+        self.templates = []
+
+    # Load all stored templates
+    def loadTemplates(self):
+        # Sections table contains
+        self.cursor.execute('SELECT * FROM "main"."Sections" ORDER BY JoinedId ASC')
+        templates  = self.cursor.fetchall()
+
+        logging.info(f'Found {len(templates)} templates in file.')
+
+        for idx, temp in enumerate(templates):
+            joinedId = templates[3]
+
+            self.cursor.execute(f'SELECT * FROM "main"."Controls" WHERE JoinedId = {joinedId}') # Load controls
+            controls = self.cursor.fetchall()
+
+            self.templates.append(Template(temp, controls))
+            logging.info(f'Loaded template - {idx} / {self.templates[-1].name}')
+
+
+# Sections is table name from .r2t file
+class Template:
+    def __init__(self, sections, controls):
+        if sections is not None:
+            self.id = sections[0]
+            self.name = sections[1]
+            self.parentId = sections[2]
+            self.joinedId = sections[3]
+
+        if controls is not None:
+            self.controls = controls
 
 # Deletes a project group and its children
 def deleteGroup(proj, gId):
