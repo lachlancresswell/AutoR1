@@ -153,6 +153,15 @@ class ProjectFile:
         self.db = sqlite3.connect(f);
         self.cursor = self.db.cursor();
 
+        self.cursor.execute(f"SELECT * FROM sqlite_master WHERE name ='Groups' and type='table'")
+        if self.cursor.fetchone() is None:
+            print("Run initial R1 group + view generation first before using AutoR1. Exiting.")
+            sys.exit()
+        self.cursor.execute(f"SELECT * FROM sqlite_master WHERE name ='Views' and type='table'")
+        if self.cursor.fetchone() is None:
+            print("Run initial R1 group + view generation first before using AutoR1. Exiting.")
+            sys.exit()
+
         # Get id of Auto R1 groups
         rtn = getGroupIdFromName(self, PARENT_GROUP_TITLE)
         if rtn is not None:
