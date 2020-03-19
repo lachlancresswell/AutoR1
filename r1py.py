@@ -144,16 +144,6 @@ class Template:
         if controls is not None:
             self.controls = controls
 
-# Deletes a project group and its children
-def deleteGroup(proj, gId):
-    proj.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE ParentId = {gId}')
-    rtn = proj.cursor.fetchone();
-    if rtn is not None:
-        deleteGroup(proj, rtn[0])
-    else:
-        logging.info(f'Deleting group {gId}.')
-        return proj.cursor.execute(f'DELETE FROM "main"."Groups" WHERE GroupId = {gId}')
-
 # Load project file + get joined id for new entries
 class ProjectFile(R1db):
 
@@ -166,7 +156,17 @@ class ProjectFile(R1db):
         if self.cursor.fetchone() is None:
             return -1;
 
-    #return getGroupIdFromName(self, PARENT_GROUP_TITLE)
+    # Deletes a project group and its children
+    # Leading underscores define private function
+    def __deleteGroup(self, gId):
+        self.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE ParentId = {gId}')
+        children = self.cursor.fetchall();
+        for child in children:
+            self._ProjectFile__deleteGroup(child[0])
+
+        logging.info(f'Deleting from groups - {gId}')
+        return self.cursor.execute(f'DELETE FROM "main"."Groups" WHERE GroupId = {gId}')
+
     def __init__(self, f, templates):
         super().__init__(f) #Inherit from parent class
         self.mId = 0;
@@ -348,23 +348,24 @@ class ProjectFile(R1db):
 
     def clean(self):
         self.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{MASTER_WINDOW_TITLE}"')
-        rtn = self.cursor.fetchone()
+        view = self.cursor.fetchone()
 
-        if rtn is not None:
-            logging.info(f'Deleting existing {MASTER_WINDOW_TITLE} view.')
+        if view is not None:
             self.cursor.execute(f'DELETE FROM "main"."Views" WHERE "Name" = "{MASTER_WINDOW_TITLE}"')
+        logging.info(f'Deleted {MASTER_WINDOW_TITLE} view.')
+
         self.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
-        rtn = self.cursor.fetchone()
-        if rtn is not None:
-            logging.info(f'Deleting existing {METER_WINDOW_TITLE} view.')
+        view = self.cursor.fetchone()
+        if view is not None:
             self.cursor.execute(f'DELETE FROM "main"."Views" WHERE "Name" = "{METER_WINDOW_TITLE}"')
+        logging.info(f'Deleted existing {METER_WINDOW_TITLE} view.')
 
         self.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{PARENT_GROUP_TITLE}"')
-        rtn = self.cursor.fetchone()
-        if rtn is not None:
-            pId = rtn[0]
-            logging.info(f'Deleting existing {PARENT_GROUP_TITLE} group.')
-            deleteGroup(self, self.pId)
+        group = self.cursor.fetchone()
+        if group is not None:
+            pId = group[0]
+            self._ProjectFile__deleteGroup(self.pId)
+        logging.info(f'Deleted existing {PARENT_GROUP_TITLE} group.')
 
 def createNavButtons(proj, templates):
     proj.cursor.execute(f'SELECT * FROM "main"."Views" WHERE Type = "{1000}"')
