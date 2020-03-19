@@ -54,7 +54,7 @@ logfn = LOGDIR+timestamp+'-autor1log.txt'
 with open(logfn, 'w'): pass
 logging.basicConfig(filename=logfn,level=logging.INFO)
 logging.getLogger().setLevel(logging.INFO)
-#logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
+logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
 if not checkFile(logfn):
     print(f'Could not access {logfn}')
@@ -81,15 +81,16 @@ if not checkFile(MOD_FILE):
     print(f'Could not access {MOD_FILE}')
     sys.exit()
 
-templates = r1.TemplateFile(TEMP_FILE)
-project = r1.ProjectFile(MOD_FILE, templates)
-r1.createParentGroup(project);
-r1.createIpGroups(project);
-r1.createMeterView(project, templates);
-r1.createMasterView(project, templates);
-r1.createNavButtons(project, templates)
+tempFile = r1.TemplateFile(TEMP_FILE)
+tempFile.loadTemplates()
+projFile = r1.ProjectFile(MOD_FILE, tempFile)
+#r1.createParentGroup(project);
+r1.createIpGroups(projFile);
+r1.createMeterView(projFile, tempFile);
+r1.createMasterView(projFile, tempFile);
+r1.createNavButtons(projFile, tempFile)
 
 print("Finished generating views, controls and groups.")
-templates.close();
-project.close();
+tempFile.close();
+projFile.close();
 sys.exit()

@@ -11,6 +11,8 @@ SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)\n(default: y): '
 EXISTING_TEXT = 'Found existing AutoR1 group. Regenerate content? (y/n)\n(default: n): '
 SUBARRAY_CTR_TEXT = 'Assign SUB Array C channel to L or R? (L/R)\n(default: L): '
 
+IPCONFIG_DEFAULT = [0,0,0,0,0,0,0,0]
+
 ARRAYCALC_SNAPSHOT = 1 #Snapshot ID
 INPUT_TYPES = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"]
 ipStr = ["Config_InputEnable1", "Config_InputEnable2", "Config_InputEnable3", "Config_InputEnable4", "Config_InputEnable5", "Config_InputEnable6", "Config_InputEnable7", "Config_InputEnable8"]
@@ -56,23 +58,16 @@ DEV_PROP_TYPES = [
 ,'Error_SmpsTempOff'
 ,'Error_SmpsTempWarn']
 
-# Used for a template contained in a template file
-class Template:
-    def __init__(self, name):
-        self.name = name
-        self.joinedId = 0
-        self.contents = []
-
 class Channel:
-    def __init__(self, targetId, targetChannel, name):
-        self.targetId = targetId
-        self.targetChannel = targetChannel
-        self.inputEnable = []
-        self.name = name
+    def __init__(self, row, inputConfig):
+        self.targetId = row[0]
+        self.targetChannel = row[1]
+        self.inputEnable = inputConfig
+        self.name = row[2]
 
         logging.info(f'Created channel - {self.name}')
 
-class Group:
+class SourceGroup:
     def __init__(self, groupId, name, ap, vId, type):
         self.groupId = groupId
         self.name = name
@@ -129,8 +124,7 @@ class TemplateFile(R1db):
         logging.info(f'Found {len(templates)} templates in file.')
 
         for idx, temp in enumerate(templates):
-            joinedId = templates[3]
-
+            joinedId = temp[3]
             self.cursor.execute(f'SELECT * FROM "main"."Controls" WHERE JoinedId = {joinedId}') # Load controls
             controls = self.cursor.fetchall()
 
@@ -161,44 +155,27 @@ def deleteGroup(proj, gId):
         return proj.cursor.execute(f'DELETE FROM "main"."Groups" WHERE GroupId = {gId}')
 
 # Load project file + get joined id for new entries
-class ProjectFile:
-    def __init__(self, f, templates):
-        self.f = f
-        self.db = sqlite3.connect(f);
-        self.cursor = self.db.cursor();
+class ProjectFile(R1db):
 
+    # Find if inital R1 setup has been run
+    def initCheck(self):
         self.cursor.execute(f"SELECT * FROM sqlite_master WHERE name ='Groups' and type='table'")
         if self.cursor.fetchone() is None:
-            print("Run initial R1 group + view generation first before using AutoR1. Exiting.")
-            sys.exit()
+            return -1;
         self.cursor.execute(f"SELECT * FROM sqlite_master WHERE name ='Views' and type='table'")
         if self.cursor.fetchone() is None:
-            print("Run initial R1 group + view generation first before using AutoR1. Exiting.")
-            sys.exit()
+            return -1;
 
-        # Get id of Auto R1 groups
-        rtn = getGroupIdFromName(self, PARENT_GROUP_TITLE)
-        if rtn is not None:
-            self.pId = rtn;
-            userIp = " "
-            while (userIp != "y") and (userIp != "n") and (userIp != ""):
-                userIp = input(EXISTING_TEXT)
-            if (userIp == "n") or (userIp == ""):
-                print("Closing program.")
-                sys.exit()
-
-        self.pId = 1;
+    #return getGroupIdFromName(self, PARENT_GROUP_TITLE)
+    def __init__(self, f, templates):
+        super().__init__(f) #Inherit from parent class
         self.mId = 0;
         self.meterViewId = -1;
         self.masterViewId = -1
-        self.clean()
-        self.close()
-        self.db = sqlite3.connect(f);
-        self.cursor = self.db.cursor();
         self.subArray = []
         self.pId = -1;
         self.ap = 0
-        logging.info('Loaded project - ' + f)
+        self.groups = []
 
         # Set joinedId start
         self.cursor.execute('SELECT JoinedId from "main"."Controls" ORDER BY JoinedId DESC LIMIT 1')
@@ -210,38 +187,35 @@ class ProjectFile:
             logging.critical("Views have not been generated. Please run initial setup in R1 first.")
             sys.exit()
 
-        #Load all channels. Pass any 'TargetProperty' in the SQL request
-        # to retrieve every channel once in the query
+        #Load all channels + their input config
         self.channels = []
-        self.cursor.execute(f'SELECT TargetId, TargetNode FROM "main"."SnapshotValues" WHERE SnapshotId = {ARRAYCALC_SNAPSHOT} AND TargetProperty = "Config_InputEnable1" ORDER BY TargetId ASC')
-        rtn = self.cursor.fetchall()
-        for row in rtn:
-            tId = row[0]
-            tCh = row[1]
-            self.cursor.execute(f'SELECT Name FROM "main"."AmplifierChannels" WHERE DeviceId = {tId} AND AmplifierChannel = {tCh}')
-            name = self.cursor.fetchone()[0]
-            self.channels.append(Channel(tId, tCh, name))
-        logging.info(f'{len(self.channels)} channels loaded. First: {self.channels[0].name}  /  Last: {self.channels[-1].name}')
+        self.cursor.execute(f'SELECT * FROM "main"."AmplifierChannels" ORDER BY DeviceId ASC, AmplifierChannel ASC')
+        ampChannels = self.cursor.fetchall()
+        for channel in ampChannels:
+            targetId = channel[0]
+            targetChannel = channel[1]
+            name = channel[2]
+            if name is not "" and name is not "Unused": # Avoid unnamed or unused channels
 
+                # Find which inputs are enabled for this channel (D1, D2, D3, D4, A1, A2, A3, A4)
+                ipConfig = IPCONFIG_DEFAULT
+                for idx, s in enumerate(ipStr):
+                    for s in ipStr:
+                        self.cursor.execute(f'SELECT * FROM "main"."SnapshotValues" WHERE SnapshotId = {ARRAYCALC_SNAPSHOT} AND TargetId = {targetId} AND TargetNode = {targetChannel} AND TargetProperty = "{s}" AND Value = 1 ORDER BY TargetId')
+                        rtn = self.cursor.fetchall()
+                        ipConfig[idx] = len(rtn) # 0 for input not enabled, 1 for enabled
+                self.channels.append(Channel(channel, ipConfig))
 
-        #Get ip routing for each channel from ArrayCalc snapshot
-        for c in self.channels:
-            for s in ipStr:
-                self.cursor.execute(f'SELECT * FROM "main"."SnapshotValues" WHERE SnapshotId = {ARRAYCALC_SNAPSHOT} AND TargetId = {c.targetId} AND TargetNode = {c.targetChannel} AND TargetProperty = "{s}" AND Value = 1 ORDER BY TargetId')
-                rtn = self.cursor.fetchall()
-                c.inputEnable.append(len(rtn));
+        logging.info(f'{len(self.channels)} channels loaded.')
 
-        logging.info(f'Loaded input routing config for all channels')
-
-        createParentGroup(self)
+        self.createParentGroup()
 
         # Find Master groupId
-        self.cursor.execute('SELECT "GroupId" FROM "main"."Groups" ORDER BY "GroupId" ASC LIMIT 3')
-        rtn = self.cursor.fetchall()
+        self.cursor.execute('SELECT "GroupId" FROM "main"."Groups" WHERE "GroupId" = 2')
+        rtn = self.cursor.fetchone()
         if rtn is None:
             logging.critical('Cannot find Master group.')
-        self.mId = rtn[1][0]
-        self.groups = []
+        self.mId = rtn[0]
 
         # Find source group info
         self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "ParentId" = {self.mId}')
@@ -250,9 +224,9 @@ class ProjectFile:
         for row in rtn:
             # Find source viewId
             self.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE "Name" = "{row[1]}"')
-            rtn2 = self.cursor.fetchone()
-            if rtn2 is not None:
-                vId = rtn2[0]
+            viewIds = self.cursor.fetchone()
+            if viewIds is not None:
+                vId = viewIds[0]
             else:
                 logging.error(f'Cannot find view for "{row[1]}"')
 
@@ -270,7 +244,6 @@ class ProjectFile:
                 logging.error(f'Cannot find SourceGroup info for {row[1]}')
 
             if type != 3: # Not Sub Array
-                gCount = len(self.groups)
                 srcType = 0 # 0 - point source, 1 - mono array, 2 - stereo array
                 for g in [" TOPs L", " TOPs R", " TOPs", " SUBs L", " SUBs R", " SUBs", ""]:
                     if g == "" and srcType == 1:
@@ -278,7 +251,7 @@ class ProjectFile:
                     self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{row[1] + g}"')
                     rtn = self.cursor.fetchone()
                     if rtn is not None:
-                        self.groups.append(Group(rtn[0], rtn[1], ap, vId, type)) #First is GroupId, second is Name
+                        self.groups.append(SourceGroup(rtn[0], rtn[1], ap, vId, type)) #First is GroupId, second is Name
                         self.groups[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[-1].groupId)
 
                         if len(self.groups[-1].targetChannels) > 0:
@@ -306,7 +279,7 @@ class ProjectFile:
                 subCh = self.cursor.fetchone()
 
                 if subCh is not None:
-                    self.subArray = Group(subCh[0], subCh[1], ap, vId, type) #First is GroupId, second is Name
+                    self.subArray = SourceGroup(subCh[0], subCh[1], ap, vId, type) #First is GroupId, second is Name
                     self.subArray.targetChannels = findDevicesInGroups(self.cursor, self.subArray.groupId)
                 else:
                     logging.error(f'Could not find group for {row[1]}')
@@ -351,7 +324,7 @@ class ProjectFile:
                         for tc in g:
                             self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{tc[1]}",{rtn[0]},{tc[3]},{tc[4]},1,0);')
 
-                        self.groups.append(Group(rtn[0], rtn[1], ap, vId, type))
+                        self.groups.append(SourceGroup(rtn[0], rtn[1], ap, vId, type))
                         self.groups[-1].targetChannels = findDevicesInGroups(self.cursor, self.groups[-1].groupId)
 
                         g = groupR
@@ -366,9 +339,12 @@ class ProjectFile:
                 if g.AP > 0:
                     for c in g.targetChannels:
                         self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{c[1]}",{self.apGroupId},{c[3]},{c[4]},1,0);')
-
-    def delete(self, table, param, match):
-        self.cursor.execute(f'DELETE FROM "main"."{table}" WHERE "{param}" = "{match}"')
+    ## Create 'Auto' group
+    # Create group if it does not already exist
+    def createParentGroup(self):
+        self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{PARENT_GROUP_TITLE}",1,0,-1,0,0);')
+        self.pId = getGroupIdFromName(self, PARENT_GROUP_TITLE)
+        logging.info(f'Created {PARENT_GROUP_TITLE} group with id {self.pId}')
 
     def clean(self):
         self.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{MASTER_WINDOW_TITLE}"')
@@ -376,12 +352,12 @@ class ProjectFile:
 
         if rtn is not None:
             logging.info(f'Deleting existing {MASTER_WINDOW_TITLE} view.')
-            self.delete("Views", "Name", MASTER_WINDOW_TITLE)
+            self.cursor.execute(f'DELETE FROM "main"."Views" WHERE "Name" = "{MASTER_WINDOW_TITLE}"')
         self.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{METER_WINDOW_TITLE}"')
         rtn = self.cursor.fetchone()
         if rtn is not None:
             logging.info(f'Deleting existing {METER_WINDOW_TITLE} view.')
-            self.delete("Views", "Name", METER_WINDOW_TITLE)
+            self.cursor.execute(f'DELETE FROM "main"."Views" WHERE "Name" = "{METER_WINDOW_TITLE}"')
 
         self.cursor.execute(f'SELECT GroupId FROM "main"."Groups" WHERE Name = "{PARENT_GROUP_TITLE}"')
         rtn = self.cursor.fetchone()
@@ -389,10 +365,6 @@ class ProjectFile:
             pId = rtn[0]
             logging.info(f'Deleting existing {PARENT_GROUP_TITLE} group.')
             deleteGroup(self, self.pId)
-
-    def close(self):
-        self.db.commit()
-        self.db.close()
 
 def createNavButtons(proj, templates):
     proj.cursor.execute(f'SELECT * FROM "main"."Views" WHERE Type = "{1000}"')
@@ -406,10 +378,10 @@ def createNavButtons(proj, templates):
 
 
 
-def getTempContents(templates, tempName):
+def getTempControlsFromName(templates, tempName):
     for t in templates.templates:
         if t.name == tempName:
-            return t.contents
+            return t.controls
     return -1;
 
 def getTempSize(templates, tempName):
@@ -444,7 +416,7 @@ def insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, t
         jId = proj.jId
         proj.jId = proj.jId + 1
 
-    tempContents = getTempContents(templates, tempName)
+    tempContents = getTempControlsFromName(templates, tempName)
 
     for row in tempContents:
         tProp = targetProp
@@ -492,15 +464,6 @@ def insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, t
     return getTempSize(templates, tempName)
     #except:
     return tempContents
-
-
-## Create 'Auto' group
-# Create group if it does not already exist
-def createParentGroup(proj):
-    if proj.pId is -1:
-        proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{PARENT_GROUP_TITLE}",1,0,-1,0,0);')
-        proj.pId = getGroupIdFromName(proj, PARENT_GROUP_TITLE)
-        logging.info(f'Created {PARENT_GROUP_TITLE} group with id {proj.pId}')
 
 # Creates input relative groups + assign channels
 def createIpGroups(proj):
@@ -701,7 +664,7 @@ def createMasterView(proj, templates):
         if g.isSl > 0:
             template += " CPL2"
 
-        tempContents = getTempContents(templates, template)
+        tempContents = getTempControlsFromName(templates, template)
         metCh = 0 # Current channel of stereo pair
         mutCh = 0
         w = 0
