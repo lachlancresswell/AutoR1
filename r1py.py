@@ -10,6 +10,7 @@ MASTER_WINDOW_TITLE = 'AUTO - Master'
 SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)\n(default: y): '
 EXISTING_TEXT = 'Found existing AutoR1 group. Regenerate content? (y/n)\n(default: n): '
 SUBARRAY_CTR_TEXT = 'Assign SUB Array C channel to L or R? (L/R)\n(default: L): '
+INPUT_SNAP_NAME = "IP Config"
 
 IPCONFIG_DEFAULT = [0,0,0,0,0,0,0,0]
 
@@ -211,7 +212,7 @@ class ProjectFile(R1db):
         self.createParentGroup()
 
         # Find Master groupId
-        self.cursor.execute('SELECT "GroupId" FROM "main"."Groups" WHERE "GroupId" = 2')
+        self.cursor.execute('SELECT "GroupId" FROM "main"."Groups" WHERE "ParentId" = 1 AND "Name" = "Master"')
         rtn = self.cursor.fetchone()
         if rtn is None:
             logging.critical('Cannot find Master group.')
@@ -345,6 +346,71 @@ class ProjectFile(R1db):
         self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{PARENT_GROUP_TITLE}",1,0,-1,0,0);')
         self.pId = getGroupIdFromName(self, PARENT_GROUP_TITLE)
         logging.info(f'Created {PARENT_GROUP_TITLE} group with id {self.pId}')
+
+    def createTriggers(self):
+        logging.info(f'Creating SQL triggers.')
+
+        for i in range(len(INPUT_TYPES)):
+            tp = ipStr[i]
+            gName = INPUT_TYPES[i]
+            self.cursor.execute(
+                f'  CREATE TRIGGER AUTOR1_{gName}_Add '
+                f'	AFTER INSERT ON SnapshotValues WHEN  '
+                f'		NEW.SnapshotId = (SELECT SnapshotId FROM Snapshots WHERE Name = "{INPUT_SNAP_NAME}") '
+                f'		AND NEW.TargetProperty = "{tp}" '
+                f'		AND NEW.Value = 1 '
+                f'		AND NOT EXISTS (SELECT *  '
+                f'			FROM Groups  '
+                f'			WHERE TargetId = NEW.TargetId '
+                f'			AND TargetChannel = NEW.TargetNode '
+                f'			AND ParentId = (SELECT GroupId FROM Groups WHERE Name = "{gName}")) '
+                f'    BEGIN '
+                f'    	INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type) '
+                f'    		SELECT "{PARENT_GROUP_TITLE}", 1, 0, -1, 0'
+                f'    		WHERE NOT EXISTS (SELECT * '
+                f'    		FROM Groups  '
+                f'    		WHERE Name = "{PARENT_GROUP_TITLE}"); '
+                f' '
+                f'    	INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type) '
+                f'    		SELECT "{gName}", (SELECT GroupId FROM Groups WHERE Name = "{PARENT_GROUP_TITLE}"), 0, -1, 0 '
+                f'    		WHERE NOT EXISTS (SELECT 1  '
+                f'    		FROM Groups  '
+                f'    		WHERE Name = "{gName}"); '
+                f' '
+                f'    	INSERT INTO Groups (ParentId, Name, TargetId, TargetChannel, Type, Flags) '
+                f'    		SELECT (SELECT GroupId FROM Groups WHERE Name = "{gName}"), Name, NEW.TargetId, NEW.TargetNode, 1, 0 '
+                f'    		FROM AmplifierChannels '
+                f'    			WHERE DeviceId = NEW.TargetId '
+                f'    			AND AmplifierChannel = NEW.TargetNode; '
+                f'   END; ')
+
+            self.cursor.execute(
+                f'    CREATE TRIGGER AUTOR1_{gName}_Remove '
+                f'    	AFTER INSERT ON SnapshotValues WHEN  '
+                f'    		NEW.SnapshotId = (SELECT SnapshotId FROM Snapshots WHERE Name = "{INPUT_SNAP_NAME}")  '
+                f'    		AND NEW.TargetProperty = "{tp}" '
+                f'    		AND NEW.Value = 0 '
+                f'    		AND EXISTS (SELECT *  '
+                f'    			FROM Groups  '
+                f'    			WHERE TargetId = NEW.TargetId '
+                f'    			AND TargetChannel = NEW.TargetNode '
+                f'    			AND ParentId = (SELECT GroupId FROM Groups WHERE Name = "{gName}")) '
+                f'    BEGIN '
+                f'    	DELETE FROM Groups '
+                f'    		WHERE ParentId = (SELECT GroupId FROM Groups WHERE Name = "{gName}") '
+                f'    		AND TargetId = NEW.TargetId'
+                f'	        AND TargetChannel = NEW.TargetNode;'
+                f'    END;')
+
+    # Remove SQL triggers from project file
+    def removeTriggers(self):
+        logging.info(f'Removing SQL triggers.')
+
+        for i in INPUT_TYPES:
+            s = f'DROP TRIGGER IF EXISTS AUTOR1_{i}_Add;'
+            self.cursor.execute(s)
+            s = f'DROP TRIGGER IF EXISTS AUTOR1_{i}_Remove;'
+            self.cursor.execute(s)
 
     def clean(self):
         self.cursor.execute(f'SELECT ViewId FROM "main"."Views" WHERE Name = "{MASTER_WINDOW_TITLE}"')
