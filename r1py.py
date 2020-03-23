@@ -209,7 +209,7 @@ class ProjectFile(R1db):
 
         logging.info(f'{len(self.channels)} channels loaded.')
 
-        self.createParentGroup()
+        self.pId = self.createGroup(PARENT_GROUP_TITLE, 1)
 
         # Find Master groupId
         self.cursor.execute('SELECT "GroupId" FROM "main"."Groups" WHERE "ParentId" = 1 AND "Name" = "Master"')
@@ -340,12 +340,22 @@ class ProjectFile(R1db):
                 if g.AP > 0:
                     for c in g.targetChannels:
                         self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{c[1]}",{self.apGroupId},{c[3]},{c[4]},1,0);')
-    ## Create 'Auto' group
-    # Create group if it does not already exist
-    def createParentGroup(self):
-        self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{PARENT_GROUP_TITLE}",1,0,-1,0,0);')
-        self.pId = getGroupIdFromName(self, PARENT_GROUP_TITLE)
-        logging.info(f'Created {PARENT_GROUP_TITLE} group with id {self.pId}')
+
+    # Create R1 group if does not already exist
+    # Returns new groups GroupId
+    def createGroup(self, name, parentId):
+        if parentId is None:
+            parentId = 1;
+        s = (f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
+        f'      SELECT "{name}", {parentId}, 0, -1, 0, 0  '
+        f'      WHERE NOT EXISTS (SELECT 1 '
+        f'      FROM Groups '
+        f'      WHERE Name = "{name}"); ')
+        self.cursor.execute(s);
+        self.cursor.execute(f'SELECT GroupId FROM Groups ORDER BY GroupId DESC LIMIT 1;')
+        groupId = self.cursor.fetchone()[0]
+        logging.info(f'Creating {name} group with id {groupId}')
+        return groupId
 
     def createTriggers(self):
         logging.info(f'Creating SQL triggers.')
