@@ -209,7 +209,7 @@ class ProjectFile(R1db):
 
         logging.info(f'{len(self.channels)} channels loaded.')
 
-        self.pId = self.createGroup(PARENT_GROUP_TITLE, 1)
+        self.pId = self.createGroup(PARENT_GROUP_TITLE, 1)[0]
 
         # Find Master groupId
         self.cursor.execute('SELECT "GroupId" FROM "main"."Groups" WHERE "ParentId" = 1 AND "Name" = "Master"')
@@ -309,18 +309,13 @@ class ProjectFile(R1db):
 
                 if len(groupL) > 0 and len(groupR) > 0:
                     ## Create SUBarray LR group
-                    self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{SUBARRAY_GROUP_TITLE}",{self.pId},0,-1,0,0);')
-                    pId = getGroupIdFromName(self, SUBARRAY_GROUP_TITLE)
-                    logging.info(f'Created {SUBARRAY_GROUP_TITLE} group with id {pId}')
+                    pId = self.createGroup(SUBARRAY_GROUP_TITLE, self.pId)[0]
 
                     # Create sub L and R groups + assign channels
                     gStr = [row[1]+" L", row[1]+" R"]
                     g = groupL
                     for s in gStr:
-                        self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{pId},0,-1,0,0);')
-                        logging.info(f'Created {s} group with id {pId}')
-                        self.cursor.execute(f'SELECT * FROM "main"."Groups" WHERE "Name" = "{s}"')
-                        rtn = self.cursor.fetchone()
+                        rtn = self.createGroup(s, pId)
 
                         for tc in g:
                             self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{tc[1]}",{rtn[0]},{tc[3]},{tc[4]},1,0);')
@@ -332,8 +327,7 @@ class ProjectFile(R1db):
 
         # Create AP group
         if self.ap > 0:
-            self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{AP_GROUP_TITLE}",{self.pId},0,-1,0,0);')
-            self.apGroupId = getGroupIdFromName(self, AP_GROUP_TITLE)
+            self.apGroupId = self.createGroup(AP_GROUP_TITLE, self.pId)[0]
             logging.info(f'Created {AP_GROUP_TITLE} group with id {self.apGroupId}')
 
             for g in self.groups:
@@ -342,7 +336,7 @@ class ProjectFile(R1db):
                         self.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{c[1]}",{self.apGroupId},{c[3]},{c[4]},1,0);')
 
     # Create R1 group if does not already exist
-    # Returns new groups GroupId
+    # Returns inserted row
     def createGroup(self, name, parentId):
         if parentId is None:
             parentId = 1;
@@ -352,10 +346,10 @@ class ProjectFile(R1db):
         f'      FROM Groups '
         f'      WHERE Name = "{name}"); ')
         self.cursor.execute(s);
-        self.cursor.execute(f'SELECT GroupId FROM Groups ORDER BY GroupId DESC LIMIT 1;')
-        groupId = self.cursor.fetchone()[0]
-        logging.info(f'Creating {name} group with id {groupId}')
-        return groupId
+        self.cursor.execute(f'SELECT * FROM Groups ORDER BY GroupId DESC LIMIT 1;')
+        lastRow = self.cursor.fetchone()
+        logging.info(f'Creating {name} group with id {lastRow[0]}')
+        return lastRow
 
     def createTriggers(self):
         logging.info(f'Creating SQL triggers.')
@@ -541,25 +535,6 @@ def insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, t
     return getTempSize(templates, tempName)
     #except:
     return tempContents
-
-# Creates input relative groups + assign channels
-def createIpGroups(proj):
-    proj.ipGroupId = []
-    if proj.pId is not -1:
-        for s in INPUT_TYPES:
-            # Create groups
-            proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{s}",{proj.pId},0,-1,0,0);')
-            gId = getGroupIdFromName(proj, s)
-            proj.ipGroupId.append(gId)
-            logging.info(f'Created {s} group with id {gId}')
-
-        # Assign channels to their input group
-        for c in proj.channels:
-            for i in range(len(c.inputEnable)):
-                if c.inputEnable[i] > 0:
-                    proj.cursor.execute(f'INSERT INTO "main"."Groups"("Name","ParentId","TargetId","TargetChannel","Type","Flags") VALUES ("{c.name}",{proj.ipGroupId[i]},{c.targetId},{c.targetChannel},1,0);')
-    else:
-        logging.error(f'{PARENT_GROUP_TITLE} group does not exist.')
 
 def findDevicesInGroups(cursor, parentId):
     cursor.execute(f'SELECT * FROM "main"."Groups" WHERE ParentId = {parentId}')
