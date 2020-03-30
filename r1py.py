@@ -24,9 +24,6 @@ GROUPID = 0
 ARRAY_TYPE = 10
 POINTSOURCE_TYPE = 20
 SUBARRAY_TYPE = 30;
-SUBARRAY_GROUP_NAME_L = "SUB array L"
-SUBARRAY_GROUP_NAME_R = "SUB array R"
-SUBARRAY_GROUP_NAME_C = "SUB array C"
 
 FB_OVERVIEW_POSX = 842
 FB_OVERVIEW_POSY = 16
@@ -89,7 +86,7 @@ class SourceGroup:
         self.srcId = row[2]
         self.nextSrcId = row[3]
         self.type = row[4]*10 if self.nextSrcId <= 0 else 40 # Group is stereo if nextSrcId exists
-        self.apEnable = row[5]
+        self.apEnable = row[5] if row[5] else 0;
         self.asId = row[6]
         self.cabFamily = row[7]
         self.groupId = row[8]
@@ -109,8 +106,6 @@ class SourceGroup:
         self.subCGroupId = row[22]
         self.subCGroupName = row[23]
         self.channelGroups = []
-        self.TOPs = 1 if row[10] is not None else 0;
-        self.SUBs = 1 if row[16] is not None else 0;
         self.LR = 1 if (row[12] is not None or row[14] is not None or row[18] is not None or row[20] is not None or row[22] is not None) else 0;
         self.xover = row[24]
 
@@ -230,9 +225,10 @@ class ProjectFile(R1db):
         self.masterViewId = -1
         self.subArray = []
         self.pId = -1;
-        self.ap = 0
         self.groups = []
         self.sourceGroups = []
+
+        self.__clean()
 
         # Set joinedId start
         self.cursor.execute('SELECT JoinedId from Controls ORDER BY JoinedId DESC LIMIT 1')
@@ -253,9 +249,28 @@ class ProjectFile(R1db):
             logging.critical('Cannot find Master group.')
         self.mId = rtn[0]
 
-        self.__clean()
-
         self.__getSrcGrpInfo();
+
+
+        if self.apEnable:
+            apGroup = []
+            for srcGrp in self.sourceGroups:
+                if srcGrp.apEnable:
+                    for chGrp in srcGrp.channelGroups:
+                        if chGrp.type == 1 or chGrp.type == 4:
+                            apGroup += chGrp.channels
+
+            self.cursor.execute(
+            f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
+            f'  SELECT "AP", {self.pId}, 0, -1, 0, 0')
+            self.cursor.execute(f'SELECT max(GroupId) FROM Groups')
+            rtn = self.cursor.fetchone()
+            if rtn is not None:
+                self.apGroupId = rtn[0]
+                for ch in apGroup:
+                    self.cursor.execute(
+                    f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
+                    f'  SELECT "{ch.name}", {self.apGroupId}, {ch.targetId}, {ch.targetChannel}, 1, 0')
 
     def getChannelGroupTotal(self):
         i = 0;
@@ -367,8 +382,12 @@ class ProjectFile(R1db):
 
         rtn = self.cursor.fetchall();
 
+        self.apEnable = 0
         for row in rtn:
             self.sourceGroups.append(SourceGroup(row))
+            print(self.sourceGroups[-1].apEnable)
+            if self.sourceGroups[-1].apEnable:
+                self.apEnable = 1 ;
 
         # All channels
         for idx, srcGrp in enumerate(self.sourceGroups):
@@ -491,11 +510,17 @@ class ProjectFile(R1db):
         self.cursor.execute(f'DELETE FROM Views WHERE "Name" = "{METER_WINDOW_TITLE}"')
         logging.info(f'Deleted existing {METER_WINDOW_TITLE} view.')
 
-        self.cursor.execute(
-        f'  DELETE FROM Groups WHERE Name = "{SUBARRAY_GROUP_NAME_L}" '
-        f'  OR Name = "{SUBARRAY_GROUP_NAME_R}" '
-        f'  OR Name = "{SUBARRAY_GROUP_NAME_C}"'
-        )
+        self.cursor.execute(f'SELECT Name FROM SourceGroups WHERE Type = 3')
+        rtn = self.cursor.fetchone()
+        if rtn is not None:
+            subArrayName = rtn[0]
+            self.cursor.execute(
+            f'  DELETE FROM Groups WHERE Name = "{subArrayName + " SUBs L"}" '
+            f'  OR Name = "{subArrayName + " SUBs R"}" '
+            f'  OR Name = "{subArrayName + " SUBs C"}" '
+            f'  OR Name = "{subArrayName + " SUBs"}" '
+            )
+            self.cursor.execute(f'  DELETE FROM Groups WHERE Name = "{subArrayName}" AND ParentId = (SELECT ParentId FROM Groups WHERE Name = "Left/Right")')
 
         self.cursor.execute(f'SELECT GroupId FROM Groups WHERE Name = "{PARENT_GROUP_TITLE}"')
         group = self.cursor.fetchone()
@@ -715,7 +740,8 @@ def createMasterView(proj, templates):
     posY += __insertTemplate(proj, templates, 'Master Title', posX, posY, proj.masterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
     posX += __insertTemplate(proj, templates, 'Master Main', posX, posY, proj.masterViewId, None, proj.mId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X/2);
     asPos = __insertTemplate(proj, templates, 'Master ArraySight', posX, posY, proj.masterViewId, None, 0, None, proj.cursor, None, None, None, None, None)
-    if proj.ap > 0:
+
+    if proj.apEnable:
         posX += __insertTemplate(proj, templates, 'THC', posX, posY+asPos[1]+(METER_SPACING_Y/2), proj.masterViewId, None, proj.apGroupId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X*4);
     else:
         posX += asPos[0]+(METER_SPACING_X*4);
@@ -731,7 +757,7 @@ def createMasterView(proj, templates):
 
             template = 'Group'
             if srcGrp.LR: # Stereo groups
-                subGroups = [srcGrp.channelGroups[-1], srcGrp.channelGroups[-1]]
+                subGroups = [srcGrp.channelGroups[-3], srcGrp.channelGroups[-2]]
                 template += ' LR'
             if srcGrp.apEnable:
                 template += " AP"
@@ -759,8 +785,8 @@ def createMasterView(proj, templates):
                     tChannel = chGrp.channels[0].targetChannel
                 if 'Group LR' in template:
                     if (row[1] == 7): #Meters, these require a TargetChannel
-                        tId = chGrp.channels[0 if not metCh else int((len(chGrp.channels)/2)-1)].targetId
-                        tChannel = chGrp.channels[0 if not metCh else int((len(chGrp.channels)/2)-1)].targetChannel
+                        tId = chGrp.channels[0 if not metCh else int((len(chGrp.channels)/2))].targetId
+                        tChannel = chGrp.channels[0 if not metCh else int((len(chGrp.channels)/2))].targetChannel
                         metCh += 1
                     if (row[1] == 4) and (row[24] == "Config_Mute"): #Mute
                         tId = subGroups[mutCh].groupId
