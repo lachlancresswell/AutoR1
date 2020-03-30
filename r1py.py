@@ -115,49 +115,62 @@ class SourceGroup:
         self.cabFamily = row[7]
         self.groupId = row[8]
         self.groupName = row[9]
-        self.groupChannels = []
         self.topGroupId = row[10]
         self.topGroupName = row[11]
-        self.topGroupChannels = []
-        self.subGroupId = row[12]
-        self.subGroupName = row[13]
-        self.subGroupChannels = []
-        self.topLeftGroupId = row[14]
-        self.topLeftGroupName = row[15]
-        self.topLeftGroupChannels = []
-        self.topRightGroupId = row[16]
-        self.topRightGroupName = row[17]
-        self.topRightGroupChannels = []
+        self.topLeftGroupId = row[12]
+        self.topLeftGroupName = row[13]
+        self.topRightGroupId = row[14]
+        self.topRightGroupName = row[15]
+        self.subGroupId = row[16]
+        self.subGroupName = row[17]
         self.subLeftGroupId = row[18]
         self.subLeftGroupName = row[19]
-        self.subLeftGroupChannels = []
         self.subRightGroupId = row[20]
         self.subRightGroupName = row[21]
-        self.subRightGroupChannels = []
         self.subCGroupId = row[22]
         self.subCGroupName = row[23]
-        self.subCGroupChannels = []
         self.channelGroups = []
-        self.subC = 0
+        self.TOPs = 1 if row[10] is not None else 0;
+        self.SUBs = 1 if row[16] is not None else 0;
+        self.LR = 1 if (row[12] is not None or row[14] is not None or row[18] is not None or row[20] is not None or row[22] is not None) else 0;
+        self.xover = row[24]
 
         # Combine all returned sub groups into single array
         i = 14
-        while(i >= 0): # Break if found top or sub groups
-            if(row[8+i] is not None and row[9+i] is not None):
-                self.channelGroups.append(ChannelGroup(row[8+i], row[9+i]))
-            if(i < 8 and len(self.channelGroups) > 0): # Break if found top and sub groups
-                i = -1;
+        while(i >= 0):
+            grpId = row[8+i]
+            grpName = row[9+i]
+            if(grpId is not None and grpName is not None):
+                grpType = int(i/2) if i>0 else 0;
+                self.channelGroups.append(ChannelGroup(grpId, grpName, grpType)) # i becomes channel type indicator
+
             i = i-2;
+            if len(self.channelGroups) and i < 2: # Skip final group if subs or tops groups have been found, only use for point sources
+                i = -1;
 
         logging.info(f'Created source group - {self.groupId} / {self.name}')
 
+
+
+# A group discovered in R1 containing channels
+# GroupId and name are the R1 GroupId and name
+# Type describes the group:
+# 0 - Point source
+# 1 - TOPs
+# 2 - SUBs
+# 3 - TOPs R
+# 4 - TOPs L
+# 5 - SUBs C
+# 6 - SUBs R
+# 7 - SUBs L
 class ChannelGroup:
-    def __init__(self, groupId, name):
+    def __init__(self, groupId, name, type):
         self.groupId = groupId
         self.name = name
         self.channels = []
+        self.type = type;
 
-        logging.info(f'Created channel group - {self.groupId} / {self.name}')
+        logging.info(f'Created channel group - {self.groupId} / {self.name} / {self.type}')
 
 
 
@@ -294,19 +307,19 @@ class ProjectFile(R1db):
         for s in str:
             self.cursor.execute(
             f' WITH RECURSIVE '
-            f'   cnt(GroupId, Name, ParentId, TargetId, TargetChannel, Type) AS ( '
+            f'   devs(GroupId, Name, ParentId, TargetId, TargetChannel, Type) AS ( '
             f'      SELECT GroupId, Name, ParentId, TargetId, TargetChannel, Type FROM Groups WHERE Name = (SELECT Name FROM SourceGroups WHERE Type = 3) '
             f'      UNION '
-            f'      SELECT Groups.GroupId, Groups.Name, Groups.ParentId, Groups.TargetId, Groups.TargetChannel, Groups.Type FROM Groups, cnt WHERE Groups.ParentId = cnt.GroupId '
+            f'      SELECT Groups.GroupId, Groups.Name, Groups.ParentId, Groups.TargetId, Groups.TargetChannel, Groups.Type FROM Groups, devs WHERE Groups.ParentId = devs.GroupId '
             f'   ) '
-            f' SELECT GroupId, cnt.Name, TargetId, TargetChannel, CabinetsAdditionalData.Name, Cabinets.CabinetId FROM cnt '
+            f' SELECT GroupId, devs.Name, TargetId, TargetChannel, CabinetsAdditionalData.Name, Cabinets.CabinetId FROM devs '
             f' JOIN Cabinets '
-            f' ON cnt.TargetId = Cabinets.DeviceId '
-            f' AND cnt.TargetChannel = Cabinets.AmplifierChannel '
+            f' ON devs.TargetId = Cabinets.DeviceId '
+            f' AND devs.TargetChannel = Cabinets.AmplifierChannel '
             f' JOIN CabinetsAdditionalData '
             f' ON Cabinets.CabinetId = CabinetsAdditionalData.CabinetId '
             f' WHERE Linked = 0 '
-            f' AND cnt.Name LIKE "%array {s}%" '
+            f' AND devs.Name LIKE "%array {s}%" '
             )
             rtn = self.cursor.fetchall()
             if rtn is not None:
@@ -346,7 +359,6 @@ class ProjectFile(R1db):
                 if rtn is not None:
                     pId = rtn[0]
                 for idy, subDevs in enumerate(subArrayGroup):
-                    print(subDevs)
                     self.cursor.execute(
                     f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)'
                     f'  SELECT "{name+str[idx]}", {pId}, {subDevs[2]}, {subDevs[3]}, 1, 0'
@@ -354,7 +366,8 @@ class ProjectFile(R1db):
 
 
         self.cursor.execute(
-        f'  SELECT ViewId, Views.Name, SourceGroups.SourceGroupId, NextSourceGroupId, SourceGroups.Type, ArrayProcessingEnable, ArraySightId, System, a.GroupId as MasterGroupId, a.Name as MasterGroupName, b.GroupId as TopGroupId, b.Name as TopGroupName, c.GroupId as SubGroupId, c.Name as SubGroupName, d.GroupId as TopLeftGroupId, d.Name as TopLeftGroupName, e.GroupId as TopRightGroupId, e.Name as TopRightGroupName, f.GroupId as SubLeftGroupId, f.Name as SubLeftGroupName, g.GroupId as SubRightGroupId, g.Name as SubRightGroupName, h.GroupId as SubRightGroupId, h.Name as SubRightGroupName '
+        f'  SELECT Views.ViewId, Views.Name, SourceGroups.SourceGroupId, NextSourceGroupId, SourceGroups.Type, ArrayProcessingEnable, ArraySightId, System, a.GroupId as MasterGroupId, a.Name as MasterGroupName, b.GroupId as TopGroupId, b.Name as TopGroupName, c.GroupId as TopLeftGroupId, c.Name as TopLeftGroupName, d.GroupId as TopRightGroupId, d.Name as TopRightGroupName, e.GroupId as SubGroupId, e.Name as SubGroupName, f.GroupId as SubLeftGroupId, f.Name as SubLeftGroupName, g.GroupId as '
+        f'  SubRightGroupId, g.Name as SubRightGroupName, h.GroupId as SubCGroupId, h.Name as SubCGroupName, i.DisplayName as xover '
         f'  FROM Views JOIN SourceGroups  '
         f'  ON Views.Name = SourceGroups.Name  '
         f'  JOIN SourceGroupsAdditionalData  '
@@ -363,20 +376,23 @@ class ProjectFile(R1db):
         f'  ON a.Name = SourceGroups.Name '
         f'  LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE "% TOPs") b '
         f'  ON b.ParentId  = a.GroupId '
-        f'  LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE "% SUBs") c '
-        f'  ON c.ParentId  = a.GroupId '
-        f'  LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE "% TOPs R" ) d '
+        f'  LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE "% TOPs R" ) c '
+        f'  ON c.ParentId  = b.GroupId '
+        f'  LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE "% TOPs L" ) d '
         f'  ON d.ParentId  = b.GroupId '
-        f'  LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE "% TOPs L" ) e '
-        f'  ON e.ParentId  = b.GroupId '
+        f'  LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE "% SUBs") e '
+        f'  ON e.ParentId  = a.GroupId '
         f'  LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE "% SUBs C") f '
-        f'  ON f.ParentId  = c.GroupId '
+        f'  ON f.ParentId  = e.GroupId '
         f'  LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE "% SUBs R") g '
-        f'  ON g.ParentId  = c.GroupId '
+        f'  ON g.ParentId  = e.GroupId '
         f'  LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE "% SUBs L") h '
-        f'  ON h.ParentId  = c.GroupId '
-        f'  WHERE OrderIndex != -1 ' #Order index happens to be -1 if source group is second group in a stereo pair
+        f'  ON h.ParentId  = e.GroupId '
+        f'  LEFT OUTER JOIN (SELECT * FROM Controls WHERE DisplayName = "100Hz" OR DisplayName = "Infra") i '
+        f'  ON i.ViewId  = Views.ViewId '
+        f'  WHERE OrderIndex != -1 '# Order index happens to be -1 if source group is second group in a stereo pair
         f'  AND a.GroupId IN (SELECT max(GroupId) FROM Groups GROUP BY Name) '# Get L/R group first if exists else get child of Master group
+        f'  ORDER BY SourceGroups.SourceGroupId ASC '
         )
 
         rtn = self.cursor.fetchall();
@@ -388,14 +404,20 @@ class ProjectFile(R1db):
         for idx, srcGrp in enumerate(self.sourceGroups):
             for idy, devGrp in enumerate(srcGrp.channelGroups):
                 self.cursor.execute(
-                    f'  SELECT GroupId, Groups.Name, TargetId, TargetChannel, CabinetsAdditionalData.Name, Cabinets.CabinetId FROM Groups '
+                    f'  WITH RECURSIVE devs(GroupId, Name, ParentId, TargetId, TargetChannel, Type, Flags) AS ( '
+                    f'       SELECT Groups.GroupId, Groups.Name, Groups.ParentId, Groups.TargetId, Groups.TargetChannel, Groups.Type, Groups.Flags FROM Groups WHERE Groups.ParentId = {devGrp.groupId} '
+                    f'       UNION '
+                    f'       SELECT Groups.GroupId, Groups.Name, Groups.ParentId, Groups.TargetId, Groups.TargetChannel, Groups.Type, Groups.Flags FROM Groups, devs WHERE Groups.ParentId = devs.GroupId '
+                    f'   ) '
+                    f'    '
+                    f'  SELECT GroupId, devs.Name, TargetId, TargetChannel, CabinetsAdditionalData.Name, Cabinets.CabinetId FROM devs '
                     f'  JOIN Cabinets '
-                    f'  ON Groups.TargetId = Cabinets.DeviceId '
-                    f'  AND Groups.TargetChannel = Cabinets.AmplifierChannel '
+                    f'  ON devs.TargetId = Cabinets.DeviceId '
+                    f'  AND devs.TargetChannel = Cabinets.AmplifierChannel '
                     f'  JOIN CabinetsAdditionalData '
                     f'  ON Cabinets.CabinetId = CabinetsAdditionalData.CabinetId '
-                    f'  WHERE Groups.ParentId = {devGrp.groupId} '
                     f'  AND Linked = 0 '
+                    f'  WHERE devs.type = 1 '
                     )
                 rtn = self.cursor.fetchall()
 
@@ -724,8 +746,13 @@ def createMeterView(proj, templates):
 
 
     for srcGrp in proj.sourceGroups:
-
+        subs = 0
+        tops = 0
         for chGrp in srcGrp.channelGroups:
+            if chGrp.type == 4 and subs: #Skip sub parent group if SUBs L/R/C group exists
+                continue;
+            if chGrp.type == 1 and tops: #Skip top parent group if Tops L/R group exists
+                continue;
             dim = insertTemplate(proj, templates, 'Meters Group', posX, posY, proj.meterViewId, chGrp.name, chGrp.groupId, None, proj.cursor, None, None, None, None, None);
             posY += dim[1]+10
 
@@ -734,9 +761,16 @@ def createMeterView(proj, templates):
                 insertTemplate(proj, templates, "Meter", posX, posY, proj.meterViewId, ch.name, ch.targetId, ch.targetChannel, proj.cursor, None, None, proj.jId, None, None);
                 posY += spacingY
 
+            if chGrp.type > 4: # SUB L/R/C group
+                subs = 1;
+            elif chGrp.type > 1 and chGrp.type < 4: # TOP L/R group
+                tops = 1;
+
             posX += spacingX
             posY = startY
             proj.jId = proj.jId + 1
+
+
 
 def getGroupIdFromName(proj, name):
     proj.cursor.execute(f'SELECT GroupId FROM Groups WHERE Name = "{name}"')
@@ -753,49 +787,24 @@ def getGroupFromId(groups, gId):
     return -1;
 
 def createMasterView(proj, templates):
-    ## Get width of widest control in master template
+    ## Get width + height of templates used
     rtn = getTempSize(templates, "Master Main")
     masterW = rtn[0]
-    spacingX = masterW+METER_SPACING_X
-    AsId = 0
-
-    proj.cursor.execute(f'SELECT DeviceId FROM "main"."Devices" WHERE Model = "ArraySight"')
-    AsId = proj.cursor.fetchone()
-    if AsId is not None:
-        proj.cursor.fetchone()[0]
-    else:
-        AsId = 0
-        logging.info("Could not find ArraySight device.")
-
-    ## Get width of widest control in ArraySight template
+    masterH = rtn[1]
     rtn = getTempSize(templates, "Master ArraySight")
     asW = rtn[0]
     asH = rtn[1]
-    spacingX += asW+METER_SPACING_X
-
-    # Find count of mono and stereo groups
-    gCount = 0
-    gStCount = 0
-    for g in proj.groups:
-        if len(g.groupIdSt) > 1:
-            gStCount += 1;
-        else:
-            gCount += 1;
-
-    ## Get width of stereo group frame
+    rtn = getTempSize(templates, "Master Title")
+    titleW = rtn[0]
+    titleH = rtn[1]
     rtn = getTempSize(templates, "Group LR AP")
     meterW = rtn[0]
     meterH = rtn[1]
-    spacingX += (meterW+METER_SPACING_X)*gStCount
-    ## Get width of group frame
-    rtn = getTempSize(templates, "Group AP")
-    meterW = rtn[0]
-    meterH = rtn[1]
-    spacingX += (meterW+METER_SPACING_X)*gCount
 
-    spacingX += METER_SPACING_X*4
-
-    proj.cursor.execute(f'INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{MASTER_WINDOW_TITLE}",NULL,4,NULL,-1,{(spacingX)+METER_SPACING_X},1000,100,NULL,NULL,NULL,NULL);')
+    ####### CREATE VIEW #######
+    HRes = masterW + asW + (meterW * proj.getChannelGroupTotal()) + (METER_SPACING_X*proj.getChannelGroupTotal())
+    VRes = titleH + masterH + METER_SPACING_Y
+    proj.cursor.execute(f'INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{MASTER_WINDOW_TITLE}",NULL,4,NULL,-1,{HRes},{VRes},100,NULL,NULL,NULL,NULL);')
     proj.masterViewId = getViewIdFromName(proj, MASTER_WINDOW_TITLE)
     masterGroupId = getGroupIdFromName(proj, "Master")
 
@@ -804,75 +813,78 @@ def createMasterView(proj, templates):
     insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, proj.masterViewId, METER_WINDOW_TITLE, proj.meterViewId, -1, proj.cursor, None, None, None, None, None)
     posY += insertTemplate(proj, templates, 'Master Title', posX, posY, proj.masterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
     posX += insertTemplate(proj, templates, 'Master Main', posX, posY, proj.masterViewId, None, masterGroupId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X/2);
-    asPos = insertTemplate(proj, templates, 'Master ArraySight', posX, posY, proj.masterViewId, None, AsId, None, proj.cursor, None, None, None, None, None)
+    asPos = insertTemplate(proj, templates, 'Master ArraySight', posX, posY, proj.masterViewId, None, 0, None, proj.cursor, None, None, None, None, None)
     if proj.ap > 0:
-        # def insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, targetId, targetChannel, cursor, width, height, joinedId, targetProp, targetRec):
         posX += insertTemplate(proj, templates, 'THC', posX, posY+asPos[1]+(METER_SPACING_Y/2), proj.masterViewId, None, proj.apGroupId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X*4);
     else:
         posX += asPos[0]+(METER_SPACING_X*4);
-    for g in proj.groups:
-        jId = proj.jId
 
-        if " TOPs " in g.name or " SUBs " in g.name: # Skip L, R and master groups
-            continue;
-        template = 'Group'
-        if hasattr(g, "childId"): # Stereo groups
-            template += ' LR'
-        if g.AP > 0:
-            template += " AP"
-        if g.isSl > 0:
-            template += " CPL2"
+    for srcGrp in proj.sourceGroups:
+        subs = 0
+        tops = 0
+        for idx, chGrp in enumerate(srcGrp.channelGroups):
+            if chGrp.type > 4 or chGrp.type == 3 or chGrp.type == 2: # TOP or SUB L/R/C Group
+                continue;
 
-        tempContents = getTempControlsFromName(templates, template)
-        metCh = 0 # Current channel of stereo pair
-        mutCh = 0
-        w = 0
-        for row in tempContents:
-            dName = row[7]
-            tChannel = row[23]
-            tId = g.groupId
-            flag = row[19]
+            jId = proj.jId
 
-            if g.type is 0 and dName == "CUT":
-                dName = 'Infra'
-                logging.info(f"{g.name} - Enabling Infra")
+            template = 'Group'
+            if srcGrp.LR: # Stereo groups
+                subGroups = [srcGrp.channelGroups[-1], srcGrp.channelGroups[-1]]
+                template += ' LR'
+            if srcGrp.apEnable:
+                template += " AP"
+            if ("GSL" in srcGrp.cabFamily) or ("KSL" in srcGrp.cabFamily):
+                template += " CPL2"
 
-            if (row[1] == 12): #Get frame Width
-                w = row[4]
-            if (row[1] == 7): #Meters, these require a TargetChannel
-                tId = g.targetChannels[0][3]
-                tChannel = g.targetChannels[0][4]
-            if 'Group LR' in template:
+            tempContents = getTempControlsFromName(templates, template)
+            metCh = 0 # Current channel of stereo pair
+            mutCh = 0
+            w = 0
+            for row in tempContents:
+                dName = row[7]
+                tChannel = row[23]
+                tId = chGrp.groupId
+                flag = row[19]
+
+                if (chGrp.type < 1 or chGrp.type > 3) and dName == "CUT" and srcGrp.xover is not None:
+                    dName = srcGrp.xover
+                    logging.info(f"{chGrp.name} - Enabling {srcGrp.xover}")
+
+                if (row[1] == 12): #Get frame Width
+                    w = row[4]
                 if (row[1] == 7): #Meters, these require a TargetChannel
-                    child = getGroupFromId(proj.groups, g.childId[metCh])
-                    tId = child.targetChannels[0][3]
-                    tChannel = child.targetChannels[0][4]
-                    metCh += 1
-                if (row[1] == 4) and (row[24] == "Config_Mute"): #Mute
-                    child = getGroupFromId(proj.groups, g.childId[mutCh])
-                    tId = child.groupId
-                    mutCh += 1
+                    tId = chGrp.channels[0].targetId
+                    tChannel = chGrp.channels[0].targetChannel
+                if 'Group LR' in template:
+                    if (row[1] == 7): #Meters, these require a TargetChannel
+                        tId = chGrp.channels[0 if not metCh else int((len(chGrp.channels)/2)-1)].targetId
+                        tChannel = chGrp.channels[0 if not metCh else int((len(chGrp.channels)/2)-1)].targetChannel
+                        metCh += 1
+                    if (row[1] == 4) and (row[24] == "Config_Mute"): #Mute
+                        tId = subGroups[mutCh].groupId
+                        mutCh += 1
 
-            if row[1] == 12:
-                dName = g.name
+                if row[1] == 12:
+                    dName = chGrp.name
 
-            if dName is None:
-                dName = ""
+                if dName is None:
+                    dName = ""
 
-            if row[1] == 3 and row[24] == 'ChStatus_MsDelay' and ('fill' in g.name.lower() or ('sub' in g.name.lower() and 'array' in g.name.lower())): # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
-                flag = 14
-                logging.info(f"{g.name} - Setting relative delay")
+                if row[1] == 3 and row[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or ('sub' in chGrp.name.lower() and 'array' in chGrp.name.lower())): # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
+                    flag = 14
+                    logging.info(f"{chGrp.name} - Setting relative delay")
 
-            s = f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{str(proj.masterViewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(flag)}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(row[24])}", {row[25]}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", "  ")'
+                s = f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{str(proj.masterViewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(flag)}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(row[24])}", {row[25]}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", "  ")'
 
-            if row[1] == 3 and row[24] == 'Config_Filter3': # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
-                if not g.isTop():
-                    s = ""
-                    logging.info(f"{g.name} - Skipping CPL")
+                if row[1] == 3 and row[24] == 'Config_Filter3': # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
+                    if (chGrp.type < 1 or chGrp.type > 3) and srcGrp.xover is not None:
+                        s = ""
+                        logging.info(f"{chGrp.name} - Skipping CPL")
 
-            proj.cursor.execute(s)
+                proj.cursor.execute(s)
 
-        insertTemplate(proj, templates, 'Nav Button', posX, posY, proj.masterViewId, g.name, g.viewId, -1, proj.cursor, None, None, None, None, None)
+            insertTemplate(proj, templates, 'Nav Button', posX, posY, proj.masterViewId, chGrp.name, srcGrp.viewId, -1, proj.cursor, None, None, None, None, None)
 
-        posX += w+METER_SPACING_X
-        proj.jId = proj.jId + 1
+            posX += w+METER_SPACING_X
+            proj.jId = proj.jId + 1
