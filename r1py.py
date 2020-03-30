@@ -66,31 +66,8 @@ DEV_PROP_TYPES = [
 ,'Error_SmpsTempOff'
 ,'Error_SmpsTempWarn']
 
-class Channel:
-    def __init__(self, row):
-        self.groupId = row[0]
-        self.name = row[1]
-        self.targetId = row[2]
-        self.targetChannel = row[3]
-        self.preset = row[4]
-        self.cabId = row[5]
 
-        logging.info(f'Created channel - {self.name}')
-
-    def isSub(self):
-        return "SUBs" in self.name;
-
-    def isTop(self):
-        return "TOPs" in self.name;
-
-    @property
-    def viewId(self):
-        return self._viewId
-
-    @viewId.setter
-    def viewId(self, value):
-        self._viewId = value
-
+##### An R1 SQL File (.dbpr project file or .r1t template file) #####
 class R1db(object):
     __metaclass__ = ABCMeta
     def __init__(self, f):
@@ -103,6 +80,8 @@ class R1db(object):
         self.db.commit()
         self.db.close()
 
+
+##### Source groups are created in ArrayCalc ########
 class SourceGroup:
     def __init__(self, row):
         self.viewId = row[0]
@@ -151,18 +130,7 @@ class SourceGroup:
         logging.info(f'Created source group - {self.groupId} / {self.name}')
 
 
-
-# A group discovered in R1 containing channels
-# GroupId and name are the R1 GroupId and name
-# Type describes the group:
-# 0 - Point source
-# 1 - TOPs
-# 2 - SUBs
-# 3 - TOPs R
-# 4 - TOPs L
-# 5 - SUBs C
-# 6 - SUBs R
-# 7 - SUBs L
+########## Created in R1, contain individual channels ########
 class ChannelGroup:
     def __init__(self, groupId, name, type):
         self.groupId = groupId
@@ -172,6 +140,18 @@ class ChannelGroup:
 
         logging.info(f'Created channel group - {self.groupId} / {self.name} / {self.type}')
 
+
+###### An amplifier channel ########
+class Channel:
+    def __init__(self, row):
+        self.groupId = row[0]
+        self.name = row[1]
+        self.targetId = row[2]
+        self.targetChannel = row[3]
+        self.preset = row[4]
+        self.cabId = row[5]
+
+        logging.info(f'Created channel - {self.name}')
 
 
 ### Load template file + templates within from .r2t file ###
@@ -198,6 +178,7 @@ class TemplateFile(R1db):
             logging.info(f'Loaded template - {idx} / {self.templates[-1].name}')
 
 
+
 # Sections is table name from .r2t file
 class Template:
     def __init__(self, sections, controls):
@@ -210,16 +191,25 @@ class Template:
         if controls is not None:
             self.controls = controls
 
+
+
 # Load project file + get joined id for new entries
 class ProjectFile(R1db):
 
     # Find if inital R1 setup has been run
-    def initCheck(self):
+    def __initCheck(self):
         self.cursor.execute(f"SELECT * FROM sqlite_master WHERE name ='Groups' and type='table'")
         if self.cursor.fetchone() is None:
+            logging.error(f'Could not find Groups table.')
             return -1;
         self.cursor.execute(f"SELECT * FROM sqlite_master WHERE name ='Views' and type='table'")
         if self.cursor.fetchone() is None:
+            logging.error(f'Could not find Views table.')
+            return -1;
+        self.cursor.execute(f"SELECT * FROM Groups WHERE GroupId = 1 or ParentId = 1")
+        rtn = self.cursor.fetchall()
+        if rtn is None or len(rtn) < 3:
+            logging.error(f'Could not find default groups.')
             return -1;
 
     # Deletes a project group and its children
@@ -254,28 +244,7 @@ class ProjectFile(R1db):
             logging.critical("Views have not been generated. Please run initial setup in R1 first.")
             sys.exit()
 
-        #Load all channels + their input config
-        self.channels = []
-        self.cursor.execute(f'SELECT * FROM "main"."AmplifierChannels" ORDER BY DeviceId ASC, AmplifierChannel ASC')
-        ampChannels = self.cursor.fetchall()
-        for channel in ampChannels:
-            targetId = channel[0]
-            targetChannel = channel[1]
-            name = channel[2]
-            if name is not "" and name is not "Unused": # Avoid unnamed or unused channels
-
-                # Find which inputs are enabled for this channel (D1, D2, D3, D4, A1, A2, A3, A4)
-                ipConfig = IPCONFIG_DEFAULT
-                for idx, s in enumerate(ipStr):
-                    for s in ipStr:
-                        self.cursor.execute(f'SELECT * FROM "main"."SnapshotValues" WHERE SnapshotId = {ARRAYCALC_SNAPSHOT} AND TargetId = {targetId} AND TargetNode = {targetChannel} AND TargetProperty = "{s}" AND Value = 1 ORDER BY TargetId')
-                        rtn = self.cursor.fetchall()
-                        ipConfig[idx] = len(rtn) # 0 for input not enabled, 1 for enabled
-                #self.channels.append(Channel(channel, ipConfig))
-
-        logging.info(f'{len(self.channels)} channels loaded.')
-
-        self.pId = self.createGroup(PARENT_GROUP_TITLE, 1)[0]
+        self.pId = self.__createGroup(PARENT_GROUP_TITLE, 1)[0]
 
         # Find Master groupId
         self.cursor.execute('SELECT "GroupId" FROM Groups WHERE "ParentId" = 1 AND "Name" = "Master"')
@@ -284,8 +253,9 @@ class ProjectFile(R1db):
             logging.critical('Cannot find Master group.')
         self.mId = rtn[0]
 
-        srcGroups = self.getSrcGrpInfo()
-        self.ggg();
+        self.__clean()
+
+        self.__getSrcGrpInfo();
 
     def getChannelGroupTotal(self):
         i = 0;
@@ -301,7 +271,7 @@ class ProjectFile(R1db):
                     i += len(chGrp.channels)
         return i
 
-    def getSubArrayGroup(self):
+    def __getSubArrayGroup(self):
         subGroups = []
         str = ["L", "R", "C"]
         for s in str:
@@ -326,7 +296,7 @@ class ProjectFile(R1db):
                 subGroups.append(rtn)
         return subGroups;
 
-    def ggg(self):
+    def __getSrcGrpInfo(self):
         self.cursor.execute(f'PRAGMA case_sensitive_like=ON;')
 
         self.cursor.execute(f'SELECT Name FROM SourceGroups WHERE Type = 3')
@@ -348,7 +318,7 @@ class ProjectFile(R1db):
                 if rtn is not None:
                     mId = rtn[0]
             str = [" SUBs L", " SUBs R", " SUBs C"]
-            subArrayGroups = self.getSubArrayGroup()
+            subArrayGroups = self.__getSubArrayGroup()
             for idx, subArrayGroup in enumerate(subArrayGroups):
                 self.cursor.execute(
                 f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)'
@@ -427,50 +397,10 @@ class ProjectFile(R1db):
 
 
 
-    # Types:
-    # 10 - Mono Top Array
-    # 11 - Mono Sub Array
-    # 20 - Point Source Top
-    # 21 - Point Source Sub
-    # 30 - Sub array
-    # 40 - Stereo Top Array
-    # 41 - Stereo Sub Array
-
-    def getSrcGrpInfo(self):
-        self.cursor.execute(
-        f'  SELECT ViewId, Views.Name, SourceGroups.SourceGroupId, SourceGroups.Type, ArrayProcessingEnable, ArraySightId, System, NextSourceGroupId '
-        f'  FROM Views JOIN SourceGroups '
-        f'      ON Views.Name = SourceGroups.Name '
-        f'      JOIN SourceGroupsAdditionalData '
-        f'      ON SourceGroups.SourceGroupId = SourceGroupsAdditionalData.SourceGroupId '
-        f'      WHERE OrderIndex != -1 '); #Order index happens to be -1 if source group is second group in a stereo pair
-
-        srcGrps = self.cursor.fetchall()
-        rtn = []
-        for src in srcGrps:
-            type = src[3]*10;
-            if src[-1] > 0: # If stereo group
-                type = 40;
-
-            if type < 3: # Not stereo or sub array
-                for i, t in enumerate([" TOPs", " SUBs"]):
-                    self.cursor.execute(
-                        f'  SELECT * FROM Groups '
-                        f'  WHERE Name = "{src[1] + t}" '
-                        )
-                    rslt = self.cursor.fetchall()
-                    if rslt is not None:
-                        type += i;
-
-
-            rtn.append([src[0], src[1], src[2], src[3], type, src[5], src[6]])
-
-
-        return rtn
 
     # Create R1 group if does not already exist
     # Returns inserted row
-    def createGroup(self, name, parentId):
+    def __createGroup(self, name, parentId):
         if parentId is None:
             parentId = 1;
         s = (f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
@@ -484,6 +414,9 @@ class ProjectFile(R1db):
         logging.info(f'Creating {name} group with id {lastRow[0]}')
         return lastRow
 
+
+
+    ##### Insert input routing group triggers into project ####
     def createTriggers(self):
         logging.info(f'Creating SQL triggers.')
 
@@ -549,25 +482,26 @@ class ProjectFile(R1db):
             s = f'DROP TRIGGER IF EXISTS AUTOR1_{i}_Remove;'
             self.cursor.execute(s)
 
-    def clean(self):
-        self.cursor.execute(f'SELECT ViewId FROM Views WHERE Name = "{MASTER_WINDOW_TITLE}"')
-        view = self.cursor.fetchone()
+    def __clean(self):
+        self.removeTriggers()
 
-        if view is not None:
-            self.cursor.execute(f'DELETE FROM Views WHERE "Name" = "{MASTER_WINDOW_TITLE}"')
+        self.cursor.execute(f'DELETE FROM Views WHERE "Name" = "{MASTER_WINDOW_TITLE}"')
         logging.info(f'Deleted {MASTER_WINDOW_TITLE} view.')
 
-        self.cursor.execute(f'SELECT ViewId FROM Views WHERE Name = "{METER_WINDOW_TITLE}"')
-        view = self.cursor.fetchone()
-        if view is not None:
-            self.cursor.execute(f'DELETE FROM Views WHERE "Name" = "{METER_WINDOW_TITLE}"')
+        self.cursor.execute(f'DELETE FROM Views WHERE "Name" = "{METER_WINDOW_TITLE}"')
         logging.info(f'Deleted existing {METER_WINDOW_TITLE} view.')
+
+        self.cursor.execute(
+        f'  DELETE FROM Groups WHERE Name = "{SUBARRAY_GROUP_NAME_L}" '
+        f'  OR Name = "{SUBARRAY_GROUP_NAME_R}" '
+        f'  OR Name = "{SUBARRAY_GROUP_NAME_C}"'
+        )
 
         self.cursor.execute(f'SELECT GroupId FROM Groups WHERE Name = "{PARENT_GROUP_TITLE}"')
         group = self.cursor.fetchone()
         if group is not None:
             pId = group[0]
-            self._ProjectFile__deleteGroup(self.pId)
+            self.__deleteGroup(self.pId)
         logging.info(f'Deleted existing {PARENT_GROUP_TITLE} group.')
 
 def createNavButtons(proj, templates):
@@ -578,17 +512,16 @@ def createNavButtons(proj, templates):
         vId = row[0]
         if vId != proj.masterViewId and vId != proj.meterViewId:
             proj.cursor.execute(f'UPDATE Controls SET PosY = PosY + {NAV_BUTTON_Y+20} WHERE ViewId = {vId}')
-            insertTemplate(proj, templates, 'Nav Button', 15, NAV_BUTTON_Y, vId, MASTER_WINDOW_TITLE, proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
+            __insertTemplate(proj, templates, 'Nav Button', 15, NAV_BUTTON_Y, vId, MASTER_WINDOW_TITLE, proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
 
 
-
-def getTempControlsFromName(templates, tempName):
+def __getTempControlsFromName(templates, tempName):
     for t in templates.templates:
         if t.name == tempName:
             return t.controls
     return -1;
 
-def getTempSize(templates, tempName):
+def __getTempSize(templates, tempName):
     templates.cursor.execute(f'SELECT JoinedId FROM "main"."Sections" WHERE Name = "{tempName}"')
     rtn = templates.cursor.fetchone()
     if rtn is not None:
@@ -613,14 +546,14 @@ def getTempSize(templates, tempName):
         return -1
 
 
-def insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, targetId, targetChannel, cursor, width, height, joinedId, targetProp, targetRec):
+def __insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, targetId, targetChannel, cursor, width, height, joinedId, targetProp, targetRec):
     if joinedId is not None:
         jId = joinedId
     else:
         jId = proj.jId
         proj.jId = proj.jId + 1
 
-    tempContents = getTempControlsFromName(templates, tempName)
+    tempContents = __getTempControlsFromName(templates, tempName)
 
     for row in tempContents:
         tProp = targetProp
@@ -665,43 +598,13 @@ def insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, t
 
         proj.cursor.execute(f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", "{str(tChannel)}", "{str(tProp)}", {tRec}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
 
-    return getTempSize(templates, tempName)
+    return __getTempSize(templates, tempName)
     #except:
     return tempContents
 
-def findDevicesInGroups(cursor, parentId):
-    cursor.execute(f'SELECT * FROM Groups WHERE ParentId = {parentId}')
-    rtn = cursor.fetchall()
-    ch = []
-    for row in rtn:
-        if row[TARGET_ID] == SUBGROUP: # If entry is not a device but a subgroup
-            ch += findDevicesInGroups(cursor, row[GROUPID])
-        else:
-            for i in range(len(rtn)):
-                cursor.execute(f'SELECT * FROM "main"."Cabinets" WHERE DeviceId = {row[3]} AND AmplifierChannel = {row[4]}')
-                cabData = cursor.fetchone()
-                if cabData is not None:
-                    cursor.execute(f'SELECT * FROM "main"."CabinetsAdditionalData" WHERE CabinetId = {cabData[0]}')
-                    cabAddData = cursor.fetchone()
-                    if cabAddData is not None:
-                        rtn[i] = rtn[i]+(parentId,cabData[3],cabAddData[1])
-                    else:
-                        logging.error(f'Cannot find additional cabinet data for {row[1]}')
-                else:
-                    logging.error(f'Cannot find cabinet data for {row[1]}')
-            return rtn
-    return ch
-
-# Delete a view from project
-def deleteView(proj, viewId):
-    return proj.cursor.execute(f'DELETE FROM Views WHERE ViewId = {viewId};')
-
-# Delete a control from a view
-def deleteControl(proj, viewId):
-    return proj.cursor.execute(f'DELETE FROM Controls WHERE ViewId = {viewId};')
 
 # Find a view's id from its name
-def getViewIdFromName(proj, name):
+def __getViewIdFromName(proj, name):
     proj.cursor.execute(f'SELECT ViewId FROM Views WHERE Name = "{name}"')
     rtn = proj.cursor.fetchone()[0]
     return rtn
@@ -733,14 +636,17 @@ def createMeterView(proj, templates):
     mWidth = (spacingX*proj.getChannelGroupTotal())+METER_SPACING_X
     mHeight = (spacingY*proj.getMaxChannelGroupCount())+METER_SPACING_Y
     proj.cursor.execute(f'INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,{mWidth},{mHeight},100,NULL,NULL,NULL,NULL);')
-    proj.meterViewId = getViewIdFromName(proj, METER_WINDOW_TITLE)
+    proj.cursor.execute(f'SELECT max(ViewId) FROM Views')
+    rtn = proj.cursor.fetchone()
+    if rtn is not None:
+        proj.meterViewId = rtn[0];
 
 
     ###### INSERT HEADER ######
     posX = METER_VIEW_STARTX
     posY = METER_VIEW_STARTY
-    insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, proj.meterViewId, MASTER_WINDOW_TITLE, proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
-    posY += insertTemplate(proj, templates, 'Meters Title', posX, posY, proj.meterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
+    __insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, proj.meterViewId, MASTER_WINDOW_TITLE, proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
+    posY += __insertTemplate(proj, templates, 'Meters Title', posX, posY, proj.meterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
     startY = posY
     proj.cursor.execute(f'UPDATE Views SET VRes = {posY+mHeight} WHERE ViewId = {proj.meterViewId}')
 
@@ -753,12 +659,12 @@ def createMeterView(proj, templates):
                 continue;
             if chGrp.type == 1 and tops: #Skip top parent group if Tops L/R group exists
                 continue;
-            dim = insertTemplate(proj, templates, 'Meters Group', posX, posY, proj.meterViewId, chGrp.name, chGrp.groupId, None, proj.cursor, None, None, None, None, None);
+            dim = __insertTemplate(proj, templates, 'Meters Group', posX, posY, proj.meterViewId, chGrp.name, chGrp.groupId, None, proj.cursor, None, None, None, None, None);
             posY += dim[1]+10
 
             for ch in chGrp.channels:
-            #def insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, targetId, targetChannel, cursor, width, height, joinedId, targetProp, targetRec):
-                insertTemplate(proj, templates, "Meter", posX, posY, proj.meterViewId, ch.name, ch.targetId, ch.targetChannel, proj.cursor, None, None, proj.jId, None, None);
+            #def __insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, targetId, targetChannel, cursor, width, height, joinedId, targetProp, targetRec):
+                __insertTemplate(proj, templates, "Meter", posX, posY, proj.meterViewId, ch.name, ch.targetId, ch.targetChannel, proj.cursor, None, None, proj.jId, None, None);
                 posY += spacingY
 
             if chGrp.type > 4: # SUB L/R/C group
@@ -771,8 +677,7 @@ def createMeterView(proj, templates):
             proj.jId = proj.jId + 1
 
 
-
-def getGroupIdFromName(proj, name):
+def __getGroupIdFromName(proj, name):
     proj.cursor.execute(f'SELECT GroupId FROM Groups WHERE Name = "{name}"')
     rtn = proj.cursor.fetchone()
     if rtn is not None:
@@ -780,24 +685,18 @@ def getGroupIdFromName(proj, name):
     else:
         return None
 
-def getGroupFromId(groups, gId):
-    for g in groups:
-        if g.groupId == gId:
-            return g
-    return -1;
-
 def createMasterView(proj, templates):
     ## Get width + height of templates used
-    rtn = getTempSize(templates, "Master Main")
+    rtn = __getTempSize(templates, "Master Main")
     masterW = rtn[0]
     masterH = rtn[1]
-    rtn = getTempSize(templates, "Master ArraySight")
+    rtn = __getTempSize(templates, "Master ArraySight")
     asW = rtn[0]
     asH = rtn[1]
-    rtn = getTempSize(templates, "Master Title")
+    rtn = __getTempSize(templates, "Master Title")
     titleW = rtn[0]
     titleH = rtn[1]
-    rtn = getTempSize(templates, "Group LR AP")
+    rtn = __getTempSize(templates, "Group LR AP")
     meterW = rtn[0]
     meterH = rtn[1]
 
@@ -805,17 +704,19 @@ def createMasterView(proj, templates):
     HRes = masterW + asW + (meterW * proj.getChannelGroupTotal()) + (METER_SPACING_X*proj.getChannelGroupTotal())
     VRes = titleH + masterH + METER_SPACING_Y
     proj.cursor.execute(f'INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{MASTER_WINDOW_TITLE}",NULL,4,NULL,-1,{HRes},{VRes},100,NULL,NULL,NULL,NULL);')
-    proj.masterViewId = getViewIdFromName(proj, MASTER_WINDOW_TITLE)
-    masterGroupId = getGroupIdFromName(proj, "Master")
+    proj.cursor.execute(f'SELECT max(ViewId) FROM Views')
+    rtn = proj.cursor.fetchone()
+    if rtn is not None:
+        proj.masterViewId = rtn[0];
 
     posX = 10
     posY = 10
-    insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, proj.masterViewId, METER_WINDOW_TITLE, proj.meterViewId, -1, proj.cursor, None, None, None, None, None)
-    posY += insertTemplate(proj, templates, 'Master Title', posX, posY, proj.masterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
-    posX += insertTemplate(proj, templates, 'Master Main', posX, posY, proj.masterViewId, None, masterGroupId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X/2);
-    asPos = insertTemplate(proj, templates, 'Master ArraySight', posX, posY, proj.masterViewId, None, 0, None, proj.cursor, None, None, None, None, None)
+    __insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, proj.masterViewId, METER_WINDOW_TITLE, proj.meterViewId, -1, proj.cursor, None, None, None, None, None)
+    posY += __insertTemplate(proj, templates, 'Master Title', posX, posY, proj.masterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
+    posX += __insertTemplate(proj, templates, 'Master Main', posX, posY, proj.masterViewId, None, proj.mId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X/2);
+    asPos = __insertTemplate(proj, templates, 'Master ArraySight', posX, posY, proj.masterViewId, None, 0, None, proj.cursor, None, None, None, None, None)
     if proj.ap > 0:
-        posX += insertTemplate(proj, templates, 'THC', posX, posY+asPos[1]+(METER_SPACING_Y/2), proj.masterViewId, None, proj.apGroupId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X*4);
+        posX += __insertTemplate(proj, templates, 'THC', posX, posY+asPos[1]+(METER_SPACING_Y/2), proj.masterViewId, None, proj.apGroupId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X*4);
     else:
         posX += asPos[0]+(METER_SPACING_X*4);
 
@@ -837,7 +738,7 @@ def createMasterView(proj, templates):
             if ("GSL" in srcGrp.cabFamily) or ("KSL" in srcGrp.cabFamily):
                 template += " CPL2"
 
-            tempContents = getTempControlsFromName(templates, template)
+            tempContents = __getTempControlsFromName(templates, template)
             metCh = 0 # Current channel of stereo pair
             mutCh = 0
             w = 0
@@ -884,7 +785,7 @@ def createMasterView(proj, templates):
 
                 proj.cursor.execute(s)
 
-            insertTemplate(proj, templates, 'Nav Button', posX, posY, proj.masterViewId, chGrp.name, srcGrp.viewId, -1, proj.cursor, None, None, None, None, None)
+            __insertTemplate(proj, templates, 'Nav Button', posX, posY, proj.masterViewId, chGrp.name, srcGrp.viewId, -1, proj.cursor, None, None, None, None, None)
 
             posX += w+METER_SPACING_X
             proj.jId = proj.jId + 1

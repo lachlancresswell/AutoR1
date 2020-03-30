@@ -84,8 +84,8 @@ if not checkFile(MOD_FILE):
 tempFile = r1.TemplateFile(TEMP_FILE)
 tempFile.loadTemplates()
 projFile = r1.ProjectFile(MOD_FILE, tempFile)
-projFile.removeTriggers()
-projFile.createTriggers()
+#projFile.removeTriggers()
+#projFile.createTriggers()
 r1.createMeterView(projFile, tempFile);
 r1.createMasterView(projFile, tempFile);
 r1.createNavButtons(projFile, tempFile)
