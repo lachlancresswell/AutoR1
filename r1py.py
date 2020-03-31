@@ -17,6 +17,10 @@ TYPE_TOPS_L = 3
 TYPE_TOPS_R = 2
 TYPE_TOPS = 1
 TYPE_POINT = 0
+CTRL_FRAME = 12
+CTRL_METER = 7
+CTRL_BUTTON = 4
+CTRL_INPUT = 3
 
 IPCONFIG_DEFAULT = [0,0,0,0,0,0,0,0]
 
@@ -763,10 +767,6 @@ def createMasterView(proj, templates):
                     dName = srcGrp.xover
                     logging.info(f"{chGrp.name} - Enabling {srcGrp.xover}")
 
-                CTRL_FRAME = 12
-                CTRL_METER = 7
-                CTRL_BUTTON = 4
-                CTRL_INPUT = 3
                 if (control[1] == CTRL_METER): #Meters, these require a TargetChannel
                     tId = chGrp.channels[0].targetId
                     tChannel = chGrp.channels[0].targetChannel
