@@ -9,6 +9,15 @@ METER_WINDOW_TITLE = "AUTO - Meters"
 MASTER_WINDOW_TITLE = 'AUTO - Master'
 INPUT_SNAP_NAME = "IP Config"
 
+TYPE_SUBS_C = 7
+TYPE_SUBS_R = 6
+TYPE_SUBS_L = 5
+TYPE_SUBS = 4
+TYPE_TOPS_L = 3
+TYPE_TOPS_R = 2
+TYPE_TOPS = 1
+TYPE_POINT = 0
+
 IPCONFIG_DEFAULT = [0,0,0,0,0,0,0,0]
 
 ARRAYCALC_SNAPSHOT = 1 #Snapshot ID
@@ -724,17 +733,10 @@ def createMasterView(proj, templates):
         posX += asPos[0]+(METER_SPACING_X*4);
 
     for srcGrp in proj.sourceGroups:
-        subs = 0
-        tops = 0
         for idx, chGrp in enumerate(srcGrp.channelGroups):
 
-            TYPE_SUBS = 4
-            TYPE_TOPS_L = 3
-            TYPE_TOPS_R = 2
             if chGrp.type > TYPE_SUBS or chGrp.type == TYPE_TOPS_L or chGrp.type == TYPE_TOPS_R: # TOP or SUB L/R/C Group
                 continue;
-
-            jId = proj.jId
 
             template = 'Group'
             if srcGrp.LR: # Stereo groups
@@ -757,38 +759,40 @@ def createMasterView(proj, templates):
                 flag = control[19]
 
                 # Update Infra/100hz button text
-                if (chGrp.type < 1 or chGrp.type > 3) and dName == "CUT" and srcGrp.xover is not None:
+                if (chGrp.type < TYPE_TOPS or chGrp.type > TYPE_TOPS_R) and dName == "CUT" and srcGrp.xover is not None:
                     dName = srcGrp.xover
                     logging.info(f"{chGrp.name} - Enabling {srcGrp.xover}")
 
-                if (control[1] == 12): #Get frame Width
-                    w = control[4]
-                if (control[1] == 7): #Meters, these require a TargetChannel
+                CTRL_FRAME = 12
+                CTRL_METER = 7
+                CTRL_BUTTON = 4
+                CTRL_INPUT = 3
+                if (control[1] == CTRL_METER): #Meters, these require a TargetChannel
                     tId = chGrp.channels[0].targetId
                     tChannel = chGrp.channels[0].targetChannel
                 if 'Group LR' in template:
-                    if (control[1] == 7): #Meters, these require a TargetChannel
+                    if (control[1] == CTRL_METER): #Meters, these require a TargetChannel
                         tId = subGroups[metCh].channels[0].targetId
                         tChannel = subGroups[metCh].channels[0].targetChannel
                         metCh += 1
-                    if (control[1] == 4) and (control[24] == "Config_Mute"): #Mute
+                    if (control[1] == CTRL_BUTTON) and (control[24] == "Config_Mute"): #Mute
                         tId = subGroups[mutCh].groupId
                         mutCh += 1
 
-                if control[1] == 12:
+                if control[1] == CTRL_FRAME:
                     dName = chGrp.name
+                    w = control[4]
+                    if dName is None:
+                        dName = ""
 
-                if dName is None:
-                    dName = ""
-
-                if control[1] == 3 and control[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or srcGrp.type == 3):
+                if control[1] == CTRL_INPUT and control[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or srcGrp.type > TYPE_TOPS_R):
                     flag = 14
                     logging.info(f"{chGrp.name} - Setting relative delay")
 
-                s = f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(control[1])}", "{str(control[2]+posX)}", "{str(control[3]+posY)}", "{str(control[4])}", "{str(control[5])}", "{str(proj.masterViewId)}", "{dName}", "{str(jId)}", "{str(control[10])}", "{str(control[11])}", "{str(control[12])}", "{str(control[13])}", "{str(control[14])}", "{str(control[15])}", "{str(control[16])}", "{str(control[17])}", "{str(control[18])}", "{str(flag)}", "{str(control[20])}", "{str(control[21])}", "{str(tId)}", {str(tChannel)}, "{str(control[24])}", {control[25]}, NULL, NULL, "{str(control[28])}", "{str(control[29])}", "{str(control[30])}", "{str(control[31])}", "  ")'
+                s = f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(control[1])}", "{str(control[2]+posX)}", "{str(control[3]+posY)}", "{str(control[4])}", "{str(control[5])}", "{str(proj.masterViewId)}", "{dName}", "{str(proj.jId)}", "{str(control[10])}", "{str(control[11])}", "{str(control[12])}", "{str(control[13])}", "{str(control[14])}", "{str(control[15])}", "{str(control[16])}", "{str(control[17])}", "{str(control[18])}", "{str(flag)}", "{str(control[20])}", "{str(control[21])}", "{str(tId)}", {str(tChannel)}, "{str(control[24])}", {control[25]}, NULL, NULL, "{str(control[28])}", "{str(control[29])}", "{str(control[30])}", "{str(control[31])}", "  ")'
 
-                if control[1] == 3 and control[24] == 'Config_Filter3': # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
-                    if (chGrp.type < 1 or chGrp.type > 3) and srcGrp.xover is not None:
+                if control[1] == CTRL_INPUT and control[24] == 'Config_Filter3': # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
+                    if (chGrp.type < TYPE_TOPS or chGrp.type > TYPE_TOPS_R) and srcGrp.xover is not None:
                         s = ""
                         logging.info(f"{chGrp.name} - Skipping CPL")
 
