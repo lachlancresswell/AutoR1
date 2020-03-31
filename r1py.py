@@ -272,7 +272,7 @@ class ProjectFile(R1db):
                     f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
                     f'  SELECT "{ch.name}", {self.apGroupId}, {ch.targetId}, {ch.targetChannel}, 1, 0')
 
-    def getChannelGroupTotal(self):
+    def getChannelMasterGroupTotal(self):
         i = 0;
         for srcGrp in self.sourceGroups:
             for chGrp in srcGrp.channelGroups:
@@ -280,13 +280,22 @@ class ProjectFile(R1db):
                     i += 1;
         return i
 
-    def getMaxChannelGroupCount(self):
+    def getChannelMeterGroupTotal(self):
         i = 0;
+        j = 0;
         for srcGrp in self.sourceGroups:
+            skip = 0
             for chGrp in srcGrp.channelGroups:
-                if len(chGrp.channels) > i:
-                    i += len(chGrp.channels)
-        return i
+                if skip:
+                    skip = 0
+                    continue;
+
+                if chGrp.type == TYPE_SUBS_R or chGrp.type == TYPE_TOPS_R:
+                    skip = 1;
+                i += 1;
+                j = max(j, len(chGrp.channels))
+
+        return [i, j]
 
     def __getSubArrayGroup(self):
         subGroups = []
@@ -387,7 +396,7 @@ class ProjectFile(R1db):
         self.apEnable = 0
         for row in rtn:
             self.sourceGroups.append(SourceGroup(row))
-            print(self.sourceGroups[-1].apEnable)
+
             if self.sourceGroups[-1].apEnable:
                 self.apEnable = 1 ;
 
@@ -636,38 +645,32 @@ def __getViewIdFromName(proj, name):
     rtn = proj.cursor.fetchone()[0]
     return rtn
 
+
+
 def createMeterView(proj, templates):
     ## Get width + height of title to offset starting x + y
-    templates.cursor.execute(f'SELECT Width, Height FROM Controls WHERE DisplayName = "METERS_TITLE"')
-    rtn = templates.cursor.fetchone()
-    if rtn is not None:
-        meterW = rtn[0]
-        meterH = rtn[1]
-    else:
-        logging.error('Could not find meter title.')
-        return -1;
+    rtn = __getTempSize(templates, "Meters Title")
+    titleW = rtn[0]
+    titleH = rtn[1]
+    rtn = __getTempSize(templates, "Meters Group")
+    meterGrpW = rtn[0]
+    meterGrpH = rtn[1]
+    rtn = __getTempSize(templates, "Meter")
+    meterW = rtn[0]
+    meterH = rtn[1]
 
     # Get height of metering frame to get x and y spacing for each meter
-    templates.cursor.execute(f'SELECT Height FROM Controls WHERE DisplayName = "METERS_GROUP_TITLE"')
-    rtn = templates.cursor.fetchone()
-    if rtn is not None:
-        groupH = rtn[0]
-        spacingX = meterW+METER_SPACING_X
-        spacingY = meterH+METER_SPACING_Y
-    else:
-        logging.error('Could not find meter group template.')
-        return -1;
+    spacingX = max(meterW, meterGrpW)+METER_SPACING_X
+    spacingY = meterH+METER_SPACING_Y
 
     ####### CREATE VIEW #######
-    # Get window width
-    mWidth = (spacingX*proj.getChannelGroupTotal())+METER_SPACING_X
-    mHeight = (spacingY*proj.getMaxChannelGroupCount())+METER_SPACING_Y
-    proj.cursor.execute(f'INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,{mWidth},{mHeight},100,NULL,NULL,NULL,NULL);')
+    HRes = (spacingX*proj.getChannelMeterGroupTotal()[0])+METER_SPACING_X
+    VRes = titleH+meterGrpH+(spacingY*proj.getChannelMeterGroupTotal()[1])+100
+    proj.cursor.execute(f'INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{METER_WINDOW_TITLE}",NULL,4,NULL,-1,{HRes},{VRes},100,NULL,NULL,NULL,NULL);')
     proj.cursor.execute(f'SELECT max(ViewId) FROM Views')
     rtn = proj.cursor.fetchone()
     if rtn is not None:
         proj.meterViewId = rtn[0];
-
 
     ###### INSERT HEADER ######
     posX = METER_VIEW_STARTX
@@ -675,8 +678,6 @@ def createMeterView(proj, templates):
     __insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, proj.meterViewId, MASTER_WINDOW_TITLE, proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
     posY += __insertTemplate(proj, templates, 'Meters Title', posX, posY, proj.meterViewId, None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
     startY = posY
-    proj.cursor.execute(f'UPDATE Views SET VRes = {posY+mHeight} WHERE ViewId = {proj.meterViewId}')
-
 
     for srcGrp in proj.sourceGroups:
         subs = 0
@@ -702,6 +703,10 @@ def createMeterView(proj, templates):
             posY = startY
             proj.jId = proj.jId + 1
 
+
+
+
+
 def createMasterView(proj, templates):
     ## Get width + height of templates used
     rtn = __getTempSize(templates, "Master Main")
@@ -717,14 +722,9 @@ def createMasterView(proj, templates):
     meterW = rtn[0]
     meterH = rtn[1]
 
-    print(f'masterW {masterW}')
-    print(f'asW {asW}')
-    print(f'meterW {meterW}')
-    print(f'proj.getChannelGroupTotal() {proj.getChannelGroupTotal()}')
-    print(f'proj.METER_SPACING_X() {METER_SPACING_X}')
-
     ####### CREATE VIEW #######
-    HRes = masterW + asW + (meterW * proj.getChannelGroupTotal()) + (METER_SPACING_X*proj.getChannelGroupTotal()) + METER_SPACING_X # Last one is a buffer
+    print(proj.getChannelMasterGroupTotal())
+    HRes = masterW + asW + ((METER_SPACING_X+meterW) * proj.getChannelMasterGroupTotal()) + 200 # Last one is a buffer
     VRes = titleH + max([meterH, masterH]) + 60
     proj.cursor.execute(f'INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{MASTER_WINDOW_TITLE}",NULL,4,NULL,-1,{HRes},{VRes},100,NULL,NULL,NULL,NULL);')
     proj.cursor.execute(f'SELECT max(ViewId) FROM Views')
@@ -763,7 +763,7 @@ def createMasterView(proj, templates):
             tempContents = __getTempControlsFromName(templates, template)
             metCh = 0 # Current channel of stereo pair
             mutCh = 0
-            w = 0
+
             for control in tempContents:
                 dName = control[7]
                 tChannel = control[23]
@@ -789,9 +789,8 @@ def createMasterView(proj, templates):
 
                 if control[1] == CTRL_FRAME:
                     dName = chGrp.name
-                    w = control[4]
-                    if dName is None:
-                        dName = ""
+                if dName is None:
+                    dName = ""
 
                 if control[1] == CTRL_INPUT and control[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or srcGrp.type > TYPE_TOPS_R):
                     flag = 14
@@ -808,5 +807,5 @@ def createMasterView(proj, templates):
 
             __insertTemplate(proj, templates, 'Nav Button', posX, posY, proj.masterViewId, chGrp.name, srcGrp.viewId, -1, proj.cursor, None, None, None, None, None)
 
-            posX += w+METER_SPACING_X
+            posX += meterW+METER_SPACING_X
             proj.jId = proj.jId + 1
