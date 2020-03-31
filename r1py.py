@@ -7,9 +7,6 @@ PARENT_GROUP_TITLE = 'AUTO'
 AP_GROUP_TITLE = 'AP'
 METER_WINDOW_TITLE = "AUTO - Meters"
 MASTER_WINDOW_TITLE = 'AUTO - Master'
-SUBARRAY_GROUP_TEXT = 'Create SUBarray LR group? (y/n)\n(default: y): '
-EXISTING_TEXT = 'Found existing AutoR1 group. Regenerate content? (y/n)\n(default: n): '
-SUBARRAY_CTR_TEXT = 'Assign SUB Array C channel to L or R? (L/R)\n(default: L): '
 INPUT_SNAP_NAME = "IP Config"
 
 IPCONFIG_DEFAULT = [0,0,0,0,0,0,0,0]
@@ -18,17 +15,7 @@ ARRAYCALC_SNAPSHOT = 1 #Snapshot ID
 INPUT_TYPES = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"]
 ipStr = ["Config_InputEnable1", "Config_InputEnable2", "Config_InputEnable3", "Config_InputEnable4", "Config_InputEnable5", "Config_InputEnable6", "Config_InputEnable7", "Config_InputEnable8"]
 TARGET_ID = 3
-SUBGROUP = 0
-GROUPID = 0
 
-ARRAY_TYPE = 10
-POINTSOURCE_TYPE = 20
-SUBARRAY_TYPE = 30;
-
-FB_OVERVIEW_POSX = 842
-FB_OVERVIEW_POSY = 16
-DS_STATUS_STARTX = FB_OVERVIEW_POSX
-DS_STATUS_STARTY = 400
 NAV_BUTTON_X = 230
 NAV_BUTTON_Y = 15
 
@@ -262,7 +249,7 @@ class ProjectFile(R1db):
 
             self.cursor.execute(
             f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
-            f'  SELECT "AP", {self.pId}, 0, -1, 0, 0')
+            f'  SELECT "{AP_GROUP_TITLE}", {self.pId}, 0, -1, 0, 0')
             self.cursor.execute(f'SELECT max(GroupId) FROM Groups')
             rtn = self.cursor.fetchone()
             if rtn is not None:
@@ -688,7 +675,6 @@ def createMeterView(proj, templates):
             posY += dim[1]+10
 
             for ch in chGrp.channels:
-            #def __insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, targetId, targetChannel, cursor, width, height, joinedId, targetProp, targetRec):
                 __insertTemplate(proj, templates, "Meter", posX, posY, proj.meterViewId, ch.name, ch.targetId, ch.targetChannel, proj.cursor, None, None, proj.jId, None, None);
                 posY += spacingY
 
@@ -700,15 +686,6 @@ def createMeterView(proj, templates):
             posX += spacingX
             posY = startY
             proj.jId = proj.jId + 1
-
-
-def __getGroupIdFromName(proj, name):
-    proj.cursor.execute(f'SELECT GroupId FROM Groups WHERE Name = "{name}"')
-    rtn = proj.cursor.fetchone()
-    if rtn is not None:
-        return rtn[0]
-    else:
-        return None
 
 def createMasterView(proj, templates):
     ## Get width + height of templates used
@@ -749,7 +726,7 @@ def createMasterView(proj, templates):
     for srcGrp in proj.sourceGroups:
         subs = 0
         tops = 0
-        for idx, chGrp in enumerate(srcGrp.channelGroups):
+        for chGrp in srcGrp.channelGroups:
             if chGrp.type > 4 or chGrp.type == 3 or chGrp.type == 2: # TOP or SUB L/R/C Group
                 continue;
 
@@ -774,6 +751,7 @@ def createMasterView(proj, templates):
                 tId = chGrp.groupId
                 flag = row[19]
 
+                # Update Infra/100hz button text
                 if (chGrp.type < 1 or chGrp.type > 3) and dName == "CUT" and srcGrp.xover is not None:
                     dName = srcGrp.xover
                     logging.info(f"{chGrp.name} - Enabling {srcGrp.xover}")
@@ -798,7 +776,7 @@ def createMasterView(proj, templates):
                 if dName is None:
                     dName = ""
 
-                if row[1] == 3 and row[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or ('sub' in chGrp.name.lower() and 'array' in chGrp.name.lower())): # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
+                if row[1] == 3 and row[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or srcGrp.type == 3):
                     flag = 14
                     logging.info(f"{chGrp.name} - Setting relative delay")
 
