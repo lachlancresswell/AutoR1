@@ -17,6 +17,7 @@ TYPE_TOPS_L = 3
 TYPE_TOPS_R = 2
 TYPE_TOPS = 1
 TYPE_POINT = 0
+
 CTRL_FRAME = 12
 CTRL_METER = 7
 CTRL_BUTTON = 4
@@ -792,8 +793,13 @@ def createMasterView(proj, templates):
                         tId = subGroups[mutCh].groupId
                         mutCh += 1
 
+                if (control[1] == CTRL_BUTTON) and (control[7] == "View EQ"): #EQ View
+                        tId = srcGrp.viewId+1
+
                 if control[1] == CTRL_FRAME:
-                    dName = chGrp.name
+                    if control[7]:
+                        dName = chGrp.name
+
                 if dName is None:
                     dName = ""
 
