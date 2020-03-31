@@ -580,30 +580,30 @@ def __insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName,
 
     tempContents = __getTempControlsFromName(templates, tempName)
 
-    for row in tempContents:
+    for control in tempContents:
         tProp = targetProp
         tRec = targetRec
         tChannel = targetChannel
         tId = targetId
         w = width
         h = height
-        dName = row[7]
-        tType = row[21]
+        dName = control[7]
+        tType = control[21]
 
         if tId is None:
-            tId = row[22]
+            tId = control[22]
 
         if tChannel is None:
-            tChannel = row[23]
+            tChannel = control[23]
 
         if w is None:
-            w = row[4]
+            w = control[4]
 
         if height is None:
-            h = row[5]
+            h = control[5]
 
 
-        if (row[1] == 12) or (row[1] == 4 and tType == 5): # If item is a Frame or a button to swap views
+        if (control[1] == 12) or (control[1] == 4 and tType == 5): # If item is a Frame or a button to swap views
             if (displayName is not None) and (dName != 'Fallback') and (dName != 'Regular'):
                 dName = displayName
 
@@ -611,9 +611,9 @@ def __insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName,
             dName = ""
 
         if tProp is None:
-            tProp = row[24]
+            tProp = control[24]
         if tRec is None:
-            tRec = row[25]
+            tRec = control[25]
 
         for p in DEV_PROP_TYPES:
             if tProp == p:
@@ -621,7 +621,7 @@ def __insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName,
                     tChannel = 0 #Dante + digital info require channel ID to be 0
                     break
 
-        proj.cursor.execute(f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(row[19])}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", "{str(tChannel)}", "{str(tProp)}", {tRec}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", " ")')
+        proj.cursor.execute(f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(control[1])}", "{str(control[2]+posX)}", "{str(control[3]+posY)}", "{str(w)}", "{str(h)}", "{str(viewId)}", "{dName}", "{str(jId)}", "{str(control[10])}", "{str(control[11])}", "{str(control[12])}", "{str(control[13])}", "{str(control[14])}", "{str(control[15])}", "{str(control[16])}", "{str(control[17])}", "{str(control[18])}", "{str(control[19])}", "{str(control[20])}", "{str(control[21])}", "{str(tId)}", "{str(tChannel)}", "{str(tProp)}", {tRec}, NULL, NULL, "{str(control[28])}", "{str(control[29])}", "{str(control[30])}", "{str(control[31])}", " ")')
 
     return __getTempSize(templates, tempName)
     #except:
