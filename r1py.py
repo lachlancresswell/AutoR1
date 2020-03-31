@@ -395,7 +395,7 @@ class ProjectFile(R1db):
         f'  ON i.ViewId  = Views.ViewId '
         f'  WHERE OrderIndex != -1 '# Order index happens to be -1 if source group is second group in a stereo pair
         f'  AND a.GroupId IN (SELECT max(GroupId) FROM Groups GROUP BY Name) '# Get L/R group first if exists else get child of Master group
-        f'  ORDER BY SourceGroups.SourceGroupId ASC '
+        f'  ORDER BY SourceGroups.OrderIndex ASC '
         )
 
         rtn = self.cursor.fetchall();
