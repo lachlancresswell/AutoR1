@@ -322,7 +322,7 @@ class ProjectFile(R1db):
             f' AND devs.Name LIKE "%array {s}%" '
             )
             rtn = self.cursor.fetchall()
-            if rtn is not None:
+            if rtn is not None and len(rtn):
                 subGroups.append(rtn)
         return subGroups;
 
@@ -354,6 +354,7 @@ class ProjectFile(R1db):
                 f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)'
                 f'  SELECT "{name+str[idx]}", {mId}, 0, -1, 0, 0'
                 )
+                logging.info(f'Inserted {name+str[idx]} group into project.')
                 self.cursor.execute(f'SELECT max(GroupId) FROM Groups')
                 rtn = self.cursor.fetchone()
                 if rtn is not None:
@@ -361,8 +362,10 @@ class ProjectFile(R1db):
                 for idy, subDevs in enumerate(subArrayGroup):
                     self.cursor.execute(
                     f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)'
-                    f'  SELECT "{name+str[idx]}", {pId}, {subDevs[2]}, {subDevs[3]}, 1, 0'
+                    f'  SELECT "{subDevs[1]}", {pId}, {subDevs[2]}, {subDevs[3]}, 1, 0'
                     )
+                    logging.info(f'Inserted {subDevs[1]} to {name+str[idx]} group.')
+
 
 
         self.cursor.execute(
@@ -523,7 +526,7 @@ class ProjectFile(R1db):
         logging.info(f'Deleted {MASTER_WINDOW_TITLE} view.')
 
         self.cursor.execute(f'DELETE FROM Views WHERE "Name" = "{METER_WINDOW_TITLE}"')
-        logging.info(f'Deleted existing {METER_WINDOW_TITLE} view.')
+        logging.info(f'Deleted {METER_WINDOW_TITLE} view.')
 
         self.cursor.execute(f'SELECT Name FROM SourceGroups WHERE Type = 3')
         rtn = self.cursor.fetchone()
@@ -542,7 +545,7 @@ class ProjectFile(R1db):
         if group is not None:
             pId = group[0]
             self.__deleteGroup(self.pId)
-        logging.info(f'Deleted existing {PARENT_GROUP_TITLE} group.')
+        logging.info(f'Deleted {PARENT_GROUP_TITLE} group.')
 
 def createNavButtons(proj, templates):
     proj.cursor.execute(f'SELECT * FROM Views WHERE Type = "{1000}"')
@@ -727,7 +730,6 @@ def createMasterView(proj, templates):
     meterH = rtn[1]
 
     ####### CREATE VIEW #######
-    print(proj.getChannelMasterGroupTotal())
     HRes = masterW + asW + ((METER_SPACING_X+meterW) * proj.getChannelMasterGroupTotal()) + 200 # Last one is a buffer
     VRes = titleH + max([meterH, masterH]) + 60
     proj.cursor.execute(f'INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{MASTER_WINDOW_TITLE}",NULL,4,NULL,-1,{HRes},{VRes},100,NULL,NULL,NULL,NULL);')
@@ -757,7 +759,6 @@ def createMasterView(proj, templates):
             template = 'Group'
             if srcGrp.LR: # Stereo groups
                 subGroups = [srcGrp.channelGroups[idx-2], srcGrp.channelGroups[idx-1]]
-                print(subGroups[0].name + subGroups[1].name)
                 template += ' LR'
             if srcGrp.apEnable:
                 template += " AP"
