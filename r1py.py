@@ -275,7 +275,9 @@ class ProjectFile(R1db):
     def getChannelGroupTotal(self):
         i = 0;
         for srcGrp in self.sourceGroups:
-            i += len(srcGrp.channelGroups)
+            for chGrp in srcGrp.channelGroups:
+                if chGrp.type == TYPE_SUBS or chGrp.type == TYPE_TOPS or chGrp.type == TYPE_POINT:
+                    i += 1;
         return i
 
     def getMaxChannelGroupCount(self):
@@ -711,13 +713,19 @@ def createMasterView(proj, templates):
     rtn = __getTempSize(templates, "Master Title")
     titleW = rtn[0]
     titleH = rtn[1]
-    rtn = __getTempSize(templates, "Group LR AP")
+    rtn = __getTempSize(templates, "Group LR AP CPL2")
     meterW = rtn[0]
     meterH = rtn[1]
 
+    print(f'masterW {masterW}')
+    print(f'asW {asW}')
+    print(f'meterW {meterW}')
+    print(f'proj.getChannelGroupTotal() {proj.getChannelGroupTotal()}')
+    print(f'proj.METER_SPACING_X() {METER_SPACING_X}')
+
     ####### CREATE VIEW #######
-    HRes = masterW + asW + (meterW * proj.getChannelGroupTotal()) + (METER_SPACING_X*proj.getChannelGroupTotal())
-    VRes = titleH + masterH + METER_SPACING_Y
+    HRes = masterW + asW + (meterW * proj.getChannelGroupTotal()) + (METER_SPACING_X*proj.getChannelGroupTotal()) + METER_SPACING_X # Last one is a buffer
+    VRes = titleH + max([meterH, masterH]) + 60
     proj.cursor.execute(f'INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{MASTER_WINDOW_TITLE}",NULL,4,NULL,-1,{HRes},{VRes},100,NULL,NULL,NULL,NULL);')
     proj.cursor.execute(f'SELECT max(ViewId) FROM Views')
     rtn = proj.cursor.fetchone()
