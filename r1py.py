@@ -726,15 +726,20 @@ def createMasterView(proj, templates):
     for srcGrp in proj.sourceGroups:
         subs = 0
         tops = 0
-        for chGrp in srcGrp.channelGroups:
-            if chGrp.type > 4 or chGrp.type == 3 or chGrp.type == 2: # TOP or SUB L/R/C Group
+        for idx, chGrp in enumerate(srcGrp.channelGroups):
+
+            TYPE_SUBS = 4
+            TYPE_TOPS_L = 3
+            TYPE_TOPS_R = 2
+            if chGrp.type > TYPE_SUBS or chGrp.type == TYPE_TOPS_L or chGrp.type == TYPE_TOPS_R: # TOP or SUB L/R/C Group
                 continue;
 
             jId = proj.jId
 
             template = 'Group'
             if srcGrp.LR: # Stereo groups
-                subGroups = [srcGrp.channelGroups[-3], srcGrp.channelGroups[-2]]
+                subGroups = [srcGrp.channelGroups[idx-2], srcGrp.channelGroups[idx-1]]
+                print(subGroups[0].name + subGroups[1].name)
                 template += ' LR'
             if srcGrp.apEnable:
                 template += " AP"
@@ -745,44 +750,44 @@ def createMasterView(proj, templates):
             metCh = 0 # Current channel of stereo pair
             mutCh = 0
             w = 0
-            for row in tempContents:
-                dName = row[7]
-                tChannel = row[23]
+            for control in tempContents:
+                dName = control[7]
+                tChannel = control[23]
                 tId = chGrp.groupId
-                flag = row[19]
+                flag = control[19]
 
                 # Update Infra/100hz button text
                 if (chGrp.type < 1 or chGrp.type > 3) and dName == "CUT" and srcGrp.xover is not None:
                     dName = srcGrp.xover
                     logging.info(f"{chGrp.name} - Enabling {srcGrp.xover}")
 
-                if (row[1] == 12): #Get frame Width
-                    w = row[4]
-                if (row[1] == 7): #Meters, these require a TargetChannel
+                if (control[1] == 12): #Get frame Width
+                    w = control[4]
+                if (control[1] == 7): #Meters, these require a TargetChannel
                     tId = chGrp.channels[0].targetId
                     tChannel = chGrp.channels[0].targetChannel
                 if 'Group LR' in template:
-                    if (row[1] == 7): #Meters, these require a TargetChannel
-                        tId = chGrp.channels[0 if not metCh else int((len(chGrp.channels)/2))].targetId
-                        tChannel = chGrp.channels[0 if not metCh else int((len(chGrp.channels)/2))].targetChannel
+                    if (control[1] == 7): #Meters, these require a TargetChannel
+                        tId = subGroups[metCh].channels[0].targetId
+                        tChannel = subGroups[metCh].channels[0].targetChannel
                         metCh += 1
-                    if (row[1] == 4) and (row[24] == "Config_Mute"): #Mute
+                    if (control[1] == 4) and (control[24] == "Config_Mute"): #Mute
                         tId = subGroups[mutCh].groupId
                         mutCh += 1
 
-                if row[1] == 12:
+                if control[1] == 12:
                     dName = chGrp.name
 
                 if dName is None:
                     dName = ""
 
-                if row[1] == 3 and row[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or srcGrp.type == 3):
+                if control[1] == 3 and control[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or srcGrp.type == 3):
                     flag = 14
                     logging.info(f"{chGrp.name} - Setting relative delay")
 
-                s = f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(row[1])}", "{str(row[2]+posX)}", "{str(row[3]+posY)}", "{str(row[4])}", "{str(row[5])}", "{str(proj.masterViewId)}", "{dName}", "{str(jId)}", "{str(row[10])}", "{str(row[11])}", "{str(row[12])}", "{str(row[13])}", "{str(row[14])}", "{str(row[15])}", "{str(row[16])}", "{str(row[17])}", "{str(row[18])}", "{str(flag)}", "{str(row[20])}", "{str(row[21])}", "{str(tId)}", {str(tChannel)}, "{str(row[24])}", {row[25]}, NULL, NULL, "{str(row[28])}", "{str(row[29])}", "{str(row[30])}", "{str(row[31])}", "  ")'
+                s = f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(control[1])}", "{str(control[2]+posX)}", "{str(control[3]+posY)}", "{str(control[4])}", "{str(control[5])}", "{str(proj.masterViewId)}", "{dName}", "{str(jId)}", "{str(control[10])}", "{str(control[11])}", "{str(control[12])}", "{str(control[13])}", "{str(control[14])}", "{str(control[15])}", "{str(control[16])}", "{str(control[17])}", "{str(control[18])}", "{str(flag)}", "{str(control[20])}", "{str(control[21])}", "{str(tId)}", {str(tChannel)}, "{str(control[24])}", {control[25]}, NULL, NULL, "{str(control[28])}", "{str(control[29])}", "{str(control[30])}", "{str(control[31])}", "  ")'
 
-                if row[1] == 3 and row[24] == 'Config_Filter3': # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
+                if control[1] == 3 and control[24] == 'Config_Filter3': # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
                     if (chGrp.type < 1 or chGrp.type > 3) and srcGrp.xover is not None:
                         s = ""
                         logging.info(f"{chGrp.name} - Skipping CPL")
