@@ -195,17 +195,19 @@ class ProjectFile(R1db):
     def __initCheck(self):
         self.cursor.execute(f"SELECT * FROM sqlite_master WHERE name ='Groups' and type='table'")
         if self.cursor.fetchone() is None:
-            logging.error(f'Could not find Groups table.')
+            print(f'Could not find Groups table. Run R1 initial setup before using AutoR1.')
             return -1;
         self.cursor.execute(f"SELECT * FROM sqlite_master WHERE name ='Views' and type='table'")
         if self.cursor.fetchone() is None:
-            logging.error(f'Could not find Views table.')
+            print(f'Could not find Views table. Run R1 initial setup before using AutoR1.')
             return -1;
         self.cursor.execute(f"SELECT * FROM Groups WHERE GroupId = 1 or ParentId = 1")
         rtn = self.cursor.fetchall()
         if rtn is None or len(rtn) < 3:
-            logging.error(f'Could not find default groups.')
+            print(f'Could not find default groups. Run R1 initial setup before using AutoR1.')
             return -1;
+
+        return 1;
 
     # Deletes a project group and its children
     # Leading underscores define private function
@@ -227,6 +229,8 @@ class ProjectFile(R1db):
         self.pId = -1;
         self.groups = []
         self.sourceGroups = []
+        if self.__initCheck() < 0:
+            sys.exit()
 
         self.__clean()
 
