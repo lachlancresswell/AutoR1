@@ -1,45 +1,27 @@
-v1.5.1
-
-## Download
-
-### Combined Mac + Windows package:
-**[Link](https://github.com/lachyc/AutoR1/releases)**
+v1.6.0
 
 **Master View**
-![Master View](https://i.imgur.com/CynNs0d.png)
+![Master View](https://i.imgur.com/owTAui2.png)
 
 **Meter View**
-![Meter View](https://i.imgur.com/tSDfxEx.png)
-
-**Overview**
-![Overview](https://imgur.com/cNPPtNd.png)
-
-**Source View**
-![Source View](https://imgur.com/Z1T5Gdf.png)
+![Meter View](https://i.imgur.com/lwmrZE1.png)
 
 ## Using AutoR1
-1. Unzip downloaded file.
-2. Copy R1 project into unzipped folder and rename to 'R1.dbpr'
-2. Run R1 initial setup to generate all standard views
+1. Ensure you have run the R1 initial setup on your project to generate all standard views and groups and have saved.
+2. Download and unzip AutoR1.
+3. Copy R1 project into downloaded folder and rename to 'R1.dbpr'
 4. Double click 'start-macos.command' or 'start-windows.bat' depending on your OS
 5. Modified project file will be created in this folder called 'R1_AUTO.dbpr'
 
 ## Overview
-- Create fallback controls
-
-  Adds fallback controls to all group pages and the overview page.
-
-- Create DS info
-
-  Enables/disables ds info (D1/D2 pri/sec readouts on Overview, channel info on Meter page).
 
 - Create meters view
 
-  Creates a meter for each channel in the project grouped by the standard/ArrayCalc grouping.
+  Creates metering for ever channel in every source in the project.
 
 - Create master view
 
-  Creates a view with meters for each group and overall PA management and monitoring controls.
+- Creates an overall view of sources and channels with metering, fallback, status, ArraySight and ArrayProcessing controls.
 
 
 ## Notes
