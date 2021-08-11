@@ -197,28 +197,33 @@ class ProjectFile(R1db):
 
         return 1
 
-    # Deletes a project group and its children
-    # Leading underscores define private function
-    def deleteGroup(self, gId):
+    def deleteGroup(self, groupID):
+        """Delete an item and any children from the group table
+
+        Args:
+            gId (int): GroupID to delete
+        """
         self.cursor.execute(
-            f'SELECT GroupId FROM Groups WHERE ParentId = {gId}')
+            f'SELECT GroupId FROM Groups WHERE ParentId = {groupID}')
         children = self.cursor.fetchall()
         for child in children:
             self.deleteGroup(child[0])
 
+        # Logging
         self.cursor.execute(
-            f'SELECT Name FROM Groups WHERE GroupId = {gId}')
+            f'SELECT Name FROM Groups WHERE GroupId = {groupID}')
         name = self.cursor.fetchone()[0]
         self.cursor.execute(
-            f'SELECT ParentId FROM Groups WHERE GroupId = {gId}')
+            f'SELECT ParentId FROM Groups WHERE GroupId = {groupID}')
         pId = self.cursor.fetchone()[0]
         self.cursor.execute(
             f'SELECT Name FROM Groups WHERE GroupId = {pId}')
         pName = self.cursor.fetchone()[0]
-
-        logging.info(f'Deleting from groups - {gId}')
+        logging.info(f'Deleting from groups - {groupID}')
         print(f'Deleting {name} from {pName}')
-        return self.cursor.execute(f'DELETE FROM Groups WHERE GroupId = {gId}')
+
+        self.cursor.execute(
+            f'DELETE FROM Groups WHERE GroupId = {groupID}')
 
     def __init__(self, f):
         super().__init__(f)  # Inherit from parent class
@@ -233,27 +238,39 @@ class ProjectFile(R1db):
         if self.__initCheck() < 0:
             raise ValueError('Initial R1 setup not')
 
-        self.getMasterID()
+        self.mId = self.getMasterID()
         self.getNextJoinedID()
 
     def getMasterID(self):
-        # Find Master groupId
+        """Find GroupID of the default Master group
+
+        Raises:
+            RuntimeError: Master group cannot be found
+
+        Returns:
+            int: GroupID of Master group
+        """
         self.cursor.execute(
             'SELECT "GroupId" FROM Groups WHERE "ParentId" = 1 AND "Name" = "Master"')
         rtn = self.cursor.fetchone()
         if rtn is None:
-            logging.critical('Cannot find Master group.')
-        self.mId = rtn[0]
+            raise RuntimeError('Cannot find Master group')
+        return rtn[0]
 
     def getNextJoinedID(self):
-        # Set joinedId start
+        """Set the next valid JoinedID
+
+        Raises:
+            RuntimeError: Initial R1 setup hasn't been ran as no controls are not present
+        """
+
         self.cursor.execute(
             'SELECT JoinedId from Controls ORDER BY JoinedId DESC LIMIT 1')
         rtn = self.cursor.fetchone()
         if rtn is not None:
             self.jId = rtn[0] + 1
         else:
-            raise ValueError(
+            raise RuntimeError(
                 "Views have not been generated. Please run initial setup in R1 first.")
 
     def getChannelMasterGroupTotal(self):

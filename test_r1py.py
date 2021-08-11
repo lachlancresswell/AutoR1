@@ -10,6 +10,7 @@ TEMP_FILE = './templates.r2t'
 DIRTY_FILE = './dirty.dbpr'
 CLEAN_FILE = './clean.dbpr'
 TEST_FILE = './TEST.dbpr'
+UNSET_FILE = './test_unset.dbpr'
 
 
 def test_loadTemplateFailure():
@@ -47,6 +48,24 @@ def test_getGroupIdFromName(loadedProject):
     with pytest.raises(RuntimeError):
         loadedProject.getGroupIdFromName("abcd")
     assert loadedProject.getGroupIdFromName("Left/Right")[0] >= 3
+
+
+def test_getNextJoinedID(loadedProject):
+    loadedProject.getNextJoinedID()
+    assert loadedProject.jId >= 1
+
+
+def test_getMasterID(loadedProject):
+    id = loadedProject.getMasterID()
+    assert id >= 1
+
+
+def test_deleteGroup(loadedProject):
+    groupId = loadedProject.getGroupIdFromName("Left/Right")[0]
+    assert groupId > 1
+    loadedProject.deleteGroup(groupId)
+    with pytest.raises(RuntimeError):
+        loadedProject.getGroupIdFromName("Left/Right")
 
 
 def test_cleanProjectFile(loadedProject):
