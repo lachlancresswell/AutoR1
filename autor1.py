@@ -14,6 +14,8 @@ MOD_FILE = './R1_AUTO.dbpr'
 TEMP_FILE = './templates.r2t'
 
 ############################## FUNCTIONS ##############################
+
+
 def checkFile(path):
     try:
         f = open(path, 'r')
@@ -23,9 +25,12 @@ def checkFile(path):
     return True
 
 # Ensure exceptions are logged
+
+
 def log_except_hook(*exc_info):
     text = "".join(traceback.format_exception(*exc_info))
     print(f"Unhandled exception: {text}")
+
 
 sys.excepthook = log_except_hook
 
@@ -44,15 +49,16 @@ else:
         print('Could not get current working directory.')
 
 
-#Start logging
+# Start logging
 dateTimeObj = datetime.now()
 
 if not os.path.exists(LOGDIR):
     os.makedirs(LOGDIR)
 timestamp = dateTimeObj.strftime("%d-%b-%Y-%H-%M-%S")
 logfn = LOGDIR+timestamp+'-autor1log.txt'
-with open(logfn, 'w'): pass
-logging.basicConfig(filename=logfn,level=logging.INFO)
+with open(logfn, 'w'):
+    pass
+logging.basicConfig(filename=logfn, level=logging.INFO)
 logging.getLogger().setLevel(logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
@@ -82,15 +88,15 @@ if not checkFile(MOD_FILE):
     sys.exit()
 
 tempFile = r1.TemplateFile(TEMP_FILE)
-tempFile.loadTemplates()
-projFile = r1.ProjectFile(MOD_FILE, tempFile)
-#projFile.removeTriggers()
-#projFile.createTriggers()
-r1.createMeterView(projFile, tempFile);
-r1.createMasterView(projFile, tempFile);
+projFile = r1.ProjectFile(MOD_FILE)
+projFile.pId = projFile.createGroup(r1.PARENT_GROUP_TITLE, 1)[0]
+# projFile.removeTriggers()
+# projFile.createTriggers()
+r1.createMeterView(projFile, tempFile)
+r1.createMasterView(projFile, tempFile)
 r1.createNavButtons(projFile, tempFile)
 
 print("Finished generating views, controls and groups.")
-tempFile.close();
-projFile.close();
+tempFile.close()
+projFile.close()
 sys.exit()
