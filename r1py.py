@@ -459,8 +459,19 @@ class ProjectFile(R1db):
 
         return groupId
 
-    # Find a view's id from its name
     def getViewIdFromName(self, name):
+        """Get a View's ViewID from it's name
+
+        Args:
+            name (string): Name of View to retrieve ID for
+
+        Returns:
+            int: Retrieved ViewId
+        """
         self.cursor.execute(f'SELECT ViewId FROM Views WHERE Name = "{name}"')
-        rtn = proj.cursor.fetchone()[0]
-        return rtn
+
+        try:
+            rtn = self.cursor.fetchone()
+            return rtn[0]
+        except:
+            raise RuntimeError('View not found')
