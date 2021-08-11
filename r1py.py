@@ -229,12 +229,10 @@ class ProjectFile(R1db):
         self.pId = -1
         self.groups = []
         self.sourceGroups = []
-        self.grpLrID = -1
 
         if self.__initCheck() < 0:
             raise ValueError('Initial R1 setup not')
 
-        self.__getGrpLrID()
         self.getMasterID()
         self.getNextJoinedID()
 
@@ -308,11 +306,6 @@ class ProjectFile(R1db):
             if rtn is not None and len(rtn):
                 subGroups.append(rtn)
         return subGroups
-
-    def __getGrpLrID(self):
-        self.cursor.execute(
-            f'SELECT GroupId FROM Groups WHERE Name = "Left/Right"')
-        self.grpLrID = self.cursor.fetchone()[0]
 
     def setSrcGrpInfo(self):
         self.cursor.execute(f'PRAGMA case_sensitive_like=ON;')
