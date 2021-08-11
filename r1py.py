@@ -452,11 +452,34 @@ class ProjectFile(R1db):
 
         return groupId
 
+    def getGroupIdFromName(self, name):
+        """Get GroupIDs of groups matching provided name
+
+        Args:
+            name (string): name of group(s) to find
+
+        Raises:
+            RuntimeError: Group cannot be found
+
+        Returns:
+            [int]: array of GroupIDs of matching groups
+        """
+        self.cursor.execute(
+            f'SELECT GroupId FROM Groups WHERE Name = "{name}"')
+
+        rtn = self.cursor.fetchone()
+        if rtn is None:
+            raise RuntimeError('Could not find group')
+        return rtn
+
     def getViewIdFromName(self, name):
         """Get a View's ViewID from it's name
 
         Args:
             name (string): Name of View to retrieve ID for
+
+        Raises:
+            RuntimeError: View cannot be found
 
         Returns:
             int: Retrieved ViewId

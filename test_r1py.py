@@ -43,6 +43,12 @@ def test_getViewIdFromName(loadedProject):
     assert loadedProject.getViewIdFromName("Overview") >= 1000
 
 
+def test_getGroupIdFromName(loadedProject):
+    with pytest.raises(RuntimeError):
+        loadedProject.getGroupIdFromName("abcd")
+    assert loadedProject.getGroupIdFromName("Left/Right")[0] >= 3
+
+
 def test_cleanProjectFile(loadedProject):
     template = r1.TemplateFile(TEMP_FILE)
 
