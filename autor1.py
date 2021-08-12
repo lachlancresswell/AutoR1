@@ -120,7 +120,7 @@ class SourceGroup:
 
             i = i-2
             # Skip final group if subs or tops groups have been found, only use for point sources
-            if len(self.channelGroups) and i <= 2:
+            if len(self.channelGroups) and i < 2:
                 i = -1
 
         log.info(f'Created source group - {self.groupId} / {self.name}')
@@ -544,6 +544,8 @@ def getSrcGrpInfo(proj):
         f' ON i.ViewId  = Views.ViewId '
         f' /* Skip unused channels group */ '
         f' WHERE SourceGroups.name != "Unused channels" '
+        f' /* Skip second half of stereo pairs */'
+        f' AND OrderIndex != -1 '
         f' /* Skip duplicate groups in Master group _only for arrays_. We want L/R groups for arrays. */ '
         f' AND (SourceGroups.Type == 1 AND masterGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == "Master"))  '
         f' /* Skip existing Sub array group in Master */ '
@@ -585,6 +587,18 @@ def getSrcGrpInfo(proj):
             log.info(f'Assigned {len(rtn)} channels to {devGrp.name}')
 
 
+def getMainGroupCount(proj):
+    groups = []
+    for srcGrp in proj.sourceGroups:
+        for idx, chGrp in enumerate(srcGrp.channelGroups):
+
+            if chGrp.type > TYPE_SUBS or chGrp.type == TYPE_TOPS_L or chGrp.type == TYPE_TOPS_R:  # TOP or SUB L/R/C Group
+                continue
+            else:
+                groups.append(chGrp)
+    return len(groups)
+
+
 def createMasterView(proj, templates):
     # Get width + height of templates used
     rtn = __getTempSize(templates, "Master Main")
@@ -599,6 +613,8 @@ def createMasterView(proj, templates):
     rtn = __getTempSize(templates, "Group LR AP CPL2")
     meterW = rtn[0]
     meterH = rtn[1]
+
+    proj.meterIds = []
 
     ####### CREATE VIEW #######
     HRes = masterW + asW + ((METER_SPACING_X+meterW) *
@@ -700,4 +716,6 @@ def createMasterView(proj, templates):
                              chGrp.name, srcGrp.viewId, -1, proj.cursor, None, None, None, None, None)
 
             posX += meterW+METER_SPACING_X
+
+            proj.meterIds.append(proj.jId)
             proj.jId = proj.jId + 1

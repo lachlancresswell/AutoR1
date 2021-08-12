@@ -101,6 +101,9 @@ def test_cleanProjectFile(loadedProject):
         loadedProject.cursor.execute(q)
         assert loadedProject.cursor.fetchone() is not None
 
+    assert autor1.getMainGroupCount(
+        loadedProject) == len(loadedProject.meterIds)
+
     loadedProject.close()
     copyfile(DIRTY_FILE, CLEAN_FILE)
 
