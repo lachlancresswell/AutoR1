@@ -28,6 +28,48 @@ TYPE_POINT = 0
 
 ##### Source groups are created in ArrayCalc ########
 
+# Sections is table name from .r2t file
+
+
+class Template:
+    def __init__(self, sections, controls):
+        if sections is not None:
+            self.id = sections[0]
+            self.name = sections[1]
+            self.parentId = sections[2]
+            self.joinedId = sections[3]
+
+        if controls is not None:
+            self.controls = controls
+
+
+### Load template file + templates within from .r2t file ###
+# Sections table contains template overview info
+class TemplateFile(r1.sqlDbFile):
+    def __init__(self, f):
+        super().__init__(f)  # Inherit from parent class
+        self.templates = []
+
+        try:
+            self.cursor.execute(
+                'SELECT * FROM "main"."Sections" ORDER BY JoinedId ASC')
+        except:
+            raise
+
+        templates = self.cursor.fetchall()
+
+        logging.info(f'Found {len(templates)} templates in file.')
+
+        for idx, temp in enumerate(templates):
+            joinedId = temp[3]
+            self.cursor.execute(
+                f'SELECT * FROM Controls WHERE JoinedId = {joinedId}')  # Load controls
+            controls = self.cursor.fetchall()
+
+            self.templates.append(Template(temp, controls))
+            logging.info(
+                f'Loaded template - {idx} / {self.templates[-1].name}')
+
 
 class SourceGroup:
     def __init__(self, row):

@@ -1,6 +1,7 @@
 import sqlite3
 import logging
 from abc import ABCMeta
+import os.path
 
 SRC_TYPE_SUBARRAY = 3
 
@@ -23,90 +24,60 @@ DEV_PROP_TYPES = [
 
 
 ##### An R1 SQL File (.dbpr project file or .r1t template file) #####
-class R1db(object):
+class sqlDbFile(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, f):
-        self.f = f
-        self.db = sqlite3.connect(f)
+    def __init__(self, path):
+        """Load existing SQL database file
+
+        Args:
+            f (string): Path to database file
+
+        Raises:
+            Exception: If file does not exist
+        """
+        if not os.path.isfile(path):
+            raise Exception('File does not exist.')
+
+        self.f = path
+        self.db = sqlite3.connect(self.f)
         self.cursor = self.db.cursor()
-        logging.info('Loaded file - ' + f)
+        logging.info('Loaded file - ' + self.f)
 
     def close(self):
         self.db.commit()
         self.db.close()
 
 
-### Load template file + templates within from .r2t file ###
-# Sections table contains template overview info
-class TemplateFile(R1db):
-    def __init__(self, f):
-        super().__init__(f)  # Inherit from parent class
-        self.templates = []
-
-        try:
-            self.cursor.execute(
-                'SELECT * FROM "main"."Sections" ORDER BY JoinedId ASC')
-        except:
-            raise
-
-        templates = self.cursor.fetchall()
-
-        logging.info(f'Found {len(templates)} templates in file.')
-
-        for idx, temp in enumerate(templates):
-            joinedId = temp[3]
-            self.cursor.execute(
-                f'SELECT * FROM Controls WHERE JoinedId = {joinedId}')  # Load controls
-            controls = self.cursor.fetchall()
-
-            self.templates.append(Template(temp, controls))
-            logging.info(
-                f'Loaded template - {idx} / {self.templates[-1].name}')
-
-
-# Sections is table name from .r2t file
-class Template:
-    def __init__(self, sections, controls):
-        if sections is not None:
-            self.id = sections[0]
-            self.name = sections[1]
-            self.parentId = sections[2]
-            self.joinedId = sections[3]
-
-        if controls is not None:
-            self.controls = controls
-
-
 # Load project file + get joined id for new entries
-class ProjectFile(R1db):
+class ProjectFile(sqlDbFile):
 
     def getGroupCount(self):
         self.cursor.execute(
             f"SELECT * FROM Groups")
         return len(self.cursor.fetchall())
 
-    # Find if inital R1 setup has been run
-    def __initCheck(self):
+    def isInitialised(self):
+        """Checks if initial R1 setup has been performed
+
+        Returns:
+            int: 1 if initialised, 0 if not
+        """
         self.cursor.execute(
             f"SELECT * FROM sqlite_master WHERE name ='Groups' and type='table'")
         if self.cursor.fetchone() is None:
-            print(
-                f'Could not find Groups table. Run R1 initial setup before using AutoR1.')
-            return -1
+            return 0
+
         self.cursor.execute(
             f"SELECT * FROM sqlite_master WHERE name ='Views' and type='table'")
         if self.cursor.fetchone() is None:
-            print(
-                f'Could not find Views table. Run R1 initial setup before using AutoR1.')
-            return -1
+            return 0
+
         self.cursor.execute(
             f"SELECT * FROM Groups WHERE GroupId = 1 or ParentId = 1")
         rtn = self.cursor.fetchall()
         if rtn is None or len(rtn) < 3:
-            print(
-                f'Could not find default groups. Run R1 initial setup before using AutoR1.')
-            return -1
+            return 0
 
         return 1
 
@@ -148,11 +119,9 @@ class ProjectFile(R1db):
         self.groups = []
         self.sourceGroups = []
 
-        if self.__initCheck() < 0:
-            raise ValueError('Initial R1 setup not')
-
-        self.mId = self.getMasterID()
-        self.getNextJoinedID()
+        if self.isInitialised():
+            self.mId = self.getMasterID()
+            self.getNextJoinedID()
 
     def getMasterID(self):
         """Find GroupID of the default Master group

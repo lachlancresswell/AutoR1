@@ -11,20 +11,21 @@ DIRTY_FILE = './dirty.dbpr'
 CLEAN_FILE = './clean.dbpr'
 TEST_FILE = './TEST.dbpr'
 UNSET_FILE = './test_unset.dbpr'
+UNINITIALISED_FILE = './uninitialised.dbpr'
 
 
 def test_loadTemplateFailure():
-    with pytest.raises(sqlite3.OperationalError):
-        r1.TemplateFile('./tempilates.r2t')
+    with pytest.raises(Exception):
+        autor1.TemplateFile('./tempilates.r2t')
 
 
 def test_loadTemplateSuccess():
-    template = r1.TemplateFile(TEMP_FILE)
-    assert type(template) is r1.TemplateFile
+    template = autor1.TemplateFile(TEMP_FILE)
+    assert type(template) is autor1.TemplateFile
 
 
 def test_loadProjectFailure():
-    with pytest.raises(ValueError):
+    with pytest.raises(Exception):
         r1.ProjectFile('./tempilates.r2t')
 
 
@@ -36,6 +37,16 @@ def test_loadProjectSuccess():
 def loadedProject():
     copyfile(TEST_FILE, DIRTY_FILE)
     return r1.ProjectFile(DIRTY_FILE)
+
+
+@pytest.fixture(scope="module")
+def uninitialisedProject():
+    return r1.ProjectFile(UNINITIALISED_FILE)
+
+
+def test_isInitialised(loadedProject, uninitialisedProject):
+    assert uninitialisedProject.isInitialised() < 1
+    assert loadedProject.isInitialised() == 1
 
 
 def test_getViewIdFromName(loadedProject):
@@ -69,10 +80,10 @@ def test_deleteGroup(loadedProject):
 
 
 def test_cleanProjectFile(loadedProject):
-    template = r1.TemplateFile(TEMP_FILE)
+    template = autor1.TemplateFile(TEMP_FILE)
 
     assert type(loadedProject) is r1.ProjectFile
-    assert type(template) is r1.TemplateFile
+    assert type(template) is autor1.TemplateFile
 
     initGrpCount = loadedProject.getGroupCount()
 
