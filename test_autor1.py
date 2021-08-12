@@ -46,7 +46,8 @@ def test_cleanProjectFile(loadedProject):
 
     loadedProject.pId = loadedProject.createGrp(
         autor1.PARENT_GROUP_TITLE, 1)[0]
-    autor1.setSrcGrpInfo(loadedProject)
+    autor1.createSubLRCGroups(loadedProject)
+    autor1.getSrcGrpInfo(loadedProject)
     autor1.configureApChannels(loadedProject)
 
     autor1.createMeterView(loadedProject, template)
