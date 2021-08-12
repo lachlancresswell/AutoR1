@@ -14,6 +14,12 @@ UNSET_FILE = './test_unset.dbpr'
 UNINITIALISED_FILE = './uninitialised.dbpr'
 
 
+# Before all tests
+@pytest.fixture(scope="session", autouse=True)
+def do_something(request):
+    r1.log.setLevel(logging.DEBUG)
+
+
 def test_loadTemplateFailure():
     with pytest.raises(Exception):
         autor1.TemplateFile('./tempilates.r2t')

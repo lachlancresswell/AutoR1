@@ -2,6 +2,10 @@ import sqlite3
 import logging
 from abc import ABCMeta
 import os.path
+import sys
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.StreamHandler(sys.stdout))
 
 SRC_TYPE_SUBARRAY = 3
 
@@ -42,7 +46,7 @@ class sqlDbFile(object):
         self.f = path
         self.db = sqlite3.connect(self.f)
         self.cursor = self.db.cursor()
-        logging.info('Loaded file - ' + self.f)
+        log.info('Loaded file - ' + self.f)
 
     def close(self):
         self.db.commit()
@@ -122,8 +126,7 @@ class ProjectFile(sqlDbFile):
         self.cursor.execute(
             f'SELECT Name FROM Groups WHERE GroupId = {pId}')
         pName = self.cursor.fetchone()[0]
-        logging.info(f'Deleting from groups - {groupID}')
-        print(f'Deleting {name} from {pName}')
+        log.info(f'Deleting {name} ({groupID}) from {pName}')
 
         self.cursor.execute(
             f'DELETE FROM Groups WHERE GroupId = {groupID}')
@@ -186,8 +189,7 @@ class ProjectFile(sqlDbFile):
         self.cursor.execute(
             f'SELECT Name FROM Groups WHERE GroupId = {parentId}')
         pName = self.cursor.fetchone()[0]
-        print(f'Inserted {title} under {pName}')
-        logging.info(f'Inserted {title} under {pName}')
+        log.info(f'Inserted {title} under {pName}')
 
         return groupId
 

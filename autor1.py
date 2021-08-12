@@ -2,6 +2,10 @@ import sqlite3
 import logging
 from abc import ABCMeta
 import r1py as r1
+import sys
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.StreamHandler(sys.stdout))
 
 NAV_BUTTON_X = 230
 NAV_BUTTON_Y = 15
@@ -58,7 +62,7 @@ class TemplateFile(r1.sqlDbFile):
 
         templates = self.cursor.fetchall()
 
-        logging.info(f'Found {len(templates)} templates in file.')
+        log.info(f'Found {len(templates)} templates in file.')
 
         for idx, temp in enumerate(templates):
             joinedId = temp[3]
@@ -67,7 +71,7 @@ class TemplateFile(r1.sqlDbFile):
             controls = self.cursor.fetchall()
 
             self.templates.append(Template(temp, controls))
-            logging.info(
+            log.info(
                 f'Loaded template - {idx} / {self.templates[-1].name}')
 
 
@@ -119,8 +123,7 @@ class SourceGroup:
             if len(self.channelGroups) and i <= 2:
                 i = -1
 
-        logging.info(f'Created source group - {self.groupId} / {self.name}')
-        print(f'Created source group - {self.groupId} / {self.name}')
+        log.info(f'Created source group - {self.groupId} / {self.name}')
 
 
 ########## Created in R1, contain individual channels ########
@@ -131,7 +134,7 @@ class ChannelGroup:
         self.channels = []
         self.type = type
 
-        logging.info(
+        log.info(
             f'Created channel group - {self.groupId} / {self.name} / {self.type}')
 
 
@@ -145,7 +148,7 @@ class Channel:
         self.preset = row[4]
         self.cabId = row[5]
 
-        logging.info(f'Created channel - {self.name}')
+        log.info(f'Created channel - {self.name}')
 
 
 def createNavButtons(proj, templates):
@@ -162,31 +165,27 @@ def createNavButtons(proj, templates):
 
 
 def clean(proj, masterViewId, meterViewId):
-    logging.info('Cleaning R1 project.')
+    log.info('Cleaning R1 project.')
 
     proj.cursor.execute(
         f'DELETE FROM Controls WHERE "ViewId" = "{masterViewId}"')
-    print(f'Deleted {MASTER_WINDOW_TITLE} view.')
-    logging.info(f'Deleted {MASTER_WINDOW_TITLE} view.')
+    log.info(f'Deleted {MASTER_WINDOW_TITLE} view.')
+
     proj.cursor.execute(
         f'DELETE FROM Controls WHERE "ViewId" = "{meterViewId}"')
-    print(f'Deleted {METER_WINDOW_TITLE} view controls.')
-    logging.info(f'Deleted {METER_WINDOW_TITLE} view controls.')
+    log.info(f'Deleted {METER_WINDOW_TITLE} view controls.')
 
     proj.cursor.execute(
         f'DELETE FROM Controls WHERE "TargetId" = "{masterViewId}" AND "TargetChannel" = -1')
-    print(f'Deleted {MASTER_WINDOW_TITLE} nav buttons.')
-    logging.info(f'Deleted {MASTER_WINDOW_TITLE} nav buttons.')
+    log.info(f'Deleted {MASTER_WINDOW_TITLE} nav buttons.')
 
     proj.cursor.execute(
         f'DELETE FROM Views WHERE "Name" = "{MASTER_WINDOW_TITLE}"')
-    print(f'Deleted {MASTER_WINDOW_TITLE} view.')
-    logging.info(f'Deleted {MASTER_WINDOW_TITLE} view.')
+    log.info(f'Deleted {MASTER_WINDOW_TITLE} view.')
 
     proj.cursor.execute(
         f'DELETE FROM Views WHERE "Name" = "{METER_WINDOW_TITLE}"')
-    print(f'Deleted {METER_WINDOW_TITLE} view.')
-    logging.info(f'Deleted {METER_WINDOW_TITLE} view.')
+    log.info(f'Deleted {METER_WINDOW_TITLE} view.')
 
     proj.cursor.execute(f'SELECT Name FROM SourceGroups WHERE Type = 3')
     rtn = proj.cursor.fetchone()
@@ -203,7 +202,7 @@ def clean(proj, masterViewId, meterViewId):
     if group is not None:
         pId = group[0]
         proj.deleteGroup(pId)
-    logging.info(f'Deleted {PARENT_GROUP_TITLE} group.')
+    log.info(f'Deleted {PARENT_GROUP_TITLE} group.')
 
     return proj
 
@@ -300,7 +299,7 @@ def __getTempSize(templates, tempName):
     if rtn is not None:
         jId = rtn[0]
     else:
-        logging.info(f'{tempName} template not found.')
+        log.info(f'{tempName} template not found.')
         return -1
 
     templates.cursor.execute(
@@ -316,7 +315,7 @@ def __getTempSize(templates, tempName):
                 h = row[1]+row[3]
         return [w, h]
     else:
-        logging.info(f'{tempName} template controls not found.')
+        log.info(f'{tempName} template controls not found.')
         return -1
 
 
@@ -548,7 +547,7 @@ def setSrcGrpInfo(proj):
             for row in rtn:
                 proj.sourceGroups[idx].channelGroups[idy].channels.append(
                     Channel(row))
-            logging.info(f'Assigned {len(rtn)} channels to {devGrp.name}')
+            log.info(f'Assigned {len(rtn)} channels to {devGrp.name}')
 
 
 def createMasterView(proj, templates):
@@ -623,7 +622,7 @@ def createMasterView(proj, templates):
                 # Update Infra/100hz button text
                 if (chGrp.type < TYPE_TOPS or chGrp.type > TYPE_TOPS_R) and dName == "CUT" and srcGrp.xover is not None:
                     dName = srcGrp.xover
-                    logging.info(f"{chGrp.name} - Enabling {srcGrp.xover}")
+                    log.info(f"{chGrp.name} - Enabling {srcGrp.xover}")
 
                 if (control[1] == r1.CTRL_METER):  # Meters, these require a TargetChannel
                     tId = chGrp.channels[0].targetId
@@ -650,7 +649,7 @@ def createMasterView(proj, templates):
 
                 if control[1] == r1.CTRL_INPUT and control[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or srcGrp.type > TYPE_TOPS_R):
                     flag = 14
-                    logging.info(f"{chGrp.name} - Setting relative delay")
+                    log.info(f"{chGrp.name} - Setting relative delay")
 
                 s = f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(control[1])}", "{str(control[2]+posX)}", "{str(control[3]+posY)}", "{str(control[4])}", "{str(control[5])}", "{str(proj.masterViewId)}", "{dName}", "{str(proj.jId)}", "{str(control[10])}", "{str(control[11])}", "{str(control[12])}", "{str(control[13])}", "{str(control[14])}", "{str(control[15])}", "{str(control[16])}", "{str(control[17])}", "{str(control[18])}", "{str(flag)}", "{str(control[20])}", "{str(control[21])}", "{str(tId)}", {str(tChannel)}, "{str(control[24])}", {control[25]}, NULL, NULL, "{str(control[28])}", "{str(control[29])}", "{str(control[30])}", "{str(control[31])}", "  ")'
 
@@ -658,7 +657,7 @@ def createMasterView(proj, templates):
                 if control[1] == r1.CTRL_INPUT and control[24] == 'Config_Filter3':
                     if (chGrp.type < TYPE_TOPS or chGrp.type > TYPE_TOPS_R) and srcGrp.xover is not None:
                         s = ""
-                        logging.info(f"{chGrp.name} - Skipping CPL")
+                        log.info(f"{chGrp.name} - Skipping CPL")
 
                 proj.cursor.execute(s)
 
