@@ -122,6 +122,7 @@ class SourceGroup:
             # Skip final group if subs or tops groups have been found, only use for point sources
             if len(self.channelGroups) and i < 2:
                 i = -1
+                self.channelGroups = self.channelGroups[::-1]
 
         log.info(f'Created source group - {self.groupId} / {self.name}')
 
@@ -369,13 +370,11 @@ def createMeterView(proj, templates):
     startY = posY
 
     for srcGrp in proj.sourceGroups:
-        subs = 0
-        tops = 0
-        for chGrp in srcGrp.channelGroups:
-            if chGrp.type == 4 and subs:  # Skip sub parent group if SUBs L/R/C group exists
+        for idx, chGrp in enumerate(srcGrp.channelGroups):
+            # Skip TOPs and SUBs group if L/R groups are present
+            if chGrp.type == TYPE_SUBS or (chGrp.type <= TYPE_SUBS and len(srcGrp.channelGroups) > 2 and (idx == 0 or idx == 3)):
                 continue
-            if chGrp.type == 1 and tops:  # Skip top parent group if Tops L/R group exists
-                continue
+
             dim = __insertTemplate(proj, templates, 'Meters Group', posX, posY, proj.meterViewId,
                                    chGrp.name, chGrp.groupId, None, proj.cursor, None, None, None, None, None)
             posY += dim[1]+10
@@ -384,11 +383,6 @@ def createMeterView(proj, templates):
                 __insertTemplate(proj, templates, "Meter", posX, posY, proj.meterViewId, ch.name,
                                  ch.targetId, ch.targetChannel, proj.cursor, None, None, proj.jId, None, None)
                 posY += spacingY
-
-            if chGrp.type > 4:  # SUB L/R/C group
-                subs = 1
-            elif chGrp.type > 1 and chGrp.type < 4:  # TOP L/R group
-                tops = 1
 
             posX += spacingX
             posY = startY
