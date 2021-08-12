@@ -79,6 +79,10 @@ def test_deleteGroup(loadedProject):
         loadedProject.getGroupIdFromName("Left/Right")
 
 
+def test_getGroupCount(loadedProject):
+    assert loadedProject.getGroupCount() > 10
+
+
 def test_cleanProjectFile(loadedProject):
     template = autor1.TemplateFile(TEMP_FILE)
 

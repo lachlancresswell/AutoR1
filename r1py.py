@@ -52,7 +52,26 @@ class sqlDbFile(object):
 # Load project file + get joined id for new entries
 class ProjectFile(sqlDbFile):
 
+    def __init__(self, f):
+        super().__init__(f)  # Inherit from parent class
+        self.mId = 0
+        self.meterViewId = -1
+        self.masterViewId = -1
+        self.subArray = []
+        self.pId = -1
+        self.groups = []
+        self.sourceGroups = []
+
+        if self.isInitialised():
+            self.mId = self.getMasterID()
+            self.getNextJoinedID()
+
     def getGroupCount(self):
+        """Get total number of entries in Group table
+
+        Returns:
+            int: Number of items in Group table
+        """
         self.cursor.execute(
             f"SELECT * FROM Groups")
         return len(self.cursor.fetchall())
@@ -108,20 +127,6 @@ class ProjectFile(sqlDbFile):
 
         self.cursor.execute(
             f'DELETE FROM Groups WHERE GroupId = {groupID}')
-
-    def __init__(self, f):
-        super().__init__(f)  # Inherit from parent class
-        self.mId = 0
-        self.meterViewId = -1
-        self.masterViewId = -1
-        self.subArray = []
-        self.pId = -1
-        self.groups = []
-        self.sourceGroups = []
-
-        if self.isInitialised():
-            self.mId = self.getMasterID()
-            self.getNextJoinedID()
 
     def getMasterID(self):
         """Find GroupID of the default Master group
