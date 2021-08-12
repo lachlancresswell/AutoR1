@@ -9,10 +9,9 @@ from shutil import copyfile
 TEMP_FILE = './templates.r2t'
 DIRTY_FILE = './dirty.dbpr'
 CLEAN_FILE = './clean.dbpr'
-TEST_FILE = './TEST.dbpr'
-UNSET_FILE = './test_unset.dbpr'
-AP_FILE = './default_set_AP.dbpr'
-UNINITIALISED_FILE = './uninitialised.dbpr'
+TEST_FILE = './test_init.dbpr'
+TEST_FILE_NO_INIT = './test_no_init.dbpr'
+TEST_AP_FILE = './test_init_AP.dbpr'
 
 
 # Before all tests
@@ -29,7 +28,7 @@ def loadedProject():
 
 @pytest.fixture(scope="module")
 def apProject():
-    return r1.ProjectFile(AP_FILE)
+    return r1.ProjectFile(TEST_AP_FILE)
 
 
 def test_loadTemplateFailure():

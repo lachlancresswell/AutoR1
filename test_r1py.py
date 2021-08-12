@@ -8,12 +8,13 @@ from shutil import copyfile
 TEMP_FILE = './templates.r2t'
 DIRTY_FILE = './dirty.dbpr'
 CLEAN_FILE = './clean.dbpr'
-TEST_FILE = './TEST.dbpr'
-UNSET_FILE = './test_unset.dbpr'
-UNINITIALISED_FILE = './uninitialised.dbpr'
-
+TEST_FILE = './test_init.dbpr'
+TEST_FILE_NO_INIT = './test_no_init.dbpr'
+TEST_AP_FILE = './test_init_AP.dbpr'
 
 # Before all tests
+
+
 @pytest.fixture(scope="session", autouse=True)
 def do_something(request):
     r1.log.setLevel(logging.DEBUG)
@@ -27,7 +28,7 @@ def loadedProject():
 
 @pytest.fixture(scope="module")
 def uninitialisedProject():
-    return r1.ProjectFile(UNINITIALISED_FILE)
+    return r1.ProjectFile(TEST_FILE_NO_INIT)
 
 
 def test_loadProjectFailure():
