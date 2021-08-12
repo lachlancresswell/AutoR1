@@ -77,8 +77,10 @@ def test_cleanProjectFile(loadedProject):
 
     cleanProj = r1.ProjectFile(CLEAN_FILE)
     cleanProj.pId = loadedProject.pId
+
     cleanProj = autor1.clean(
-        cleanProj, loadedProject.masterViewId, loadedProject.meterViewId)
+        cleanProj)
+
     postGrpCount = cleanProj.getGroupCount()
     assert postGrpCount == initGrpCount
 

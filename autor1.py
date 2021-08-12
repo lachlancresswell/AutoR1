@@ -152,6 +152,12 @@ class Channel:
 
 
 def createNavButtons(proj, templates):
+    """Insert navigation buttons into default views
+
+    Args:
+        proj (r1.ProjectFile): Project to insert views into
+        templates (TemplateFile): Template file to pull Nav Button template from
+    """
     proj.cursor.execute(f'SELECT * FROM Views WHERE Type = "{1000}"')
     rtn = proj.cursor.fetchall()
 
@@ -164,8 +170,22 @@ def createNavButtons(proj, templates):
                              proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
 
 
-def clean(proj, masterViewId, meterViewId):
+def clean(proj):
+    """Removes all AutoR1 groups, views and controls
+
+    Args:
+        proj (r1.ProjectFile): Project file to clean
+        masterViewId (int): ID of master view created by AutoR1
+        meterViewId (int): ID of meter view created by AutoR1
+
+    Returns:
+            r1.ProjectFile: Clean project file
+
+    """
     log.info('Cleaning R1 project.')
+
+    masterViewId = proj.getViewIdFromName(MASTER_WINDOW_TITLE)
+    meterViewId = proj.getViewIdFromName(METER_WINDOW_TITLE)
 
     proj.cursor.execute(
         f'DELETE FROM Controls WHERE "ViewId" = "{masterViewId}"')

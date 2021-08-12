@@ -19,6 +19,17 @@ def do_something(request):
     r1.log.setLevel(logging.DEBUG)
 
 
+@pytest.fixture(scope="module")
+def loadedProject():
+    copyfile(TEST_FILE, DIRTY_FILE)
+    return r1.ProjectFile(DIRTY_FILE)
+
+
+@pytest.fixture(scope="module")
+def uninitialisedProject():
+    return r1.ProjectFile(UNINITIALISED_FILE)
+
+
 def test_loadProjectFailure():
     with pytest.raises(Exception):
         r1.ProjectFile('./tempilates.r2t')
@@ -26,11 +37,6 @@ def test_loadProjectFailure():
 
 def test_loadProjectSuccess():
     assert type(r1.ProjectFile(TEST_FILE)) is r1.ProjectFile
-
-
-@pytest.fixture(scope="module")
-def uninitialisedProject():
-    return r1.ProjectFile(UNINITIALISED_FILE)
 
 
 def test_isInitialised(loadedProject, uninitialisedProject):
