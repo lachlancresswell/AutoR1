@@ -223,6 +223,11 @@ def clean(proj):
 
 
 def configureApChannels(proj):
+    """Creates a master AP group of all channels with AP enabled
+
+    Args:
+        proj (r1.ProjectFile): Project file to use
+    """
     apGroup = []
     for srcGrp in proj.sourceGroups:
         if srcGrp.apEnable:
@@ -230,17 +235,12 @@ def configureApChannels(proj):
                 if chGrp.type == 1 or chGrp.type == 4:
                     apGroup += chGrp.channels
 
-    proj.cursor.execute(
-        f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
-        f'  SELECT "{AP_GROUP_TITLE}", {proj.pId}, 0, -1, 0, 0')
-    proj.cursor.execute(f'SELECT max(GroupId) FROM Groups')
-    rtn = proj.cursor.fetchone()
-    if rtn is not None:
-        proj.apGroupId = rtn[0]
-        for ch in apGroup:
-            proj.cursor.execute(
-                f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
-                f'  SELECT "{ch.name}", {proj.apGroupId}, {ch.targetId}, {ch.targetChannel}, 1, 0')
+    proj.createGrp(AP_GROUP_TITLE, proj.pId)
+    proj.apGroupId = proj.getHighestGroupID()
+    for ch in apGroup:
+        proj.cursor.execute(
+            f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
+            f'  SELECT "{ch.name}", {proj.apGroupId}, {ch.targetId}, {ch.targetChannel}, 1, 0')
 
 
 def __insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, targetId, targetChannel, cursor, width, height, joinedId, targetProp, targetRec):
@@ -461,24 +461,17 @@ def createSubLRCGroups(proj):
     if rtn is not None:
         name = rtn[0]
         proj.createGrp(name, proj.pId)
-        proj.cursor.execute(f'SELECT max(GroupId) FROM Groups')
-        rtn = proj.cursor.fetchone()
-        if rtn is not None:
-            mId = rtn[0]
-            proj.createGrp(name + " SUBs", mId)
-            proj.cursor.execute(f'SELECT max(GroupId) FROM Groups')
-            rtn = proj.cursor.fetchone()
-            if rtn is not None:
-                mId = rtn[0]
+        mId = proj.getHighestGroupID()
+
+        proj.createGrp(name + " SUBs", mId)
+        mId = proj.getHighestGroupID()
+
         str = [" SUBs L", " SUBs R", " SUBs C"]
         subArrayGroups = __getSubArrayGroup(proj)
         for idx, subArrayGroup in enumerate(subArrayGroups):
             proj.createGrp(name+str[idx], mId)
+            pId = proj.getHighestGroupID()
 
-            proj.cursor.execute(f'SELECT max(GroupId) FROM Groups')
-            rtn = proj.cursor.fetchone()
-            if rtn is not None:
-                pId = rtn[0]
             for subDevs in subArrayGroup:
                 proj.createGrp(
                     subDevs[1], pId, subDevs[2], subDevs[3], 1, 0)

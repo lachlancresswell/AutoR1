@@ -163,6 +163,15 @@ class ProjectFile(sqlDbFile):
             raise RuntimeError(
                 "Views have not been generated. Please run initial setup in R1 first.")
 
+    def getHighestGroupID(self):
+        """Find the highest (most recently created) GroupID
+
+        Returns:
+            int: GroupID found
+        """
+        self.cursor.execute(f'SELECT max(GroupId) FROM Groups')
+        return self.cursor.fetchone()[0]
+
     def createGrp(self, title, parentId=1, targetId=0, targetChannel=-1, type=0, flags=0):
         """Enter a group or an amp channel into the group table
 

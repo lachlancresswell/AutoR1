@@ -42,6 +42,10 @@ def test_loadTemplateSuccess():
     assert type(template) is autor1.TemplateFile
 
 
+def test_getHighestGroupID(loadedProject):
+    assert loadedProject.getHighestGroupID() > 10
+
+
 def test_getApStatus(loadedProject, apProject):
     with pytest.raises(Exception):
         autor1.getApStatus(loadedProject)
