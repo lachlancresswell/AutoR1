@@ -178,9 +178,6 @@ def clean(proj):
         masterViewId (int): ID of master view created by AutoR1
         meterViewId (int): ID of meter view created by AutoR1
 
-    Returns:
-            r1.ProjectFile: Clean project file
-
     """
     log.info('Cleaning R1 project.')
 
@@ -224,29 +221,26 @@ def clean(proj):
         proj.deleteGroup(pId)
     log.info(f'Deleted {PARENT_GROUP_TITLE} group.')
 
-    return proj
-
 
 def configureApChannels(proj):
-    if proj.apEnable:
-        apGroup = []
-        for srcGrp in proj.sourceGroups:
-            if srcGrp.apEnable:
-                for chGrp in srcGrp.channelGroups:
-                    if chGrp.type == 1 or chGrp.type == 4:
-                        apGroup += chGrp.channels
+    apGroup = []
+    for srcGrp in proj.sourceGroups:
+        if srcGrp.apEnable:
+            for chGrp in srcGrp.channelGroups:
+                if chGrp.type == 1 or chGrp.type == 4:
+                    apGroup += chGrp.channels
 
-        proj.cursor.execute(
-            f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
-            f'  SELECT "{AP_GROUP_TITLE}", {proj.pId}, 0, -1, 0, 0')
-        proj.cursor.execute(f'SELECT max(GroupId) FROM Groups')
-        rtn = proj.cursor.fetchone()
-        if rtn is not None:
-            proj.apGroupId = rtn[0]
-            for ch in apGroup:
-                proj.cursor.execute(
-                    f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
-                    f'  SELECT "{ch.name}", {proj.apGroupId}, {ch.targetId}, {ch.targetChannel}, 1, 0')
+    proj.cursor.execute(
+        f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
+        f'  SELECT "{AP_GROUP_TITLE}", {proj.pId}, 0, -1, 0, 0')
+    proj.cursor.execute(f'SELECT max(GroupId) FROM Groups')
+    rtn = proj.cursor.fetchone()
+    if rtn is not None:
+        proj.apGroupId = rtn[0]
+        for ch in apGroup:
+            proj.cursor.execute(
+                f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
+                f'  SELECT "{ch.name}", {proj.apGroupId}, {ch.targetId}, {ch.targetChannel}, 1, 0')
 
 
 def __insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, targetId, targetChannel, cursor, width, height, joinedId, targetProp, targetRec):
@@ -455,9 +449,12 @@ def __getSubArrayGroup(proj):
     return subGroups
 
 
-def setSrcGrpInfo(proj):
-    proj.cursor.execute(f'PRAGMA case_sensitive_like=ON;')
+def createSubLRCGroups(proj):
+    """Creates discrete left, right and centre groups for SUB array
 
+    Args:
+        proj (r1.ProjectFile): Project file to create groups in
+    """
     proj.cursor.execute(
         f'SELECT Name FROM SourceGroups WHERE Type = {r1.SRC_TYPE_SUBARRAY}')
     rtn = proj.cursor.fetchone()
@@ -482,10 +479,39 @@ def setSrcGrpInfo(proj):
             rtn = proj.cursor.fetchone()
             if rtn is not None:
                 pId = rtn[0]
-            for idy, subDevs in enumerate(subArrayGroup):
+            for subDevs in subArrayGroup:
                 proj.createGrp(
                     subDevs[1], pId, subDevs[2], subDevs[3], 1, 0)
 
+
+def getApStatus(proj):
+    """Find if any SourceGroups are using AP
+
+    Args:
+        proj (r1.ProjectFile): Project file to check
+
+    Raises:
+        RuntimeException: If initial SourceGroup discovery has not been performed
+    Returns:
+        int: 1 if any AP enabled SourceGroup found otherwise 0
+    """
+    if len(proj.sourceGroups) is 0 or proj.sourceGroups is None:
+        raise RuntimeError('SourceGroups not loaded')
+    for src in proj.sourceGroups:
+        if src.apEnable:
+            return 1
+    return 0
+
+
+def getSrcGrpInfo(proj):
+    """Discovers all SourceGroups, Groups and channels
+
+    Args:
+        proj (r1.ProjectFile): Proj file to perform discovery on
+    """
+    proj.cursor.execute(f'PRAGMA case_sensitive_like=ON;')
+
+    # Discover all SourceGroups, related R1 Groups and attributes
     proj.cursor.execute(
         f' SELECT Views.ViewId, Views.Name, SourceGroups.SourceGroupId, NextSourceGroupId, SourceGroups.Type, ArrayProcessingEnable,  '
         f' ArraySightId, System, masterGroup.GroupId as MasterGroupId, masterGroup.Name as MasterGroupName, topsGroup.GroupId as TopGroupId, topsGroup.Name as TopGroupName,  '
@@ -536,14 +562,10 @@ def setSrcGrpInfo(proj):
 
     rtn = proj.cursor.fetchall()
 
-    proj.apEnable = 0
     for row in rtn:
         proj.sourceGroups.append(SourceGroup(row))
 
-        if proj.sourceGroups[-1].apEnable:
-            proj.apEnable = 1
-
-    # All channels
+    # Discover all channels of previously discovered groups
     for idx, srcGrp in enumerate(proj.sourceGroups):
         for idy, devGrp in enumerate(srcGrp.channelGroups):
             proj.cursor.execute(
@@ -607,7 +629,7 @@ def createMasterView(proj, templates):
     asPos = __insertTemplate(proj, templates, 'Master ArraySight', posX, posY,
                              proj.masterViewId, None, 0, None, proj.cursor, None, None, None, None, None)
 
-    if proj.apEnable:
+    if getApStatus(proj):
         posX += __insertTemplate(proj, templates, 'THC', posX, posY+asPos[1]+(
             METER_SPACING_Y/2), proj.masterViewId, None, proj.apGroupId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X*4)
     else:

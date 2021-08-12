@@ -11,6 +11,7 @@ DIRTY_FILE = './dirty.dbpr'
 CLEAN_FILE = './clean.dbpr'
 TEST_FILE = './TEST.dbpr'
 UNSET_FILE = './test_unset.dbpr'
+AP_FILE = './default_set_AP.dbpr'
 UNINITIALISED_FILE = './uninitialised.dbpr'
 
 
@@ -26,6 +27,11 @@ def loadedProject():
     return r1.ProjectFile(DIRTY_FILE)
 
 
+@pytest.fixture(scope="module")
+def apProject():
+    return r1.ProjectFile(AP_FILE)
+
+
 def test_loadTemplateFailure():
     with pytest.raises(Exception):
         autor1.TemplateFile('./tempilates.r2t')
@@ -34,6 +40,25 @@ def test_loadTemplateFailure():
 def test_loadTemplateSuccess():
     template = autor1.TemplateFile(TEMP_FILE)
     assert type(template) is autor1.TemplateFile
+
+
+def test_getApStatus(loadedProject, apProject):
+    with pytest.raises(Exception):
+        autor1.getApStatus(loadedProject)
+    with pytest.raises(Exception):
+        autor1.getApStatus(apProject)
+
+    loadedProject.pId = loadedProject.createGrp(
+        autor1.PARENT_GROUP_TITLE, 1)[0]
+    autor1.createSubLRCGroups(loadedProject)
+    autor1.getSrcGrpInfo(loadedProject)
+    assert autor1.getApStatus(loadedProject) is 0
+
+    apProject.pId = apProject.createGrp(
+        autor1.PARENT_GROUP_TITLE, 1)[0]
+    autor1.createSubLRCGroups(apProject)
+    autor1.getSrcGrpInfo(apProject)
+    assert autor1.getApStatus(apProject) is 1
 
 
 def test_cleanProjectFile(loadedProject):
@@ -79,7 +104,7 @@ def test_cleanProjectFile(loadedProject):
     cleanProj = r1.ProjectFile(CLEAN_FILE)
     cleanProj.pId = loadedProject.pId
 
-    cleanProj = autor1.clean(
+    autor1.clean(
         cleanProj)
 
     postGrpCount = cleanProj.getGroupCount()
