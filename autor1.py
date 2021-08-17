@@ -646,8 +646,8 @@ def createMasterView(proj, templates):
 
             template = 'Group'
             if srcGrp.LR:  # Stereo groups
-                subGroups = [srcGrp.channelGroups[idx-2],
-                             srcGrp.channelGroups[idx-1]]
+                subGroups = [srcGrp.channelGroups[idx+1],
+                             srcGrp.channelGroups[idx+2]]
                 template += ' LR'
             if srcGrp.apEnable:
                 template += " AP"
