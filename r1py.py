@@ -147,6 +147,73 @@ class ProjectFile(sqlDbFile):
             raise RuntimeError('Cannot find Master group')
         return rtn[0]
 
+    def getSourceGroupIds(self, skipRightGroups=False):
+        """Get IDs of all SourceGroups in project
+
+        Args:
+            skipRightGroups (boolean): Whether to skip duplicate R groups in L/R SourceGroups or not
+
+        Raises:
+            Exception: Did not find any SourceGroups
+
+        Returns:
+            [int]: Array of IDs
+        """
+        query = 'SELECT SourceGroupId from SourceGroups WHERE Name != "Unused channels"'
+        if skipRightGroups:
+            query += 'AND OrderIndex != -1'
+
+        self.cursor.execute(query)
+        sourceGroups = self.cursor.fetchall()
+        if sourceGroups is not None:
+            array = []
+            for group in sourceGroups:
+                array.append(group[0])
+
+            return array
+        else:
+            raise Exception(f'Could not find any SourceGroups')
+
+    def getSourceGroupNameFromId(self, id):
+        """Gets the name of a SourceGroup from a provided ID
+
+        Args:
+            id (int): ID to search for
+
+        Raises:
+            RuntimeError: SourceGroup not found with matching ID
+
+        Returns:
+            string: Name of discovered SourceGroup
+        """
+        self.cursor.execute(
+            f'SELECT Name from SourceGroups WHERE SourceGroupId = {id}')
+        rtn = self.cursor.fetchone()
+        if rtn is not None:
+            return rtn[0]
+        else:
+            raise RuntimeError(f'Could not find SourceGroup with id {id}')
+
+    def getSourceGroupIdFromName(self, name):
+        """Gets the ID of a SourceGroup from a provided name
+
+        Args:
+            name (string): Name to search for
+
+        Raises:
+            RuntimeError: SourceGroup not found with matching name
+
+        Returns:
+            int: ID of discovered SourceGroup
+        """
+        self.cursor.execute(
+            'SELECT SourceGroupId from SourceGroups WHERE Name = {name}')
+        rtn = self.cursor.fetchone()
+        if rtn is not None:
+            return rtn[0]
+        else:
+            raise RuntimeError(f'Could not find SourceGroup with name {name}')
+
     def getNextJoinedID(self):
         """Set the next valid JoinedID
 
