@@ -5,12 +5,9 @@ import pytest
 import r1py as r1
 from shutil import copyfile
 
-TEMP_FILE = './templates.r2t'
-DIRTY_FILE = './dirty.dbpr'
-CLEAN_FILE = './clean.dbpr'
-TEST_FILE = './test_init.dbpr'
-TEST_FILE_NO_INIT = './test_no_init.dbpr'
-TEST_AP_FILE = './test_init_AP.dbpr'
+TEMP_FILE = './dist/templates.r2t'
+TEST_FILE = './tests/Projects/test_init.dbpr'
+TEST_FILE_NO_INIT = './tests/Projects/test_no_init.dbpr'
 
 # Before all tests
 
@@ -22,8 +19,7 @@ def do_something(request):
 
 @pytest.fixture(scope="module")
 def loadedProject():
-    copyfile(TEST_FILE, DIRTY_FILE)
-    return r1.ProjectFile(DIRTY_FILE)
+    return r1.ProjectFile(TEST_FILE)
 
 
 @pytest.fixture(scope="module")
