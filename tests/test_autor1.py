@@ -89,7 +89,7 @@ def test_getApStatus(testConfig):
     autor1.getSrcGrpInfo(loadedProject)
     assert autor1.getApStatus(loadedProject) is testConfig[3]
 
-
+@pytest.mark.order(1)
 def test_hasSubGroups(testConfig):
     loadedProject = testConfig[-1]
 
@@ -98,7 +98,7 @@ def test_hasSubGroups(testConfig):
     autor1.createSubLRCGroups(loadedProject)
     assert autor1.hasSubGroups(loadedProject) == testConfig[4]
 
-
+@pytest.mark.order(2)
 def test_cleanProjectFile(testConfig):
     loadedProject = testConfig[-1]
     template = autor1.TemplateFile(TEMP_FILE)
