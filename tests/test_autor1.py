@@ -22,7 +22,7 @@ PROJECTS = [
 
 # Before all tests
 @pytest.fixture(scope="session", autouse=True)
-def do_something(request):
+def beforeAll(request):
     autor1.log.setLevel(logging.DEBUG)
 
 
