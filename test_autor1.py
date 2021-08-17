@@ -1,17 +1,23 @@
 import logging
 import sqlite3
 import sys
+import os
 import pytest
 import r1py as r1
 import autor1
 from shutil import copyfile
 
 TEMP_FILE = './templates.r2t'
-DIRTY_FILE = './dirty.dbpr'
-CLEAN_FILE = './clean.dbpr'
-TEST_FILE = './test_init.dbpr'
-TEST_FILE_NO_INIT = './test_no_init.dbpr'
-TEST_AP_FILE = './test_init_AP.dbpr'
+
+
+# 0 - File to test
+# 1 - Number of columns expected in meter window
+# 2 - Number of meters expected in master window
+# 3 - If AP is enabled
+# 4 - Number of SUB array groups (L/R/C)
+PROJECTS = [
+    ("test_init_AP.dbpr", 15, 23, 1, 3), ("test_init.dbpr", 15, 23, 0, 3)
+]
 
 
 # Before all tests
@@ -20,15 +26,24 @@ def do_something(request):
     autor1.log.setLevel(logging.DEBUG)
 
 
-@pytest.fixture(scope="module")
-def loadedProject():
-    copyfile(TEST_FILE, DIRTY_FILE)
-    return r1.ProjectFile(DIRTY_FILE)
+@pytest.fixture(scope="module", params=PROJECTS)
+def testConfig(request):
+    path = request.param[0]
+    dirtyPath = "./test-output/" + path + "-dirty.dbpr"
+    cleanPath = "./test-output/" + path + "-clean.dbpr"
+    try:
+        os.mkdir("./test-output/", 0o666)
+    except:
+        pass
 
+    copyfile(path, dirtyPath)
 
-@pytest.fixture(scope="module")
-def apProject():
-    return r1.ProjectFile(TEST_AP_FILE)
+    proj = r1.ProjectFile(dirtyPath)
+    proj.dirtyPath = dirtyPath
+    proj.cleanPath = cleanPath
+    proj.expectedMasterItems = request.param[1]
+    proj.expectedMeterItems = request.param[2]
+    return request.param + (proj, )
 
 
 def test_loadTemplateFailure():
@@ -41,30 +56,51 @@ def test_loadTemplateSuccess():
     assert type(template) is autor1.TemplateFile
 
 
-def test_getHighestGroupID(loadedProject):
+def test_getHighestGroupID(testConfig):
+    loadedProject = testConfig[-1]
     assert loadedProject.getHighestGroupID() > 10
 
 
-def test_getApStatus(loadedProject, apProject):
+def test_getSrcGroupType(testConfig):
+    loadedProject = testConfig[-1]
+    # non-existing group
+    with pytest.raises(Exception):
+        loadedProject.getSourceGroupNameFromId(-1)
+
+    # non-existing group
+    with pytest.raises(Exception):
+        autor1.getSrcGroupType(loadedProject, -1)
+
+    # All existing groups
+    for id in loadedProject.getSourceGroupIds():
+        name = loadedProject.getSourceGroupNameFromId(id)
+        assert autor1.getSrcGroupType(loadedProject, name) >= 1000
+
+
+def test_getApStatus(testConfig):
+    loadedProject = testConfig[-1]
+
     with pytest.raises(Exception):
         autor1.getApStatus(loadedProject)
-    with pytest.raises(Exception):
-        autor1.getApStatus(apProject)
 
     loadedProject.pId = loadedProject.createGrp(
         autor1.PARENT_GROUP_TITLE, 1)[0]
     autor1.createSubLRCGroups(loadedProject)
     autor1.getSrcGrpInfo(loadedProject)
-    assert autor1.getApStatus(loadedProject) is 0
+    assert autor1.getApStatus(loadedProject) is testConfig[3]
 
-    apProject.pId = apProject.createGrp(
+
+def test_hasSubGroups(testConfig):
+    loadedProject = testConfig[-1]
+
+    loadedProject.pId = loadedProject.createGrp(
         autor1.PARENT_GROUP_TITLE, 1)[0]
-    autor1.createSubLRCGroups(apProject)
-    autor1.getSrcGrpInfo(apProject)
-    assert autor1.getApStatus(apProject) is 1
+    autor1.createSubLRCGroups(loadedProject)
+    assert autor1.hasSubGroups(loadedProject) == testConfig[4]
 
 
-def test_cleanProjectFile(loadedProject):
+def test_cleanProjectFile(testConfig):
+    loadedProject = testConfig[-1]
     template = autor1.TemplateFile(TEMP_FILE)
 
     assert type(loadedProject) is r1.ProjectFile
@@ -101,13 +137,34 @@ def test_cleanProjectFile(loadedProject):
         loadedProject.cursor.execute(q)
         assert loadedProject.cursor.fetchone() is not None
 
-    assert autor1.getMainGroupCount(
-        loadedProject) == len(loadedProject.meterIds)
+    masterGroups = 0
+    meterGroups = 0
+    for groupId in loadedProject.getSourceGroupIds(True):
+        srcGrpType = autor1.getSrcGroupType(loadedProject, groupId)
+        srcGrpType = str(srcGrpType)
+        if int(srcGrpType[3]):  # SUBs
+            masterGroups += 1
+            meterGroups += (1 + int(srcGrpType[1]))
+        if int(srcGrpType[2]):  # TOPs
+            masterGroups += 1
+            meterGroups += (1 + int(srcGrpType[1]))
+        # Point source without SUBs or TOPs
+        if int(srcGrpType[3]) == 0 and int(srcGrpType[2]) == 0 and int(srcGrpType[0]) is 2:
+            masterGroups += 1
+            meterGroups += 1
+        if int(srcGrpType[0]) is 4:  # Device only
+            masterGroups += 1
+            meterGroups += 1
+
+    assert len(loadedProject.masterJoinedIDs) == masterGroups
+    assert len(loadedProject.masterJoinedIDs) == testConfig[1]
+    assert len(loadedProject.meterJoinedIDs) == meterGroups
+    assert len(loadedProject.meterJoinedIDs) == testConfig[2]
 
     loadedProject.close()
-    copyfile(DIRTY_FILE, CLEAN_FILE)
+    copyfile(loadedProject.dirtyPath, loadedProject.cleanPath)
 
-    cleanProj = r1.ProjectFile(CLEAN_FILE)
+    cleanProj = r1.ProjectFile(loadedProject.cleanPath)
     cleanProj.pId = loadedProject.pId
 
     autor1.clean(
