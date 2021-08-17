@@ -75,6 +75,53 @@ class TemplateFile(r1.sqlDbFile):
                 f'Loaded template - {idx} / {self.templates[-1].name}')
 
 
+def getSrcGroupType(proj, nameOrId):
+    """Finds information of a given SourceGroup
+
+    Args:
+        proj (r1.ProjectFile): Project file to use
+        nameOrId (string or int): SourceGroup name or SourceGroupId
+
+    Returns:
+        int: Four digit value - first digit is SourceGroup Type, second digit is 0 or 1 if L/R group, third digit is if contains a TOPs group, last digit is if contains a SUBs group
+    """
+    srcGrpType = 0
+    column = ""
+    name = ""
+    if type(nameOrId) is str:
+        column = "Name"
+        name = nameOrId
+    if type(nameOrId) is int:
+        column = "SourceGroupId"
+        proj.cursor.execute(
+            f'SELECT Name FROM SourceGroups WHERE {column} = "{nameOrId}"')
+        name = proj.cursor.fetchone()[0]
+    proj.cursor.execute(
+        f'SELECT * FROM SourceGroups WHERE {column} = "{nameOrId}" ORDER BY NextSourceGroupId DESC')
+    source = proj.cursor.fetchone()
+    if source is not None:
+        # SourceGroup Type
+        srcGrpType += (source[r1.SOURCEGROUPS_COL_Type] * 1000)
+
+        # Left/Right
+        if source[r1.SOURCEGROUPS_COL_NextSourceGroupId] is not 0:
+            srcGrpType += 100
+        # SUB array L/R/C
+        elif source[r1.SOURCEGROUPS_COL_Type] is r1.SOURCEGROUPS_TYPE_SUBarray and hasSubGroups(proj) > 1:
+            srcGrpType += 100 * (hasSubGroups(proj)-1)
+
+    proj.cursor.execute(
+        f'SELECT Name FROM Groups WHERE Name LIKE "{name + " SUBs"}" OR Name LIKE "{name + " TOPs"}"')
+    groups = proj.cursor.fetchall()
+    if groups is not None and any('TOPs' in group[0] for group in groups):
+        srcGrpType += 10
+
+    if groups is not None and any('SUBs' in group[0] for group in groups):
+        srcGrpType += 1
+
+    return srcGrpType
+
+
 class SourceGroup:
     def __init__(self, row):
         self.viewId = row[0]
@@ -82,7 +129,7 @@ class SourceGroup:
         self.srcId = row[2]
         self.nextSrcId = row[3]
         # Group is stereo if nextSrcId exists
-        self.type = row[4]*10 if self.nextSrcId <= 0 else 40
+        self.type = row[4]
         self.apEnable = row[5] if row[5] else 0
         self.asId = row[6]
         self.cabFamily = row[7]
@@ -224,7 +271,7 @@ def clean(proj):
 
 
 def configureApChannels(proj):
-    """Creates a master AP group of all channels with AP enabled
+    """Creates a master AP group of all channels TOPs with AP enabled.
 
     Args:
         proj (r1.ProjectFile): Project file to use
@@ -233,7 +280,7 @@ def configureApChannels(proj):
     for srcGrp in proj.sourceGroups:
         if srcGrp.apEnable:
             for chGrp in srcGrp.channelGroups:
-                if chGrp.type == 1 or chGrp.type == 4:
+                if chGrp.type == TYPE_TOPS:
                     apGroup += chGrp.channels
 
     proj.createGrp(AP_GROUP_TITLE, proj.pId)
@@ -346,6 +393,8 @@ def createMeterView(proj, templates):
     meterW = rtn[0]
     meterH = rtn[1]
 
+    proj.meterJoinedIDs = []
+
     # Get height of metering frame to get x and y spacing for each meter
     spacingX = max(meterW, meterGrpW)+METER_SPACING_X
     spacingY = meterH+METER_SPACING_Y
@@ -372,7 +421,7 @@ def createMeterView(proj, templates):
     for srcGrp in proj.sourceGroups:
         for idx, chGrp in enumerate(srcGrp.channelGroups):
             # Skip TOPs and SUBs group if L/R groups are present
-            if chGrp.type == TYPE_SUBS or (chGrp.type <= TYPE_SUBS and len(srcGrp.channelGroups) > 2 and (idx == 0 or idx == 3)):
+            if (chGrp.type == TYPE_SUBS and srcGrp.type == r1.SOURCEGROUPS_TYPE_SUBarray) or (chGrp.type <= TYPE_SUBS and len(srcGrp.channelGroups) > 2 and (idx == 0 or idx == 3)):
                 continue
 
             dim = __insertTemplate(proj, templates, 'Meters Group', posX, posY, proj.meterViewId,
@@ -386,6 +435,7 @@ def createMeterView(proj, templates):
 
             posX += spacingX
             posY = startY
+            proj.meterJoinedIDs.append(proj.jId)
             proj.jId = proj.jId + 1
 
 
@@ -471,6 +521,25 @@ def createSubLRCGroups(proj):
                     subDevs[1], pId, subDevs[2], subDevs[3], 1, 0)
 
 
+def hasSubGroups(proj):
+    proj.cursor.execute(
+        f'SELECT Name FROM SourceGroups WHERE Type = {r1.SRC_TYPE_SUBARRAY}')
+    rtn = proj.cursor.fetchone()
+    groupCount = 0
+    if rtn is not None:
+        name = rtn[0]
+
+        str = [" SUBs L", " SUBs R", " SUBs C"]
+        for s in str:
+            q = f'SELECT * FROM Groups WHERE Name = "{name + s}"'
+            proj.cursor.execute(
+                q)
+            rtn = proj.cursor.fetchone()
+            if rtn is not None:
+                groupCount += 1
+    return groupCount
+
+
 def getApStatus(proj):
     """Find if any SourceGroups are using AP
 
@@ -546,6 +615,8 @@ def getSrcGrpInfo(proj):
         f' OR (SourceGroups.Type == 3 AND masterGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == "Master"))  '
         f' /* Get point source groups from Master group */ '
         f' OR (SourceGroups.Type == 2 AND masterGroup.ParentId == (SELECT GroupId FROM Groups WHERE Name == "Master")) '
+        f' /* Device only groups */'
+        f' OR SourceGroups.Type == 4 '
         f'  ORDER BY SourceGroups.OrderIndex ASC '
     )
 
@@ -585,7 +656,7 @@ def getMainGroupCount(proj):
     groups = []
     for srcGrp in proj.sourceGroups:
         for idx, chGrp in enumerate(srcGrp.channelGroups):
-
+            name = chGrp.name
             if chGrp.type > TYPE_SUBS or chGrp.type == TYPE_TOPS_L or chGrp.type == TYPE_TOPS_R:  # TOP or SUB L/R/C Group
                 continue
             else:
@@ -608,7 +679,7 @@ def createMasterView(proj, templates):
     meterW = rtn[0]
     meterH = rtn[1]
 
-    proj.meterIds = []
+    proj.masterJoinedIDs = []
 
     ####### CREATE VIEW #######
     HRes = masterW + asW + ((METER_SPACING_X+meterW) *
@@ -692,7 +763,7 @@ def createMasterView(proj, templates):
                 if dName is None:
                     dName = ""
 
-                if control[1] == r1.CTRL_INPUT and control[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or srcGrp.type > TYPE_TOPS_R):
+                if control[1] == r1.CTRL_INPUT and control[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or chGrp.type > TYPE_TOPS_L):
                     flag = 14
                     log.info(f"{chGrp.name} - Setting relative delay")
 
@@ -711,5 +782,5 @@ def createMasterView(proj, templates):
 
             posX += meterW+METER_SPACING_X
 
-            proj.meterIds.append(proj.jId)
+            proj.masterJoinedIDs.append(proj.jId)
             proj.jId = proj.jId + 1

@@ -26,8 +26,20 @@ TARGET_ID = 3
 DEV_PROP_TYPES = [
     'Status_SmpsFrequency', 'Status_MainsPowerPeak', 'Status_SmpsVoltage', 'Status_SmpsTemperature', 'Status_LockMode', 'Status_StatusText', 'Status_PwrOk', 'Settings_Buzzer', 'Settings_DeviceName', 'Settings_InputGainEnable', 'Settings_LockCmd', 'Settings_MCLEnable', 'Settings_PwrOn', 'Input_Analog_Gain', 'Input_Digital_Gain', 'Input_Digital_Mode', 'Input_Digital_Sync', 'Input_Digital_SampleStatus', 'Input_Digital_DsDataPri', 'Input_Digital_DsDataSec', 'Input_Digital_TxStream', 'Error_GnrlErr', 'Error_SmpsTempOff', 'Error_SmpsTempWarn']
 
+SOURCEGROUPS_COL_SourceGroupId = 0
+SOURCEGROUPS_COL_Type = 1
+SOURCEGROUPS_COL_Name = 2
+SOURCEGROUPS_COL_OrderIndex = 3
+SOURCEGROUPS_COL_NextSourceGroupId = 5
+SOURCEGROUPS_COL_ArrayProcessingEnable = 6
+SOURCEGROUPS_TYPE_Array = 1
+SOURCEGROUPS_TYPE_PointSource = 2
+SOURCEGROUPS_TYPE_SUBarray = 3
+SOURCEGROUPS_TYPE_Device = 3
 
 ##### An R1 SQL File (.dbpr project file or .r1t template file) #####
+
+
 class sqlDbFile(object):
     __metaclass__ = ABCMeta
 
@@ -253,6 +265,9 @@ class ProjectFile(sqlDbFile):
         Returns:
             int: GroupID of the new item
         """
+        if parentId < 1:
+            raise Exception('Parent with GroupID {parentId} does not exist')
+
         self.cursor.execute(
             f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)'
             f'  SELECT "{title}", {parentId}, {targetId}, {targetChannel}, {type}, {flags}')
