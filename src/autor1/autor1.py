@@ -1,7 +1,7 @@
 import sqlite3
 import logging
 from abc import ABCMeta
-import r1py as r1
+import r1py.r1py as r1
 import sys
 
 log = logging.getLogger(__name__)

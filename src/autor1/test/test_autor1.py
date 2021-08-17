@@ -3,8 +3,8 @@ import sqlite3
 import sys
 import os
 import pytest
-import r1py as r1
-import autor1
+import r1py.r1py as r1
+import autor1.autor1 as autor1
 from shutil import copyfile
 
 TEMP_FILE = './dist/templates.r2t'
@@ -28,11 +28,11 @@ def beforeAll(request):
 
 @pytest.fixture(scope="module", params=PROJECTS)
 def testConfig(request):
-    path = "./tests/Projects/" + request.param[0]
-    dirtyPath = "./tests/Output/" + request.param[0] + "-dirty.dbpr"
-    cleanPath = "./tests/Output/" + request.param[0] + "-clean.dbpr"
+    path = "./Projects/" + request.param[0]
+    dirtyPath = "./Projects/Output/" + request.param[0] + "-dirty.dbpr"
+    cleanPath = "./Projects/Output/" + request.param[0] + "-clean.dbpr"
     try:
-        os.mkdir("./tests/Output/", 0o777)
+        os.mkdir("./Projects/Output/", 0o777)
     except:
         pass
 

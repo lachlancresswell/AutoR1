@@ -2,12 +2,12 @@ import logging
 import sqlite3
 import sys
 import pytest
-import r1py as r1
+import r1py.r1py as r1
 from shutil import copyfile
 
 TEMP_FILE = './dist/templates.r2t'
-TEST_FILE = './tests/Projects/test_init.dbpr'
-TEST_FILE_NO_INIT = './tests/Projects/test_no_init.dbpr'
+TEST_FILE = './Projects/test_init.dbpr'
+TEST_FILE_NO_INIT = './Projects/test_no_init.dbpr'
 
 # Before all tests
 
