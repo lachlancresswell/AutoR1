@@ -1,5 +1,10 @@
 v1.6.0
 
+## Download
+
+### Combined Mac + Windows package:
+**[Link](https://github.com/lachyc/AutoR1/releases)**
+
 **Master View**
 ![Master View](https://i.imgur.com/owTAui2.png)
 
@@ -21,10 +26,25 @@ v1.6.0
 
 - Create master view
 
-- Creates an overall view of sources and channels with metering, fallback, status, ArraySight and ArrayProcessing controls.
+  Creates an overall view of sources and channels with metering, fallback, status, ArraySight and ArrayProcessing controls.
 
 
 ## Notes
 - templates.r2t
 
 Load this as a template file in R1 to modify generated controls
+
+
+## Building
+- Download + configure python environment
+```
+git clone https://github.com/lachyc/AutoR1.git
+cd ./AutoR1
+virtualenv env
+pip install -r requirements.txt
+```
+
+- Build for release - `pyinstaller --onefile --name autor1 src/__main__.py`
+
+- Testing - `pytest`
+  - Processed files will be located in Projects/Output/
