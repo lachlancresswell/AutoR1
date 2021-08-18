@@ -3,7 +3,7 @@ import sqlite3
 import sys
 import os
 import pytest
-import r1py.r1py as r1
+import src.r1py.r1py as r1
 import autor1.autor1 as autor1
 from shutil import copyfile
 
