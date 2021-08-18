@@ -5,7 +5,7 @@ import r1py.r1py as r1
 import sys
 
 log = logging.getLogger(__name__)
-log.addHandler(logging.StreamHandler(sys.stdout))
+# log.addHandler(logging.StreamHandler(sys.stdout))
 
 NAV_BUTTON_X = 230
 NAV_BUTTON_Y = 15

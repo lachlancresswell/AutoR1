@@ -5,7 +5,7 @@ import os.path
 import sys
 
 log = logging.getLogger(__name__)
-log.addHandler(logging.StreamHandler(sys.stdout))
+# log.addHandler(logging.StreamHandler(sys.stdout))
 
 SRC_TYPE_SUBARRAY = 3
 
