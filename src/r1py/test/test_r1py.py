@@ -13,7 +13,7 @@ TEST_FILE_NO_INIT = './Projects/test_no_init.dbpr'
 
 
 @pytest.fixture(scope="session", autouse=True)
-def do_something(request):
+def beforeAll(request):
     r1.log.setLevel(logging.DEBUG)
 
 
