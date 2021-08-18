@@ -13,7 +13,7 @@ import traceback
 LOGDIR = './LOGS/'
 PROJ_FILE = './r1.dbpr'
 MOD_FILE = './R1_AUTO.dbpr'
-TEMP_FILE = './dist/templates.r2t'
+TEMP_FILE = './templates.r2t'
 
 ############################## FUNCTIONS ##############################
 
@@ -91,7 +91,9 @@ def main():
     tempFile = autor1.TemplateFile(TEMP_FILE)
     projFile = r1.ProjectFile(MOD_FILE)
     if projFile.isInitialised() < 1:
-        raise ValueError('Initial R1 setup not')
+        raise Exception('Initial R1 setup not performed')
+    autor1.clean(
+        projFile)
     projFile.pId = projFile.createGrp(autor1.PARENT_GROUP_TITLE, 1)[0]
     autor1.createSubLRCGroups(projFile)
     autor1.getSrcGrpInfo(projFile)
