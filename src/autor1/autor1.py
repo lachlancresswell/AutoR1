@@ -1,7 +1,7 @@
 import sqlite3
 import logging
 from abc import ABCMeta
-import src.r1py.r1py as r1
+import r1py.r1py as r1
 import sys
 
 log = logging.getLogger(__name__)
@@ -104,7 +104,7 @@ def getSrcGroupType(proj, nameOrId):
         srcGrpType += (source[r1.SOURCEGROUPS_COL_Type] * 1000)
 
         # Left/Right
-        if source[r1.SOURCEGROUPS_COL_NextSourceGroupId] is not 0:
+        if source[r1.SOURCEGROUPS_COL_NextSourceGroupId] != 0:
             srcGrpType += 100
         # SUB array L/R/C
         elif source[r1.SOURCEGROUPS_COL_Type] is r1.SOURCEGROUPS_TYPE_SUBarray and hasSubGroups(proj) > 1:
@@ -551,7 +551,7 @@ def getApStatus(proj):
     Returns:
         int: 1 if any AP enabled SourceGroup found otherwise 0
     """
-    if len(proj.sourceGroups) is 0 or proj.sourceGroups is None:
+    if len(proj.sourceGroups) == 0 or proj.sourceGroups is None:
         raise RuntimeError('SourceGroups not loaded')
     for src in proj.sourceGroups:
         if src.apEnable:

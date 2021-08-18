@@ -2,7 +2,7 @@ import logging
 import sqlite3
 import sys
 import pytest
-import src.r1py.r1py as r1
+import r1py.r1py as r1
 from shutil import copyfile
 
 TEMP_FILE = './dist/templates.r2t'

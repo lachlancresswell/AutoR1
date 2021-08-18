@@ -3,7 +3,7 @@ import sqlite3
 import sys
 import os
 import pytest
-import src.r1py.r1py as r1
+import r1py.r1py as r1
 import autor1.autor1 as autor1
 from shutil import copyfile
 
@@ -149,10 +149,10 @@ def test_cleanProjectFile(testConfig):
             masterGroups += 1
             meterGroups += (1 + int(srcGrpType[1]))
         # Point source without SUBs or TOPs
-        if int(srcGrpType[3]) == 0 and int(srcGrpType[2]) == 0 and int(srcGrpType[0]) is 2:
+        if int(srcGrpType[3]) == 0 and int(srcGrpType[2]) == 0 and int(srcGrpType[0]) == 2:
             masterGroups += 1
             meterGroups += 1
-        if int(srcGrpType[0]) is 4:  # Device only
+        if int(srcGrpType[0]) == 4:  # Device only
             masterGroups += 1
             meterGroups += 1
 
