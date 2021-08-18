@@ -1,8 +1,48 @@
-dist: xenial
 language: python
+group: travis_latest
+
 python:
-  - "3.8.1"
-install:
-  - pip install -r requirements.txt
-script:
-  - pytest
+- "3.8.1"
+
+matrix:
+  include:
+  - os: linux
+  - os: osx
+    language: minimal
+    install: pip3 install -r requirements.txt
+  - os: windows
+    language: minimal
+    
+    before_install:
+    - choco install python3 --version=3.8.1
+    - export PATH="/c/Python38:/c/Python38/Scripts:$PATH"
+
+install: pip install -r requirements.txt
+
+script: pytest
+
+before_deploy:
+  - pyinstaller --onefile --name autor1 src/__main__.py
+  - cp LICENSE ./dist
+  - if [ "$TRAVIS_OS_NAME" == "windows" ]; then rm ./dist/start-macos.command; done
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then rm ./dist/start-windows.bat; done
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then rm ./dist/start-windows.bat && rm ./dist/start-macos.command; done
+  - tar -a -c -f $RELEASE_NAME.zip ./dist
+
+deploy:
+  provider: releases
+  api_key: $GH_TOKEN
+  file_glob: true
+  overwrite: true
+  file: 
+    - $RELEASE_NAME.zip
+  skip_cleanup: true
+  draft: true
+  name: $TRAVIS_TAG (DRAFT)
+  on:
+    tags: true
+    
+env:
+  global:
+    - RELEASE_NAME="AUTOR1-$TRAVIS_TAG-$TRAVIS_OS_NAME"
+    - secure: A8sQELollcIcNx36trQBLaZqQ6KBYeOcSs3Zxc3W86PYt/GWCUlDUYi7uxYDz5sbCyT2PkiJu2d85XlNNdnIWunsZsg7R2FaY401qZ0NUbYceNH+OvhbyVyIeMRulUisz6dRDGl6lf1Xge6tZrXKMSSGXECr0oAcIREGJPL5NOGPCpIzZcPbuXMJC7eBM+jZfihX2J1jmRe3/OpwLsfTxXkBtUhU7+3GY4W8k6844zflO8WaU7Ik1cAqP21KfUXkO5LuqL0MMSjCGweKF7TPU6qKajIGc0yWiZlG2293VE7R7lLiqBIPnFCs5fe2InUaHJvj1vf5CDUsCSBPcHF07sUt3cPRKpAsd3SRbBrt59/BStohwmnOEZjNKGykpttMJK5Wcot6a3hYsXeEKZrl6z1kr82KvBQjrPQEmkRADJPHhQyk2T+cgpVyMN9V+MZAxtJhR6JANv5d8IiDVB9ZF306sRdqczRwzZOTGEyo+V4OqdViVztPUozS8Uo9muueC0hcijCrp4f3VqtxxSp65hkQNthh5aHb7x+stiiTn22ALe0X4jqCjypM8zc7pxvcO0uulXNb1bfmaD9uImtgyYOcRlmTyIkWsBHHEkk6cuWJ+l1rHSiBusRaXJl/+IrqCjkNxOzuqmHuH6Ota2XUJo4rixoAhle3v8ofVmTreJs=
