@@ -26,9 +26,10 @@ script:
   - cp ./Projects/test_init.dbpr ./dist/r1.dbpr
   - cd ./dist
   - ls -la
-  - if [ $TRAVIS_OS_NAME == "windows" ]; then echo | ./start-windows.bat > log.txt && cat ./log.txt; fi
-  - if [ $TRAVIS_OS_NAME == "osx" ]; then echo | ./start-macos.command > log.txt && cat ./log.txt; fi
-  - if [ $TRAVIS_OS_NAME == "linux" ]; then ./autor1 ./ > log.txt && cat ./log.txt; fi
+  - if [ $TRAVIS_OS_NAME == "windows" ]; then echo | ./start-windows.bat; fi
+  - if [ $TRAVIS_OS_NAME == "osx" ]; then echo | ./start-macos.command; fi
+  - if [ $TRAVIS_OS_NAME == "linux" ]; then ./autor1 ./; fi
+  - cat ./LOGS/"$(ls -rt ./LOGS | tail -n1)"
   - ls ./R1_AUTO.dbpr
   - rm *.dbpr
 
