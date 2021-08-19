@@ -16,7 +16,7 @@ TEMP_FILE = './dist/templates.r2t'
 # 3 - If AP is enabled
 # 4 - Number of SUB array groups (L/R/C)
 PROJECTS = [
-    ("test_init_AP.dbpr", 15, 23, 1, 3), ("test_init.dbpr", 15, 23, 0, 3)
+    ("test_init_AP.dbpr", 15, 23, 1, 3), ("test_init.dbpr", 15, 23, 0, 3), ("test_init_2.dbpr", 14, 25, 0, 1), ("AC10.16 default.dbpr", 4, 7, 0, 2)
 ]
 
 

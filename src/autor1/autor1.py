@@ -150,8 +150,8 @@ class SourceGroup:
         self.subCGroupId = row[22]
         self.subCGroupName = row[23]
         self.channelGroups = []
-        self.LR = 1 if (row[12] is not None or row[14] is not None or row[18]
-                        is not None or row[20] is not None or row[22] is not None) else 0
+        self.LR = 1 if (row[12] is not None or row[14] is not None or row[20] 
+                        is not None or row[22] is not None) else 0
         self.xover = row[24]
 
         # Combine all returned sub groups into single array
