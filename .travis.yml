@@ -20,15 +20,23 @@ matrix:
 
 install: pip install -r requirements.txt
 
-script: pytest
+script: 
+  - pytest
+  - pyinstaller --onefile --name autor1 src/__main__.py
+  - cp ./Projects/test_init.dbpr ./dist/r1.dbpr
+  - cd ./dist
+  - if [ $TRAVIS_OS_NAME == "windows" ]; then ./start-windows.bat; fi
+  - if [ $TRAVIS_OS_NAME == "osx" ]; then ./start-macos.command; fi
+  - if [ $TRAVIS_OS_NAME == "linux" ]; then ./autor1 ./; fi
+  - rm *.dbpr
 
 before_deploy:
-  - pyinstaller --onefile --name autor1 src/__main__.py
+  
   - cp LICENSE ./dist
   - if [ $TRAVIS_OS_NAME == "windows" ]; then rm ./dist/start-macos.command; fi
   - if [ $TRAVIS_OS_NAME == "osx" ]; then rm ./dist/start-windows.bat; fi
   - if [ $TRAVIS_OS_NAME == "linux" ]; then rm ./dist/start-windows.bat && rm ./dist/start-macos.command; fi
-  - tar -a -c -f $RELEASE_NAME.zip ./dist
+  - tar -a -c -f $RELEASE_NAME.zip ./dist/
 
 deploy:
   provider: releases
