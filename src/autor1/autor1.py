@@ -308,12 +308,13 @@ def configureApChannels(proj):
                 if chGrp.type == TYPE_TOPS:
                     apGroup += chGrp.channels
 
-    proj.createGrp(AP_GROUP_TITLE, proj.pId)
-    proj.apGroupId = proj.getHighestGroupID()
-    for ch in apGroup:
-        proj.cursor.execute(
-            f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
-            f'  SELECT "{ch.name}", {proj.apGroupId}, {ch.targetId}, {ch.targetChannel}, 1, 0')
+    if len(apGroup) > 0:
+        proj.createGrp(AP_GROUP_TITLE, proj.pId)
+        proj.apGroupId = proj.getHighestGroupID()
+        for ch in apGroup:
+            proj.cursor.execute(
+                f'  INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) '
+                f'  SELECT "{ch.name}", {proj.apGroupId}, {ch.targetId}, {ch.targetChannel}, 1, 0')
 
 
 def __insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, targetId, targetChannel, cursor, width, height, joinedId, targetProp, targetRec):
