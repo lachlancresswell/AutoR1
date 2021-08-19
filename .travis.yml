@@ -32,6 +32,7 @@ script:
   - cat ./LOGS/"$(ls -rt ./LOGS | tail -n1)"
   - ls ./R1_AUTO.dbpr
   - rm *.dbpr
+  - cd ../
 
 before_deploy:
   
