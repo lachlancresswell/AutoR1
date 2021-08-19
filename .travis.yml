@@ -24,9 +24,9 @@ script: pytest
 before_deploy:
   - pyinstaller --onefile --name autor1 src/__main__.py
   - cp LICENSE ./dist
-  - if [ "$TRAVIS_OS_NAME" == "windows" ]; then rm ./dist/start-macos.command; done
-  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then rm ./dist/start-windows.bat; done
-  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then rm ./dist/start-windows.bat && rm ./dist/start-macos.command; done
+  - if [ $TRAVIS_OS_NAME == "windows" ]; then rm ./dist/start-macos.command; fi
+  - if [ $TRAVIS_OS_NAME == "osx" ]; then rm ./dist/start-windows.bat; fi
+  - if [ $TRAVIS_OS_NAME == "linux" ]; then rm ./dist/start-windows.bat && rm ./dist/start-macos.command; fi
   - tar -a -c -f $RELEASE_NAME.zip ./dist
 
 deploy:
