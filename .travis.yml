@@ -25,9 +25,11 @@ script:
   - pyinstaller --onefile --name autor1 src/__main__.py
   - cp ./Projects/test_init.dbpr ./dist/r1.dbpr
   - cd ./dist
+  - ls -la
   - if [ $TRAVIS_OS_NAME == "windows" ]; then ./start-windows.bat; fi
   - if [ $TRAVIS_OS_NAME == "osx" ]; then ./start-macos.command; fi
   - if [ $TRAVIS_OS_NAME == "linux" ]; then ./autor1 ./; fi
+  - ls ./R1_auto.dbpr
   - rm *.dbpr
 
 before_deploy:
