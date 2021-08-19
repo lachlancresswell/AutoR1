@@ -217,6 +217,27 @@ def createNavButtons(proj, templates):
             __insertTemplate(proj, templates, 'Nav Button', 15, NAV_BUTTON_Y, vId, MASTER_WINDOW_TITLE,
                              proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
 
+def removeNavButtons(proj, masterViewId):
+    """Remove navigation buttons from default views
+
+    Args:
+        proj (r1.ProjectFile): Project to remove views from
+        masterViewId (int): ViewID of master view
+    """
+    proj.cursor.execute(
+            f'SELECT ViewId FROM Controls WHERE "TargetId" = "{masterViewId}" AND "TargetChannel" = -1')
+    viewIds = proj.cursor.fetchall()
+
+    if viewIds is not None:
+        for vId, in viewIds:
+            if vId != masterViewId and vId != masterViewId-1:
+                proj.cursor.execute(
+                        f'UPDATE Controls SET PosY = PosY - {NAV_BUTTON_Y+20} WHERE ViewId = {vId}')
+
+    proj.cursor.execute(
+            f'DELETE FROM Controls WHERE "TargetId" = "{masterViewId}" AND "TargetChannel" = -1')
+    log.info(f'Deleted {MASTER_WINDOW_TITLE} nav buttons.')
+
 
 def clean(proj):
     """Removes all AutoR1 groups, views and controls
@@ -237,12 +258,10 @@ def clean(proj):
         log.info(f'Deleted {MASTER_WINDOW_TITLE} controls.')
 
         proj.cursor.execute(
-            f'DELETE FROM Controls WHERE "TargetId" = "{masterViewId}" AND "TargetChannel" = -1')
-        log.info(f'Deleted {MASTER_WINDOW_TITLE} nav buttons.')
-
-        proj.cursor.execute(
             f'DELETE FROM Views WHERE "Name" = "{MASTER_WINDOW_TITLE}"')
         log.info(f'Deleted {MASTER_WINDOW_TITLE} view.')
+
+        removeNavButtons(proj, masterViewId)
     except:
         pass
 
