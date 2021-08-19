@@ -4,4 +4,4 @@ ARG=" $CURDIR"
 $CURDIR$APP$ARG
 rtn=$?
 read -p "Press enter to continue."
-return rtn
+exit $rtn
