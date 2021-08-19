@@ -67,7 +67,7 @@ class TemplateFile(r1.sqlDbFile):
         for idx, temp in enumerate(templates):
             joinedId = temp[3]
             self.cursor.execute(
-                f'SELECT * FROM Controls WHERE JoinedId = {joinedId}')  # Load controls
+                f'SELECT * FROM Controls WHERE JoinedId = {joinedId} ORDER BY PosX ASC')  # Load controls
             controls = self.cursor.fetchall()
 
             self.templates.append(Template(temp, controls))
@@ -709,7 +709,7 @@ def createMasterView(proj, templates):
     else:
         posX += asPos[0]+(METER_SPACING_X*4)
 
-    for srcGrp in proj.sourceGroups:
+    for idy, srcGrp in enumerate(proj.sourceGroups):
         for idx, chGrp in enumerate(srcGrp.channelGroups):
 
             if chGrp.type > TYPE_SUBS or chGrp.type == TYPE_TOPS_L or chGrp.type == TYPE_TOPS_R:  # TOP or SUB L/R/C Group
@@ -777,10 +777,11 @@ def createMasterView(proj, templates):
 
                 proj.cursor.execute(s)
 
+            proj.masterJoinedIDs.append((proj.jId, idy))
+
             __insertTemplate(proj, templates, 'Nav Button', posX, posY, proj.masterViewId,
                              chGrp.name, srcGrp.viewId, -1, proj.cursor, None, None, None, None, None)
 
             posX += meterW+METER_SPACING_X
 
-            proj.masterJoinedIDs.append(proj.jId)
             proj.jId = proj.jId + 1

@@ -98,6 +98,33 @@ def test_hasSubGroups(testConfig):
     autor1.createSubLRCGroups(loadedProject)
     assert autor1.hasSubGroups(loadedProject) == testConfig[4]
 
+
+def test_masterViewMeters(testConfig):
+    loadedProject = testConfig[-1]
+    template = autor1.TemplateFile(TEMP_FILE)
+
+    loadedProject.pId = loadedProject.createGrp(
+        autor1.PARENT_GROUP_TITLE, 1)[0]
+    autor1.createSubLRCGroups(loadedProject)
+    autor1.getSrcGrpInfo(loadedProject)
+    autor1.configureApChannels(loadedProject)
+
+    autor1.createMeterView(loadedProject, template)
+    autor1.createMasterView(loadedProject, template)
+    autor1.createNavButtons(loadedProject, template)
+    
+    for id, srcGrpIndex in loadedProject.masterJoinedIDs:
+        loadedProject.cursor.execute(f'SELECT TargetId, TargetType FROM Controls WHERE JoinedID = {id}')
+        controls = loadedProject.cursor.fetchall()
+        if controls is not None:
+            for TargetId, TargetType in controls:
+                srcGrp = loadedProject.sourceGroups[srcGrpIndex]
+                channelGroupIDs = []
+                for channel in srcGrp.channelGroups:
+                    channelGroupIDs.append(channel.groupId)
+                if TargetType == r1.CONTROLS_TargetType_Group:
+                    assert TargetId in channelGroupIDs
+
 @pytest.mark.order(2)
 def test_cleanProjectFile(testConfig):
     loadedProject = testConfig[-1]

@@ -37,6 +37,10 @@ SOURCEGROUPS_TYPE_PointSource = 2
 SOURCEGROUPS_TYPE_SUBarray = 3
 SOURCEGROUPS_TYPE_Device = 3
 
+CONTROLS_TargetType_Group = 0
+CONTROLS_TargetType_Device = 2
+CONTROLS_TargetType_View = 5
+
 ##### An R1 SQL File (.dbpr project file or .r1t template file) #####
 
 
