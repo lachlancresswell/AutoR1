@@ -8,10 +8,11 @@ matrix:
   include:
   - os: linux
   - os: osx
-    language: minimal
+    osx_image: xcode12.5
+    language: shell
     install: pip3 install -r requirements.txt
   - os: windows
-    language: minimal
+    language: shell
     
     before_install:
     - choco install python3 --version=3.8.1
