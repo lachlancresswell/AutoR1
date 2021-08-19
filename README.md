@@ -1,10 +1,13 @@
-v1.6.0
+v1.7.0
+
+# AutoR1 ![Travis CI build status](https://travis-ci.com/lachyc/AutoR1.svg?branch=master)
+
+Automatically generate metering, fallback controls, DS data displays and more for your d&b R1 projects.
 
 ## Download
-
-### Combined Mac + Windows package:
 **[Link](https://github.com/lachyc/AutoR1/releases)**
 
+## Screenshots
 **Master View**
 ![Master View](https://i.imgur.com/owTAui2.png)
 
@@ -17,16 +20,6 @@ v1.6.0
 3. Copy R1 project into downloaded folder and rename to 'R1.dbpr'
 4. Double click 'start-macos.command' or 'start-windows.bat' depending on your OS
 5. Modified project file will be created in this folder called 'R1_AUTO.dbpr'
-
-## Overview
-
-- Create meters view
-
-  Creates metering for ever channel in every source in the project.
-
-- Create master view
-
-  Creates an overall view of sources and channels with metering, fallback, status, ArraySight and ArrayProcessing controls.
 
 
 ## Notes
