@@ -229,28 +229,33 @@ def clean(proj):
     """
     log.info('Cleaning R1 project.')
 
-    masterViewId = proj.getViewIdFromName(MASTER_WINDOW_TITLE)
-    meterViewId = proj.getViewIdFromName(METER_WINDOW_TITLE)
+    try:
+        masterViewId = proj.getViewIdFromName(MASTER_WINDOW_TITLE)
 
-    proj.cursor.execute(
-        f'DELETE FROM Controls WHERE "ViewId" = "{masterViewId}"')
-    log.info(f'Deleted {MASTER_WINDOW_TITLE} view.')
+        proj.cursor.execute(
+            f'DELETE FROM Controls WHERE "ViewId" = "{masterViewId}"')
+        log.info(f'Deleted {MASTER_WINDOW_TITLE} controls.')
 
-    proj.cursor.execute(
-        f'DELETE FROM Controls WHERE "ViewId" = "{meterViewId}"')
-    log.info(f'Deleted {METER_WINDOW_TITLE} view controls.')
+        proj.cursor.execute(
+            f'DELETE FROM Controls WHERE "TargetId" = "{masterViewId}" AND "TargetChannel" = -1')
+        log.info(f'Deleted {MASTER_WINDOW_TITLE} nav buttons.')
 
-    proj.cursor.execute(
-        f'DELETE FROM Controls WHERE "TargetId" = "{masterViewId}" AND "TargetChannel" = -1')
-    log.info(f'Deleted {MASTER_WINDOW_TITLE} nav buttons.')
+        proj.cursor.execute(
+            f'DELETE FROM Views WHERE "Name" = "{MASTER_WINDOW_TITLE}"')
+        log.info(f'Deleted {MASTER_WINDOW_TITLE} view.')
+    except:
+        pass
 
-    proj.cursor.execute(
-        f'DELETE FROM Views WHERE "Name" = "{MASTER_WINDOW_TITLE}"')
-    log.info(f'Deleted {MASTER_WINDOW_TITLE} view.')
-
-    proj.cursor.execute(
-        f'DELETE FROM Views WHERE "Name" = "{METER_WINDOW_TITLE}"')
-    log.info(f'Deleted {METER_WINDOW_TITLE} view.')
+    try:
+        meterViewId = proj.getViewIdFromName(METER_WINDOW_TITLE)
+        proj.cursor.execute(
+            f'DELETE FROM Controls WHERE "ViewId" = "{meterViewId}"')
+        log.info(f'Deleted {METER_WINDOW_TITLE} view controls.')
+        proj.cursor.execute(
+            f'DELETE FROM Views WHERE "Name" = "{METER_WINDOW_TITLE}"')
+        log.info(f'Deleted {METER_WINDOW_TITLE} view.')
+    except:
+        pass
 
     proj.cursor.execute(f'SELECT Name FROM SourceGroups WHERE Type = 3')
     rtn = proj.cursor.fetchone()
@@ -258,8 +263,9 @@ def clean(proj):
         subArrayName = rtn[0]
         proj.cursor.execute(
             f'  SELECT GroupId FROM Groups WHERE Name = "{subArrayName}" AND ParentId = {proj.pId}')
-        pId = proj.cursor.fetchone()[0]
-        proj.deleteGroup(pId)
+        pId = proj.cursor.fetchone()
+        if pId is not None:
+            proj.deleteGroup(pId[0])
 
     proj.cursor.execute(
         f'SELECT GroupId FROM Groups WHERE Name = "{PARENT_GROUP_TITLE}"')

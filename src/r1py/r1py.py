@@ -322,8 +322,8 @@ class ProjectFile(sqlDbFile):
         """
         self.cursor.execute(f'SELECT ViewId FROM Views WHERE Name = "{name}"')
 
-        try:
-            rtn = self.cursor.fetchone()
+        rtn = self.cursor.fetchone()
+        if rtn is not None:
             return rtn[0]
-        except:
+        else:
             raise RuntimeError('View not found')
