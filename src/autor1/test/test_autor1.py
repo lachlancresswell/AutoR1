@@ -7,7 +7,7 @@ import r1py.r1py as r1
 import autor1.autor1 as autor1
 from shutil import copyfile
 
-TEMP_FILE = './dist/templates.r2t'
+TEMP_FILE = "./dist/templates.r2t"
 
 
 # 0 - File to test
@@ -16,7 +16,10 @@ TEMP_FILE = './dist/templates.r2t'
 # 3 - If AP is enabled
 # 4 - Number of SUB array groups (L/R/C)
 PROJECTS = [
-    ("test_init_AP.dbpr", 15, 23, 1, 3), ("test_init.dbpr", 15, 23, 0, 3), ("test_init_2.dbpr", 14, 25, 0, 1), ("AC10.16 default.dbpr", 4, 7, 0, 2)
+    ("test_init_AP.dbpr", 15, 23, 1, 3),
+    ("test_init.dbpr", 15, 23, 0, 3),
+    ("test_init_2.dbpr", 14, 25, 0, 1),
+    ("AC10.16 default.dbpr", 4, 7, 0, 2),
 ]
 
 
@@ -43,24 +46,28 @@ def testConfig(request):
     proj.cleanPath = cleanPath
     proj.expectedMasterItems = request.param[1]
     proj.expectedMeterItems = request.param[2]
-    return request.param + (proj, )
+    return request.param + (proj,)
 
 
+@pytest.mark.order(1)
 def test_loadTemplateFailure():
     with pytest.raises(Exception):
-        autor1.TemplateFile('./tempilates.r2t')
+        autor1.TemplateFile("./tempilates.r2t")
 
 
+@pytest.mark.order(2)
 def test_loadTemplateSuccess():
     template = autor1.TemplateFile(TEMP_FILE)
     assert type(template) is autor1.TemplateFile
 
 
+@pytest.mark.order(3)
 def test_getHighestGroupID(testConfig):
     loadedProject = testConfig[-1]
     assert loadedProject.getHighestGroupID() > 10
 
 
+@pytest.mark.order(4)
 def test_getSrcGroupType(testConfig):
     loadedProject = testConfig[-1]
     # non-existing group
@@ -77,34 +84,34 @@ def test_getSrcGroupType(testConfig):
         assert autor1.getSrcGroupType(loadedProject, name) >= 1000
 
 
+@pytest.mark.order(5)
 def test_getApStatus(testConfig):
     loadedProject = testConfig[-1]
 
     with pytest.raises(Exception):
         autor1.getApStatus(loadedProject)
 
-    loadedProject.pId = loadedProject.createGrp(
-        autor1.PARENT_GROUP_TITLE, 1)[0]
+    loadedProject.pId = loadedProject.createGrp(autor1.PARENT_GROUP_TITLE, 1)[0]
     autor1.createSubLRCGroups(loadedProject)
     autor1.getSrcGrpInfo(loadedProject)
     assert autor1.getApStatus(loadedProject) is testConfig[3]
 
-@pytest.mark.order(1)
+
+@pytest.mark.order(6)
 def test_hasSubGroups(testConfig):
     loadedProject = testConfig[-1]
 
-    loadedProject.pId = loadedProject.createGrp(
-        autor1.PARENT_GROUP_TITLE, 1)[0]
+    loadedProject.pId = loadedProject.createGrp(autor1.PARENT_GROUP_TITLE, 1)[0]
     autor1.createSubLRCGroups(loadedProject)
     assert autor1.hasSubGroups(loadedProject) == testConfig[4]
 
 
+@pytest.mark.order(7)
 def test_masterViewMeters(testConfig):
     loadedProject = testConfig[-1]
     template = autor1.TemplateFile(TEMP_FILE)
 
-    loadedProject.pId = loadedProject.createGrp(
-        autor1.PARENT_GROUP_TITLE, 1)[0]
+    loadedProject.pId = loadedProject.createGrp(autor1.PARENT_GROUP_TITLE, 1)[0]
     autor1.createSubLRCGroups(loadedProject)
     autor1.getSrcGrpInfo(loadedProject)
     autor1.configureApChannels(loadedProject)
@@ -112,9 +119,11 @@ def test_masterViewMeters(testConfig):
     autor1.createMeterView(loadedProject, template)
     autor1.createMasterView(loadedProject, template)
     autor1.createNavButtons(loadedProject, template)
-    
+
     for id, srcGrpIndex in loadedProject.masterJoinedIDs:
-        loadedProject.cursor.execute(f'SELECT TargetId, TargetType FROM Controls WHERE JoinedID = {id}')
+        loadedProject.cursor.execute(
+            f"SELECT TargetId, TargetType FROM Controls WHERE JoinedID = {id}"
+        )
         controls = loadedProject.cursor.fetchall()
         if controls is not None:
             for TargetId, TargetType in controls:
@@ -125,7 +134,8 @@ def test_masterViewMeters(testConfig):
                 if TargetType == r1.CONTROLS_TargetType_Group:
                     assert TargetId in channelGroupIDs
 
-@pytest.mark.order(2)
+
+@pytest.mark.order(8)
 def test_cleanProjectFile(testConfig):
     loadedProject = testConfig[-1]
     template = autor1.TemplateFile(TEMP_FILE)
@@ -135,8 +145,7 @@ def test_cleanProjectFile(testConfig):
 
     initGrpCount = loadedProject.getGroupCount()
 
-    loadedProject.pId = loadedProject.createGrp(
-        autor1.PARENT_GROUP_TITLE, 1)[0]
+    loadedProject.pId = loadedProject.createGrp(autor1.PARENT_GROUP_TITLE, 1)[0]
     autor1.createSubLRCGroups(loadedProject)
     autor1.getSrcGrpInfo(loadedProject)
     autor1.configureApChannels(loadedProject)
@@ -153,11 +162,11 @@ def test_cleanProjectFile(testConfig):
         # AutoR1 group
         f'SELECT * FROM Groups WHERE Name = "{autor1.PARENT_GROUP_TITLE}"',
         # Nav controls
-        f'SELECT * FROM Controls WHERE TargetId = {loadedProject.masterViewId}',
+        f"SELECT * FROM Controls WHERE TargetId = {loadedProject.masterViewId}",
         # Master view controls
-        f'SELECT * FROM Controls WHERE ViewId = {loadedProject.masterViewId}',
+        f"SELECT * FROM Controls WHERE ViewId = {loadedProject.masterViewId}",
         # Meter view controls
-        f'SELECT * FROM Controls WHERE ViewId = {loadedProject.meterViewId}',
+        f"SELECT * FROM Controls WHERE ViewId = {loadedProject.meterViewId}",
     ]
 
     for q in queries:
@@ -171,12 +180,16 @@ def test_cleanProjectFile(testConfig):
         srcGrpType = str(srcGrpType)
         if int(srcGrpType[3]):  # SUBs
             masterGroups += 1
-            meterGroups += (1 + int(srcGrpType[1]))
+            meterGroups += 1 + int(srcGrpType[1])
         if int(srcGrpType[2]):  # TOPs
             masterGroups += 1
-            meterGroups += (1 + int(srcGrpType[1]))
+            meterGroups += 1 + int(srcGrpType[1])
         # Point source without SUBs or TOPs
-        if int(srcGrpType[3]) == 0 and int(srcGrpType[2]) == 0 and int(srcGrpType[0]) == 2:
+        if (
+            int(srcGrpType[3]) == 0
+            and int(srcGrpType[2]) == 0
+            and int(srcGrpType[0]) == 2
+        ):
             masterGroups += 1
             meterGroups += 1
         if int(srcGrpType[0]) == 4:  # Device only
@@ -194,8 +207,7 @@ def test_cleanProjectFile(testConfig):
     cleanProj = r1.ProjectFile(loadedProject.cleanPath)
     cleanProj.pId = loadedProject.pId
 
-    autor1.clean(
-        cleanProj)
+    autor1.clean(cleanProj)
 
     postGrpCount = cleanProj.getGroupCount()
     assert postGrpCount == initGrpCount

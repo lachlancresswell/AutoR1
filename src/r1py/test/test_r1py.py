@@ -5,9 +5,9 @@ import pytest
 import r1py.r1py as r1
 from shutil import copyfile
 
-TEMP_FILE = './dist/templates.r2t'
-TEST_FILE = './Projects/test_init.dbpr'
-TEST_FILE_NO_INIT = './Projects/test_no_init.dbpr'
+TEMP_FILE = "./dist/templates.r2t"
+TEST_FILE = "./Projects/test_init.dbpr"
+TEST_FILE_NO_INIT = "./Projects/test_no_init.dbpr"
 
 # Before all tests
 
@@ -29,7 +29,7 @@ def uninitialisedProject():
 
 def test_loadProjectFailure():
     with pytest.raises(Exception):
-        r1.ProjectFile('./tempilates.r2t')
+        r1.ProjectFile("./tempilates.r2t")
 
 
 def test_loadProjectSuccess():
