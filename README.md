@@ -14,9 +14,9 @@ v1.6.0
 ## Using AutoR1
 1. Ensure you have run the R1 initial setup on your project to generate all standard views and groups and have saved.
 2. Download and unzip AutoR1.
-3. Copy R1 project into downloaded folder and rename to 'R1.dbpr'
-4. Double click 'start-macos.command' or 'start-windows.bat' depending on your OS
-5. Modified project file will be created in this folder called 'R1_AUTO.dbpr'
+3. Copy one or more `.dbpr` files into downloaded folder.
+4. Double click 'start-macos.command' or 'start-windows.bat' depending on your OS.
+5. Modified project files will be created in this folder with `_AUTO` appended to the name.
 
 ## Overview
 

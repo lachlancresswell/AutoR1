@@ -11,8 +11,6 @@ import traceback
 
 ############################## CONSTANTS ##############################
 LOGDIR = "./LOGS/"
-PROJ_FILE = "./r1.dbpr"
-MOD_FILE = "./R1_AUTO.dbpr"
 TEMP_FILE = "./templates.r2t"
 
 ############################## FUNCTIONS ##############################
@@ -49,6 +47,8 @@ def main():
 
     def exceptionHandler(type, value, tb):
         log.exception("Uncaught exception: {0}".format(str(value)))
+        print("Uncaught exception: {0}".format(str(value)))
+        sys.exit(1)
 
     # Install exception handler
     sys.excepthook = exceptionHandler
@@ -71,40 +71,55 @@ def main():
     log.info(f"cwd - {os.getcwd()}")
     ##########################################################################################
 
-    print("**AutoR1**\n")
+    print("**AutoR1**")
 
-    if not checkFile(PROJ_FILE):
-        print(f"Could not access {PROJ_FILE}")
-        sys.exit()
+    projects = []
+    projects += [
+        each
+        for each in os.listdir("./")
+        if each.endswith(".dbpr") and "_AUTO" not in each
+    ]
+
+    print(f"Found {len(projects)} projects in folder.")
 
     if not checkFile(TEMP_FILE):
         print(f"Could not access {TEMP_FILE}")
-        sys.exit()
+        sys.exit(1)
+    else:
+        tempFile = autor1.TemplateFile(TEMP_FILE)
 
-    # Janky but simplifies deployment for the moment
-    copyfile(PROJ_FILE, MOD_FILE)
+    status = 0
+    for projectPath in projects:
+        autoPath = os.path.splitext(projectPath)[0] + "_AUTO.dbpr"
 
-    if not checkFile(MOD_FILE):
-        print(f"Could not access {MOD_FILE}")
-        sys.exit()
+        copyfile(projectPath, autoPath)
 
-    tempFile = autor1.TemplateFile(TEMP_FILE)
-    projFile = r1.ProjectFile(MOD_FILE)
-    if projFile.isInitialised() < 1:
-        raise Exception("Initial R1 setup not performed")
-    autor1.clean(projFile)
-    projFile.pId = projFile.createGrp(autor1.PARENT_GROUP_TITLE, 1)[0]
-    autor1.createSubLRCGroups(projFile)
-    autor1.getSrcGrpInfo(projFile)
-    autor1.configureApChannels(projFile)
-    autor1.createMeterView(projFile, tempFile)
-    autor1.createMasterView(projFile, tempFile)
-    autor1.createNavButtons(projFile, tempFile)
+        if not checkFile(autoPath):
+            print(f"Could not access {autoPath}")
+            status = 1
 
-    print("Finished generating views, controls and groups.")
+        projFile = r1.ProjectFile(autoPath)
+        if projFile.isInitialised():
+            autor1.clean(projFile)
+            projFile.pId = projFile.createGrp(autor1.PARENT_GROUP_TITLE, 1)[0]
+            autor1.createSubLRCGroups(projFile)
+            autor1.getSrcGrpInfo(projFile)
+            autor1.configureApChannels(projFile)
+            autor1.createMeterView(projFile, tempFile)
+            autor1.createMasterView(projFile, tempFile)
+            autor1.createNavButtons(projFile, tempFile)
+            print(f"Finished generating views, controls and groups for {autoPath}.")
+        else:
+            os.remove(autoPath)
+            print(
+                f"Initial setup has not been run for {projectPath}. Open the file in R1 and perform the initial group and view creation process first, save and then re-run AutoR1."
+            )
+            status = 1
+
+        projFile.close()
+
     tempFile.close()
-    projFile.close()
-    sys.exit()
+    sys.exit(status)
 
 
 if __name__ == "__main__":
