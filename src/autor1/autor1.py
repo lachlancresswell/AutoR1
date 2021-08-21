@@ -201,12 +201,12 @@ def createNavButtons(proj, templates):
         templates (TemplateFile): Template file to pull Nav Button template from
     """
     proj.cursor.execute(f'SELECT ViewId FROM Views WHERE Type = "{1000}"')
-
+    
     for vId in (row for row, in proj.cursor.fetchall() if row != proj.masterViewId and row != proj.meterViewId):
-            proj.cursor.execute(
-                f'UPDATE Controls SET PosY = PosY + {NAV_BUTTON_Y+20} WHERE ViewId = {vId}')
-            __insertTemplate(proj, templates, 'Nav Button', 15, NAV_BUTTON_Y, vId, MASTER_WINDOW_TITLE,
-                             proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
+        proj.cursor.execute(
+            f'UPDATE Controls SET PosY = PosY + {NAV_BUTTON_Y+20} WHERE ViewId = {vId}')
+        __insertTemplate(proj, templates, 'Nav Button', 15, NAV_BUTTON_Y, vId, MASTER_WINDOW_TITLE,
+                            proj.meterViewId+1, -1, proj.cursor, None, None, None, None, None)
 
 def removeNavButtons(proj, masterViewId):
     """Remove navigation buttons from default views
@@ -219,8 +219,8 @@ def removeNavButtons(proj, masterViewId):
             f'SELECT ViewId FROM Controls WHERE "TargetId" = "{masterViewId}" AND "TargetChannel" = -1')
 
     for vId in (row for row, in proj.cursor.fetchall() if row != proj.masterViewId and row != proj.meterViewId):
-                proj.cursor.execute(
-                        f'UPDATE Controls SET PosY = PosY - {NAV_BUTTON_Y+20} WHERE ViewId = {vId}')
+        proj.cursor.execute(
+                f'UPDATE Controls SET PosY = PosY - {NAV_BUTTON_Y+20} WHERE ViewId = {vId}')
 
     proj.cursor.execute(
             f'DELETE FROM Controls WHERE "TargetId" = "{masterViewId}" AND "TargetChannel" = -1')
@@ -292,7 +292,7 @@ def configureApChannels(proj):
     apGroup = []
     for srcGrp in (g for g in proj.sourceGroups if g.apEnable):
         for chGrp in (g for g in srcGrp.channelGroups if g.type == TYPE_TOPS):
-                    apGroup += chGrp.channels
+            apGroup += chGrp.channels
 
     if len(apGroup) > 0:
         proj.createGrp(AP_GROUP_TITLE, proj.pId)
@@ -691,96 +691,95 @@ def createMasterView(proj, templates):
     if rtn is not None:
         proj.masterViewId = rtn[0]
 
-    posX = 10
-    posY = 10
+    posX, posY = 10, 10
     __insertTemplate(proj, templates, 'Nav Button', NAV_BUTTON_X, posY+NAV_BUTTON_Y, proj.masterViewId,
-                     METER_WINDOW_TITLE, proj.meterViewId, -1, proj.cursor, None, None, None, None, None)
+                     METER_WINDOW_TITLE, proj.meterViewId, -1, proj.cursor)
     posY += __insertTemplate(proj, templates, 'Master Title', posX, posY, proj.masterViewId,
-                             None, None, None, proj.cursor, None, None, None, None, None)[1]+METER_SPACING_Y
+                             None, None, None, proj.cursor)[1]+METER_SPACING_Y
     posX += __insertTemplate(proj, templates, 'Master Main', posX, posY, proj.masterViewId,
-                             None, proj.mId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X/2)
-    asPos = __insertTemplate(proj, templates, 'Master ArraySight', posX, posY,
-                             proj.masterViewId, None, 0, None, proj.cursor, None, None, None, None, None)
+                             None, proj.mId, None, proj.cursor)[0]+(METER_SPACING_X/2)
+    arraySightTempX, arraySightTempY = __insertTemplate(proj, templates, 'Master ArraySight', posX, posY,
+                             proj.masterViewId, None, 0, None, proj.cursor)
 
     if getApStatus(proj):
-        posX += __insertTemplate(proj, templates, 'THC', posX, posY+asPos[1]+(
-            METER_SPACING_Y/2), proj.masterViewId, None, proj.apGroupId, None, proj.cursor, None, None, None, None, None)[0]+(METER_SPACING_X*4)
+        posX += __insertTemplate(proj, templates, 'THC', posX, posY+arraySightTempY+(
+            METER_SPACING_Y/2), proj.masterViewId, None, proj.apGroupId, None, proj.cursor)[0]+(METER_SPACING_X*4)
     else:
-        posX += asPos[0]+(METER_SPACING_X*4)
+        posX += arraySightTempX+(METER_SPACING_X*4)
 
     for idy, srcGrp in enumerate(proj.sourceGroups):
         for idx, chGrp in enumerate(srcGrp.channelGroups):
-
-            if chGrp.type > TYPE_SUBS or chGrp.type == TYPE_TOPS_L or chGrp.type == TYPE_TOPS_R:  # TOP or SUB L/R/C Group
+            
+            if chGrp.type in [TYPE_SUBS_L, TYPE_SUBS_R, TYPE_SUBS_C, TYPE_TOPS_L, TYPE_TOPS_R]:  # TOP or SUB L/R/C Group
                 continue
 
-            template = 'Group'
+            templateName = 'Group'
             if srcGrp.LR:  # Stereo groups
-                subGroups = [srcGrp.channelGroups[idx+1],
+                lrGroups = [srcGrp.channelGroups[idx+1],
                              srcGrp.channelGroups[idx+2]]
-                template += ' LR'
+                templateName += ' LR'
             if srcGrp.apEnable:
-                template += " AP"
-            if ("GSL" in srcGrp.cabFamily) or ("KSL" in srcGrp.cabFamily):
-                template += " CPL2"
+                templateName += " AP"
+            if srcGrp.cabFamily in ["GSL", "KSL"]:
+                templateName += " CPL2"
 
-            tempContents = __getTempControlsFromName(templates, template)
+            tempContents = __getTempControlsFromName(templates, templateName)
             metCh = 0  # Current channel of stereo pair
             mutCh = 0
 
             for control in tempContents:
-                dName = control[7]
-                tChannel = control[23]
-                tId = chGrp.groupId
-                flag = control[19]
+                _, controlType, _, _, _, _, _, displayName, _, _, _, _, _, _, _, _, _, _, _, flag, _, _, _, targetChannel, targetProperty, *_ = control
+                targetId = chGrp.groupId
 
                 # Update Infra/100hz button text
-                if (chGrp.type < TYPE_TOPS or chGrp.type > TYPE_TOPS_R) and dName == "CUT" and srcGrp.xover is not None:
-                    dName = srcGrp.xover
+                if (chGrp.type < TYPE_TOPS or chGrp.type > TYPE_TOPS_R) and displayName == "CUT" and srcGrp.xover is not None:
+                    displayName = srcGrp.xover
                     log.info(f"{chGrp.name} - Enabling {srcGrp.xover}")
 
-                if (control[1] == r1.CTRL_METER):  # Meters, these require a TargetChannel
-                    tId = chGrp.channels[0].targetId
-                    tChannel = chGrp.channels[0].targetChannel
-                if 'Group LR' in template:
-                    # Meters, these require a TargetChannel
-                    if (control[1] == r1.CTRL_METER):
-                        tId = subGroups[metCh].channels[0].targetId
-                        tChannel = subGroups[metCh].channels[0].targetChannel
+                # Meters, these require a TargetChannel
+                if controlType == r1.CTRL_METER:
+                    if 'Group LR' in templateName:
+                        targetId, targetChannel = lrGroups[metCh].channels[0].targetId, lrGroups[metCh].channels[0].targetChannel
                         metCh += 1
-                    if (control[1] == r1.CTRL_BUTTON) and (control[24] == "Config_Mute"):  # Mute
-                        tId = subGroups[mutCh].groupId
+                    else:
+                        targetId = chGrp.channels[0].targetId
+                        targetChannel = chGrp.channels[0].targetChannel
+
+                elif controlType == r1.CTRL_BUTTON:
+                    if 'Group LR' in templateName and (targetProperty == "Config_Mute"):  # Mute
+                        targetId = lrGroups[mutCh].groupId
                         mutCh += 1
+                    
+                    if displayName == "View EQ":
+                        targetId = srcGrp.viewId+1
 
-                if (control[1] == r1.CTRL_BUTTON) and (control[7] == "View EQ"):  # EQ View
-                    tId = srcGrp.viewId+1
+                elif controlType == r1.CTRL_FRAME:
+                    if displayName:
+                        displayName = chGrp.name
+                elif controlType == r1.CTRL_INPUT:
+                    if targetProperty == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or chGrp.type > TYPE_TOPS_L):
+                        flag = 14
+                        log.info(f"{chGrp.name} - Setting relative delay")
 
-                if control[1] == r1.CTRL_FRAME:
-                    if control[7]:
-                        dName = chGrp.name
-
-                if dName is None:
-                    dName = ""
-
-                if control[1] == r1.CTRL_INPUT and control[24] == 'ChStatus_MsDelay' and ('fill' in chGrp.name.lower() or chGrp.type > TYPE_TOPS_L):
-                    flag = 14
-                    log.info(f"{chGrp.name} - Setting relative delay")
-
-                s = f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(control[1])}", "{str(control[2]+posX)}", "{str(control[3]+posY)}", "{str(control[4])}", "{str(control[5])}", "{str(proj.masterViewId)}", "{dName}", "{str(proj.jId)}", "{str(control[10])}", "{str(control[11])}", "{str(control[12])}", "{str(control[13])}", "{str(control[14])}", "{str(control[15])}", "{str(control[16])}", "{str(control[17])}", "{str(control[18])}", "{str(flag)}", "{str(control[20])}", "{str(control[21])}", "{str(tId)}", {str(tChannel)}, "{str(control[24])}", {control[25]}, NULL, NULL, "{str(control[28])}", "{str(control[29])}", "{str(control[30])}", "{str(control[31])}", "  ")'
+                query = f'INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", \
+                    "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", \
+                        "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES ("{str(controlType)}", \
+                            "{str(control[2]+posX)}", "{str(control[3]+posY)}", "{str(control[4])}", "{str(control[5])}", "{str(proj.masterViewId)}", "{displayName if displayName else ""}", "{str(proj.jId)}", \
+                                "{str(control[10])}", "{str(control[11])}", "{str(control[12])}", "{str(control[13])}", "{str(control[14])}", "{str(control[15])}", "{str(control[16])}", \
+                                    "{str(control[17])}", "{str(control[18])}", "{str(flag)}", "{str(control[20])}", "{str(control[21])}", "{str(targetId)}", {str(targetChannel)}, \
+                                        "{str(targetProperty)}", {control[25]}, NULL, NULL, "{str(control[28])}", "{str(control[29])}", "{str(control[30])}", "{str(control[31])}", "  ")'
 
                 # Remove CPL if not supported by channel / if channel doesn't have infra, cut button becomes infra
-                if control[1] == r1.CTRL_INPUT and control[24] == 'Config_Filter3':
-                    if (chGrp.type < TYPE_TOPS or chGrp.type > TYPE_TOPS_R) and srcGrp.xover is not None:
-                        s = ""
-                        log.info(f"{chGrp.name} - Skipping CPL")
-
-                proj.cursor.execute(s)
+                if controlType == r1.CTRL_INPUT and targetProperty == 'Config_Filter3' and (chGrp.type < TYPE_TOPS or chGrp.type > TYPE_TOPS_R) and srcGrp.xover is not None:
+                    log.info(f"{chGrp.name} - Skipping CPL")
+                else:
+                    proj.cursor.execute(query)
 
             proj.masterJoinedIDs.append((proj.jId, idy))
 
             __insertTemplate(proj, templates, 'Nav Button', posX, posY, proj.masterViewId,
-                             chGrp.name, srcGrp.viewId, -1, proj.cursor, None, None, None, None, None)
+                             chGrp.name, srcGrp.viewId, -1, proj.cursor)
 
-            posX += meterW+METER_SPACING_X
+            posX += meterTempWidth+METER_SPACING_X
 
             proj.jId = proj.jId + 1
