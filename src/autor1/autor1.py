@@ -31,17 +31,11 @@ TYPE_TOPS = 1
 TYPE_POINT = 0
 
 ##### Source groups are created in ArrayCalc ########
-
 # Sections is table name from .r2t file
-
-
 class Template:
     def __init__(self, sections, controls):
         if sections is not None:
-            self.id = sections[0]
-            self.name = sections[1]
-            self.parentId = sections[2]
-            self.joinedId = sections[3]
+            self.id, self.name, self.parentId, self.joinedId,_ = sections
 
         if controls is not None:
             self.controls = controls
@@ -124,35 +118,35 @@ def getSrcGroupType(proj, nameOrId):
 
 class SourceGroup:
     def __init__(self, row):
-        self.viewId = row[0]
-        self.name = row[1]
-        self.srcId = row[2]
-        self.nextSrcId = row[3]
-        # Group is stereo if nextSrcId exists
-        self.type = row[4]
-        self.apEnable = row[5] if row[5] else 0
-        self.asId = row[6]
-        self.cabFamily = row[7]
-        self.groupId = row[8]
-        self.groupName = row[9]
-        self.topGroupId = row[10]
-        self.topGroupName = row[11]
-        self.topLeftGroupId = row[12]
-        self.topLeftGroupName = row[13]
-        self.topRightGroupId = row[14]
-        self.topRightGroupName = row[15]
-        self.subGroupId = row[16]
-        self.subGroupName = row[17]
-        self.subLeftGroupId = row[18]
-        self.subLeftGroupName = row[19]
-        self.subRightGroupId = row[20]
-        self.subRightGroupName = row[21]
-        self.subCGroupId = row[22]
-        self.subCGroupName = row[23]
+        print('wow')
+        (self.viewId,
+        self.name,
+        self.srcId,
+        self.nextSrcId,
+        self.type,
+        self.apEnable,
+        self.asId,
+        self.cabFamily,
+        self.groupId,
+        self.groupName,
+        self.topGroupId,
+        self.topGroupName,
+        self.topLeftGroupId,
+        self.topLeftGroupName,
+        self.topRightGroupId,
+        self.topRightGroupName,
+        self.subGroupId,
+        self.subGroupName,
+        self.subLeftGroupId,
+        self.subLeftGroupName,
+        self.subRightGroupId,
+        self.subRightGroupName,
+        self.subCGroupId,
+        self.subCGroupName,
+        self.xover) = row
         self.channelGroups = []
         self.LR = 1 if (row[12] is not None or row[14] is not None or row[20] 
                         is not None or row[22] is not None) else 0
-        self.xover = row[24]
 
         # Combine all returned sub groups into single array
         i = 14
@@ -206,12 +200,9 @@ def createNavButtons(proj, templates):
         proj (r1.ProjectFile): Project to insert views into
         templates (TemplateFile): Template file to pull Nav Button template from
     """
-    proj.cursor.execute(f'SELECT * FROM Views WHERE Type = "{1000}"')
-    rtn = proj.cursor.fetchall()
+    proj.cursor.execute(f'SELECT ViewId FROM Views WHERE Type = "{1000}"')
 
-    for row in rtn:
-        vId = row[0]
-        if vId != proj.masterViewId and vId != proj.meterViewId:
+    for vId in (row for row, in proj.cursor.fetchall() if row != proj.masterViewId and row != proj.meterViewId):
             proj.cursor.execute(
                 f'UPDATE Controls SET PosY = PosY + {NAV_BUTTON_Y+20} WHERE ViewId = {vId}')
             __insertTemplate(proj, templates, 'Nav Button', 15, NAV_BUTTON_Y, vId, MASTER_WINDOW_TITLE,
@@ -226,11 +217,8 @@ def removeNavButtons(proj, masterViewId):
     """
     proj.cursor.execute(
             f'SELECT ViewId FROM Controls WHERE "TargetId" = "{masterViewId}" AND "TargetChannel" = -1')
-    viewIds = proj.cursor.fetchall()
 
-    if viewIds is not None:
-        for vId, in viewIds:
-            if vId != masterViewId and vId != masterViewId-1:
+    for vId in (row for row, in proj.cursor.fetchall() if row != proj.masterViewId and row != proj.meterViewId):
                 proj.cursor.execute(
                         f'UPDATE Controls SET PosY = PosY - {NAV_BUTTON_Y+20} WHERE ViewId = {vId}')
 
@@ -302,10 +290,8 @@ def configureApChannels(proj):
         proj (r1.ProjectFile): Project file to use
     """
     apGroup = []
-    for srcGrp in proj.sourceGroups:
-        if srcGrp.apEnable:
-            for chGrp in srcGrp.channelGroups:
-                if chGrp.type == TYPE_TOPS:
+    for srcGrp in (g for g in proj.sourceGroups if g.apEnable):
+        for chGrp in (g for g in srcGrp.channelGroups if g.type == TYPE_TOPS):
                     apGroup += chGrp.channels
 
     if len(apGroup) > 0:
@@ -317,7 +303,7 @@ def configureApChannels(proj):
                 f'  SELECT "{ch.name}", {proj.apGroupId}, {ch.targetId}, {ch.targetChannel}, 1, 0')
 
 
-def __insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, targetId, targetChannel, cursor, width, height, joinedId, targetProp, targetRec):
+def __insertTemplate(proj, templates, tempName, posX, posY, viewId, displayName, targetId, targetChannel, cursor, width=None, height=None, joinedId=None, targetProp=None, targetRec=None):
     if joinedId is not None:
         jId = joinedId
     else:
@@ -409,15 +395,9 @@ def __getTempSize(templates, tempName):
 
 def createMeterView(proj, templates):
     # Get width + height of title to offset starting x + y
-    rtn = __getTempSize(templates, "Meters Title")
-    titleW = rtn[0]
-    titleH = rtn[1]
-    rtn = __getTempSize(templates, "Meters Group")
-    meterGrpW = rtn[0]
-    meterGrpH = rtn[1]
-    rtn = __getTempSize(templates, "Meter")
-    meterW = rtn[0]
-    meterH = rtn[1]
+    _, titleH = __getTempSize(templates, "Meters Title")
+    meterGrpW, meterGrpH = __getTempSize(templates, "Meters Group")
+    meterW, meterH = __getTempSize(templates, "Meter")
 
     proj.meterJoinedIDs = []
 
@@ -681,8 +661,7 @@ def getSrcGrpInfo(proj):
 def getMainGroupCount(proj):
     groups = []
     for srcGrp in proj.sourceGroups:
-        for idx, chGrp in enumerate(srcGrp.channelGroups):
-            name = chGrp.name
+        for chGrp in srcGrp.channelGroups:
             if chGrp.type > TYPE_SUBS or chGrp.type == TYPE_TOPS_L or chGrp.type == TYPE_TOPS_R:  # TOP or SUB L/R/C Group
                 continue
             else:
@@ -692,25 +671,19 @@ def getMainGroupCount(proj):
 
 def createMasterView(proj, templates):
     # Get width + height of templates used
-    rtn = __getTempSize(templates, "Master Main")
-    masterW = rtn[0]
-    masterH = rtn[1]
-    rtn = __getTempSize(templates, "Master ArraySight")
-    asW = rtn[0]
-    asH = rtn[1]
-    rtn = __getTempSize(templates, "Master Title")
-    titleW = rtn[0]
-    titleH = rtn[1]
-    rtn = __getTempSize(templates, "Group LR AP CPL2")
-    meterW = rtn[0]
-    meterH = rtn[1]
+    masterTempWidth, masterTempHeight = __getTempSize(templates, "Master Main")
+    arraySightTempWidth, _ = __getTempSize(templates, "Master ArraySight")
+    _, masterTitleTempHeight = __getTempSize(templates, "Master Title")
+    meterTempWidth, meterTempHeight = __getTempSize(templates, "Group LR AP CPL2")
+    meterTempBuffer = 200
 
+    # For testing
     proj.masterJoinedIDs = []
 
     ####### CREATE VIEW #######
-    HRes = masterW + asW + ((METER_SPACING_X+meterW) *
-                            getChannelMasterGroupTotal(proj)) + 200  # Last one is a buffer
-    VRes = titleH + max([meterH, masterH]) + 60
+    HRes = masterTempWidth + arraySightTempWidth + ((METER_SPACING_X+meterTempWidth) *
+                            getChannelMasterGroupTotal(proj)) + meterTempBuffer  
+    VRes = masterTitleTempHeight + max([meterTempHeight, masterTempHeight]) + 60
     proj.cursor.execute(
         f'INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (1000,"{MASTER_WINDOW_TITLE}",NULL,4,NULL,-1,{HRes},{VRes},100,NULL,NULL,NULL,NULL);')
     proj.cursor.execute(f'SELECT max(ViewId) FROM Views')
