@@ -1,10 +1,14 @@
 language: python
 group: travis_latest
 
+# Root level OS + distro required
+os: linux
+dist: xenial
+
 python:
 - "3.8.1"
 
-matrix:
+jobs:
   include:
   - os: linux
   - os: osx
@@ -22,15 +26,28 @@ install: pip install -r requirements.txt
 
 script: 
   - pytest
+  # build
   - pyinstaller --onefile --name autor1 src/__main__.py
-  - cp ./Projects/test_init.dbpr ./dist/r1.dbpr
+  # Copy test projects into build folder
+  - cp ./Projects/*.dbpr ./dist/
   - cd ./dist
   - ls -la
+  # Run executable with test projects. Expect a failure due to an uninitialized file
+  - if [ $TRAVIS_OS_NAME == "windows" ]; then echo | ! ./start-windows.bat; fi
+  - if [ $TRAVIS_OS_NAME == "osx" ]; then echo | ! ./start-macos.command; fi
+  - if [ $TRAVIS_OS_NAME == "linux" ]; then ! ./autor1 ./; fi
+  # Print most recent log
+  - cat ./LOGS/"$(ls -rt ./LOGS | tail -n1)"
+  - ls ./*_AUTO.dbpr
+  # Remove uninitialized file
+  - rm ./*no_init.dbpr
+  # Re-run executable with tests. This should pass without failure now.
   - if [ $TRAVIS_OS_NAME == "windows" ]; then echo | ./start-windows.bat; fi
   - if [ $TRAVIS_OS_NAME == "osx" ]; then echo | ./start-macos.command; fi
   - if [ $TRAVIS_OS_NAME == "linux" ]; then ./autor1 ./; fi
   - cat ./LOGS/"$(ls -rt ./LOGS | tail -n1)"
-  - ls ./R1_AUTO.dbpr
+  - ls ./*_AUTO.dbpr
+  # Remove generated files to prepare for zipping + release later
   - rm *.dbpr
   - rm -r ./LOGS
   - cd ../
@@ -46,12 +63,11 @@ before_deploy:
 
 deploy:
   provider: releases
-  api_key: $GH_TOKEN
+  token: $GH_TOKEN
   file_glob: true
   overwrite: true
   file: 
     - $RELEASE_NAME.zip
-  skip_cleanup: true
   draft: true
   name: $TRAVIS_TAG (DRAFT)
   on:
