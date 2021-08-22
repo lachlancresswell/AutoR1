@@ -33,7 +33,7 @@ script:
   - cd ./dist
   - ls -la
   # Solves permission issue on linux?!
-  - chmod +x ./start-windows.command
+  - chmod +x ./start-windows.bat
   # Run executable with test projects. Expect a failure due to an uninitialized file
   - if [ $TRAVIS_OS_NAME=="windows" ]; then echo | (! ./start-windows.bat); fi
   - if [ $TRAVIS_OS_NAME=="osx" ]; then echo | (! ./start-macos.command); fi
