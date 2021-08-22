@@ -654,6 +654,22 @@ def createSubLRCGroups(proj):
                 proj.createGrp(subDevs[1], pId, subDevs[2], subDevs[3], 1, 0)
 
 
+def addSubCtoSubL(proj):
+    pId = -1
+    for srcGrp in proj.sourceGroups:
+        for chGrp in srcGrp.channelGroups:
+            if chGrp.type == TYPE_SUBS_L:
+                pId = chGrp.groupId
+
+    for srcGrp in proj.sourceGroups:
+        for chGrp in srcGrp.channelGroups:
+            if chGrp.type == TYPE_SUBS_C:
+                for channel in chGrp.channels:
+                    proj.createGrp(
+                        channel.name, pId, channel.targetId, channel.targetChannel, 1, 0
+                    )
+
+
 def hasSubGroups(proj):
     proj.cursor.execute(
         f"SELECT Name FROM SourceGroups WHERE Type = {r1.SRC_TYPE_SUBARRAY}"

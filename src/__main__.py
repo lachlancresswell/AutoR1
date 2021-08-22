@@ -108,6 +108,7 @@ def main():
             autor1.createMeterView(projFile, tempFile)
             autor1.createMasterView(projFile, tempFile)
             autor1.createNavButtons(projFile, tempFile)
+            autor1.addSubCtoSubL(projFile)
             print(f"Finished generating views, controls and groups for {autoPath}.")
         else:
             os.remove(autoPath)
