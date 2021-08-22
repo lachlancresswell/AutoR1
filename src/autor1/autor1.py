@@ -7,7 +7,7 @@ import sys
 log = logging.getLogger(__name__)
 # log.addHandler(logging.StreamHandler(sys.stdout))
 
-NAV_BUTTON_X = 230
+NAV_BUTTON_X = 270
 NAV_BUTTON_Y = 15
 
 METER_VIEW_STARTX = 15
@@ -151,16 +151,6 @@ class SourceGroup:
             self.xover,
         ) = row
         self.channelGroups = []
-        self.LR = (
-            1
-            if (
-                row[12] is not None
-                or row[14] is not None
-                or row[20] is not None
-                or row[22] is not None
-            )
-            else 0
-        )
 
         # Combine all returned sub groups into single array
         i = 14
@@ -195,13 +185,14 @@ class ChannelGroup:
 ###### An amplifier channel ########
 class Channel:
     def __init__(self, row):
-        self.groupId = row[0]
-        self.name = row[1]
-        self.targetId = row[2]
-        self.targetChannel = row[3]
-        self.preset = row[4]
-        self.cabId = row[5]
-
+        (
+            self.groupId,
+            self.name,
+            self.targetId,
+            self.targetChannel,
+            self.preset,
+            self.cabId,
+        ) = row
         log.info(f"Created channel - {self.name}")
 
 
@@ -442,14 +433,14 @@ def __getTempSize(templates, tempName):
     )
     rtn = templates.cursor.fetchall()
     if rtn is not None:
-        w = 0
-        h = 0
+        maxWidth, maxHeight = 0, 0
         for row in rtn:
-            if row[0] + row[2] > w:
-                w = row[0] + row[2]
-            if row[1] + row[3] > h:
-                h = row[1] + row[3]
-        return [w, h]
+            PosX, PosY, Width, Height = row
+            if PosX + Width > maxWidth:
+                maxWidth = PosX + Width
+            if PosY + Height > maxHeight:
+                maxHeight = PosY + Height
+        return [maxWidth, maxHeight]
     else:
         log.info(f"{tempName} template controls not found.")
         return -1
@@ -923,7 +914,7 @@ def createMasterView(proj, templates):
                 continue
 
             templateName = "Group"
-            if srcGrp.LR:  # Stereo groups
+            if len(srcGrp.channelGroups) >= 3:  # Stereo groups
                 lrGroups = [
                     srcGrp.channelGroups[idx + 1],
                     srcGrp.channelGroups[idx + 2],
