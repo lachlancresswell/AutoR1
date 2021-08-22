@@ -25,6 +25,7 @@ jobs:
 install: pip install -r requirements.txt
 
 script: 
+  - echo $TRAVIS_OS_NAME
   - pytest
   # build
   - pyinstaller --onefile --name autor1 src/__main__.py
@@ -35,18 +36,18 @@ script:
   # Solves permission issue on linux?!
   - chmod +x ./start-windows.bat
   # Run executable with test projects. Expect a failure due to an uninitialized file
-  - if [ $TRAVIS_OS_NAME=="windows" ]; then echo | (! ./start-windows.bat); fi
-  - if [ $TRAVIS_OS_NAME=="osx" ]; then echo | (! ./start-macos.command); fi
-  - if [ $TRAVIS_OS_NAME=="linux" ]; then ! ./autor1 ./; fi
+  - if [ $TRAVIS_OS_NAME == "windows" ]; then echo | (! ./start-windows.bat); fi
+  - if [ $TRAVIS_OS_NAME == "osx" ]; then echo | (! ./start-macos.command); fi
+  - if [ $TRAVIS_OS_NAME == "linux" ]; then ! ./autor1 ./; fi
   # Print most recent log
   - cat ./LOGS/"$(ls -rt ./LOGS | tail -n1)"
   - ls ./*_AUTO.dbpr
   # Remove uninitialized file
   - rm ./*no_init.dbpr
   # Re-run executable with tests. This should pass without failure now.
-  - if [ $TRAVIS_OS_NAME=="windows" ]; then echo | ./start-windows.bat; fi
-  - if [ $TRAVIS_OS_NAME=="osx" ]; then echo | ./start-macos.command; fi
-  - if [ $TRAVIS_OS_NAME=="linux" ]; then ./autor1 ./; fi
+  - if [ $TRAVIS_OS_NAME == "windows" ]; then echo | ./start-windows.bat; fi
+  - if [ $TRAVIS_OS_NAME == "osx" ]; then echo | ./start-macos.command; fi
+  - if [ $TRAVIS_OS_NAME == "linux" ]; then ./autor1 ./; fi
   - cat ./LOGS/"$(ls -rt ./LOGS | tail -n1)"
   - ls ./*_AUTO.dbpr
   # Remove generated files to prepare for zipping + release later
