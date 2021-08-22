@@ -63,6 +63,7 @@ before_deploy:
   - if [ $TRAVIS_OS_NAME == "linux" ]; then rm ./dist/start-windows.bat && rm ./dist/start-macos.command; fi
   - mv ./dist $RELEASE_NAME
   - tar -a -c -f $RELEASE_NAME.zip ./$RELEASE_NAME/
+  - ls -la
 
 deploy:
   provider: releases
@@ -72,6 +73,7 @@ deploy:
   file: 
     - $RELEASE_NAME.zip
   draft: true
+  skip_cleanup: true
   name: $TRAVIS_TAG (DRAFT)
   on:
     tags: true
