@@ -111,6 +111,7 @@ def main():
             autor1.addSubCtoSubL(projFile)
             print(f"Finished generating views, controls and groups for {autoPath}.")
         else:
+            projFile.close()
             os.remove(autoPath)
             print(
                 f"Initial setup has not been run for {projectPath}. Open the file in R1 and perform the initial group and view creation process first, save and then re-run AutoR1."

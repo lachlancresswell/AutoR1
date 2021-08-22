@@ -97,7 +97,11 @@ class sqlDbFile(object):
         log.info("Loaded file - " + self.f)
 
     def close(self):
-        self.db.commit()
+        # This can fail on Windows in some cases
+        try:
+            self.db.commit()
+        except:
+            pass
         self.db.close()
 
 
