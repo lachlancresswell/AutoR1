@@ -25,7 +25,8 @@ Automatically generate metering, fallback controls, DS data displays and more fo
 ## Notes
 ### MacOS ##
 The OS may give a message about the application coming from an unknown developer and fail to run. In this case, right click the `start-macos.command` file, select `Open` from the dropdown menu and select `Open` from the following popup. 
-More information - (https://support.apple.com/en-au/guide/mac-help/mh40616/mac)[https://support.apple.com/en-au/guide/mac-help/mh40616/mac]
+
+More information - [https://support.apple.com/en-au/guide/mac-help/mh40616/mac](https://support.apple.com/en-au/guide/mac-help/mh40616/mac)
 
 ### Windows ###
 Microsoft Defender SmartScreen may display a message saying the app is unrecognized when running `start-windows.bat`. Clicking `More Info` and then `Run Anyway` will run the program.
