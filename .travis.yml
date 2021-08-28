@@ -39,7 +39,7 @@ script:
   - if [ $TRAVIS_OS_NAME == "osx" ]; then echo | (! ./start-macos.command); fi
   - if [ $TRAVIS_OS_NAME == "linux" ]; then ! ./autor1 ./; fi
   # Print most recent log
-  - cat ./LOGS/"$(ls -rt ./LOGS | tail -n1)"
+  # - cat ./LOGS/"$(ls -rt ./LOGS | tail -n1)"
   - ls ./*_AUTO.dbpr
   # Remove uninitialized file
   - rm ./*no_init.dbpr
@@ -47,7 +47,7 @@ script:
   - if [ $TRAVIS_OS_NAME == "windows" ]; then echo | ./start-windows.bat; fi
   - if [ $TRAVIS_OS_NAME == "osx" ]; then echo | ./start-macos.command; fi
   - if [ $TRAVIS_OS_NAME == "linux" ]; then ./autor1 ./; fi
-  - cat ./LOGS/"$(ls -rt ./LOGS | tail -n1)"
+  # - cat ./LOGS/"$(ls -rt ./LOGS | tail -n1)"
   - ls ./*_AUTO.dbpr
   # Remove generated files to prepare for zipping + release later
   - rm *.dbpr
