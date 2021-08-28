@@ -12,7 +12,6 @@ jobs:
   include:
   - os: linux
   - os: osx
-    osx_image: xcode12.5
     language: shell
     install: pip3 install -r requirements.txt
   - os: windows
