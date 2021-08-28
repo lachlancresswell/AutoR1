@@ -62,7 +62,9 @@ before_deploy:
   - if [ $TRAVIS_OS_NAME == "osx" ]; then rm ./dist/start-windows.bat; fi
   - if [ $TRAVIS_OS_NAME == "linux" ]; then rm ./dist/start-windows.bat && rm ./dist/start-macos.command; fi
   - mv ./dist $RELEASE_NAME
-  - tar -a -c -f $RELEASE_NAME.zip ./$RELEASE_NAME/
+  # Regular 'tar' zipped files not opening in explorer 
+  - if [ $TRAVIS_OS_NAME == "windows" ]; then  powershell Compress-Archive ./$RELEASE_NAME/ $RELEASE_NAME.zip; fi
+  - if [ $TRAVIS_OS_NAME != "windows" ]; then  tar -a -c -f $RELEASE_NAME.zip ./$RELEASE_NAME/; fi
   - ls -la
 
 deploy:
