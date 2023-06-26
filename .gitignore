@@ -1,4 +1,5 @@
 node_modules
+dist
 #OS junk files
 [Tt]humbs.db
 *.DS_Store
