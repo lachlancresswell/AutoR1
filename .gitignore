@@ -1,5 +1,4 @@
-env
-__pycache__
+node_modules
 #OS junk files
 [Tt]humbs.db
 *.DS_Store
@@ -9,9 +8,5 @@ __pycache__
 *.dbpr-journal
 *.dblock
 *.r2t
-/build
 /LOGS
 /dist/LOGS/
-/__pycache__/
-*.spec
-/.eggs
