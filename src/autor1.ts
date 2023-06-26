@@ -713,7 +713,7 @@ export const createMasterView = (proj: AutoR1Project, templates: r1.TemplateFile
                 templateName += ' AP';
             }
 
-            if (['GSL', 'KSL'].find((s) => s === sourceGroup.System)) {
+            if (['GSL', 'KSL', 'XSL'].find((s) => s === sourceGroup.System)) {
                 templateName += ' CPL2';
             }
 
