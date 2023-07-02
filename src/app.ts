@@ -1,4 +1,3 @@
-import { ProjectFile, TemplateFile } from './r1ts';
 import * as fs from 'fs';
 import * as App from './autor1'
 
@@ -15,21 +14,21 @@ try {
 }
 fs.copyFileSync(PROJECT_INIT_AP_START, PROJECT_INIT_AP);
 
-let project: ProjectFile;
+let project: App.AutoR1ProjectFile;
 try {
-    project = new ProjectFile(PROJECT_INIT_AP);
+    project = new App.AutoR1ProjectFile(PROJECT_INIT_AP);
 } catch (e) {
     console.log(e);
 
     process.exit(1);
 }
 
-const templates = new TemplateFile(TEMPLATES);
+const templates = new App.AutoR1TemplateFile(TEMPLATES);
 const parentId = project.createGrp('Auto R1');
-App.createSubLRCGroups(project, parentId);
+project.createSubLRCGroups(parentId);
 project.getSrcGrpInfo();
-App.configureApChannels(project);
+project.configureApChannels();
 App.createMeterView(project, templates);
 App.createMasterView(project, templates);
-App.createNavButtons(project, templates);
-App.addSubCtoSubL(project);
+project.createNavButtons(templates);
+project.addSubCtoSubL();
