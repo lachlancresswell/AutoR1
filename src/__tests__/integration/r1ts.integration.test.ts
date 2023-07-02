@@ -1,4 +1,4 @@
-import { ProjectFile, TemplateFile } from '../../r1ts';
+import { AutoR1ProjectFile, AutoR1TemplateFile } from '../../autor1';
 import * as fs from 'fs';
 
 const PROJECT_NO_INIT_START = './src/__tests__/Projects/test_no_init.dbpr';
@@ -34,18 +34,18 @@ afterEach(() => {
 });
 
 describe('Methods', () => {
-    let p: ProjectFile;
+    let p: AutoR1ProjectFile;
     beforeEach(() => {
-        p = new ProjectFile(PROJECT_INIT);
+        p = new AutoR1ProjectFile(PROJECT_INIT);
     });
 
     it('Constructor throws with non-existing proejct', () => {
-        expect(() => new ProjectFile(PROJECT_NO_EXIST)).toThrow('File does not exist');
+        expect(() => new AutoR1ProjectFile(PROJECT_NO_EXIST)).toThrow('File does not exist');
     });
 
     it('Constructor throws with unintialised proejct', () => {
         jest.resetAllMocks()
-        expect(() => new ProjectFile(PROJECT_NO_INIT)).toThrow('Project file is not initialised');
+        expect(() => new AutoR1ProjectFile(PROJECT_NO_INIT)).toThrow('Project file is not initialised');
     });
 
     it('Next joinedId is determined', () => {
@@ -53,27 +53,17 @@ describe('Methods', () => {
     });
 
     it('Finds number of groups in project', () => {
-        expect(p.getGroupCount()).toBe(283);
-    });
-
-    it('Finds source group IDs, skipping right groups', () => {
-        const sourceGroupIds = p.getSourceGroupIds(true)
-        expect(sourceGroupIds.length).toBe(12);
-    });
-
-    it('Finds source group IDs, including right groups', () => {
-        const sourceGroupIds = p.getSourceGroupIds()
-        expect(sourceGroupIds.length).toBe(17);
+        expect(p.getAllGroups().length).toBe(283);
     });
 
     it('Finds name of a source group from a group ID', () => {
-        const p = new ProjectFile(PROJECT_INIT)
-        expect(p.getSourceGroupNameFromId(1)).toBe('Unused channels');
+        const p = new AutoR1ProjectFile(PROJECT_INIT)
+        expect(p.getSourceGroupNameFromID(1)).toBe('Unused channels');
     });
 
     it('Finds ID of a source group from a source group name', () => {
-        const p = new ProjectFile(PROJECT_INIT)
-        expect(p.getSourceGroupIdFromName('Unused channels')).toBe(1);
+        const p = new AutoR1ProjectFile(PROJECT_INIT)
+        expect(p.getSourceGroupIDFromName('Unused channels')).toBe(1);
     });
 
     it('Finds the highest group ID', () => {
@@ -101,6 +91,7 @@ describe('Methods', () => {
     });
 
     it('Discovers all source groups, channel groups and related info from a project', () => {
+        p.getSrcGrpInfo()
         expect(p.sourceGroups.length).toBe(11);
         expect(p.sourceGroups[0].channelGroups.length).toBe(3); // Array two way tops
         expect(p.sourceGroups[1].channelGroups.length).toBe(3); // Array single channel tops
@@ -119,19 +110,19 @@ describe('Methods', () => {
 
 describe('Variables', () => {
     it('JoinedId is set on initial project load', () => {
-        let p: ProjectFile;
-        expect(() => p = new ProjectFile(PROJECT_INIT)).not.toThrow();
+        let p: AutoR1ProjectFile;
+        expect(() => p = new AutoR1ProjectFile(PROJECT_INIT)).not.toThrow();
         expect(p!['jId']).not.toBe(-1);
     });
 });
 
 describe('insertTemplate', () => {
-    let projectFile: ProjectFile;
-    let templateFile: TemplateFile;
+    let projectFile: AutoR1ProjectFile;
+    let templateFile: AutoR1TemplateFile;
 
     beforeEach(() => {
-        projectFile = new ProjectFile(PROJECT_INIT);
-        templateFile = new TemplateFile(TEMPLATES);
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
+        templateFile = new AutoR1TemplateFile(TEMPLATES);
     });
 
     it('should insert a new template into the project file', () => {
@@ -146,13 +137,13 @@ describe('insertTemplate', () => {
         const ViewId = 1000;
         const DisplayName = 'My Display Name';
 
-        const oldJoinedId = projectFile.jId;
+        const oldJoinedId = projectFile.getHighestJoinedID();
         projectFile.insertTemplate(template, ViewId, posX, posY, DisplayName, targetId, targetChannel, width, height);
-        const newJoinedId = projectFile.jId;
+        const newJoinedId = projectFile.getHighestJoinedID();
 
-        const controls = projectFile.findControlsByViewId(ViewId);
+        const controls = projectFile.getControlsByViewId(ViewId);
         expect(newJoinedId).toBeGreaterThan(oldJoinedId);
-        const insertedControls = controls.filter((c) => c.JoinedId === oldJoinedId)
+        const insertedControls = controls.filter((c) => c.JoinedId === newJoinedId)
 
         const insertedControl = insertedControls[0];
         expect(insertedControl).toBeDefined();
@@ -166,17 +157,17 @@ describe('insertTemplate', () => {
     });
 });
 
-describe('getTempSize', () => {
-    let projectFile: ProjectFile;
-    let templateFile: TemplateFile;
+describe('getTemplateWidthHeight', () => {
+    let projectFile: AutoR1ProjectFile;
+    let templateFile: AutoR1TemplateFile;
 
     beforeEach(() => {
-        projectFile = new ProjectFile(PROJECT_INIT);
-        templateFile = new TemplateFile(TEMPLATES);
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
+        templateFile = new AutoR1TemplateFile(TEMPLATES);
     });
 
     it('should return the size of the template', () => {
-        const size = templateFile.getTempSize('Meters Group');
+        const size = templateFile.getTemplateWidthHeight('Meters Group');
         expect(size.width).toBe(220);
         expect(size.height).toBe(214);
     });
