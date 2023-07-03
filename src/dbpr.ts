@@ -634,7 +634,7 @@ export class TemplateFile extends SqlDbFile {
             const templates = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`).all() as Section[];
             console.log(`Found ${templates.length} templates in file.`);
         } catch (error) {
-            throw error;
+            throw new Error(`Could not find any templates in file.`);
         }
     }
 
