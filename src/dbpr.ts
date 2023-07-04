@@ -26,6 +26,11 @@ export enum MountingFlag {
     GROUND_STACK = 1,
 }
 
+export enum R1GroupsType {
+    GROUP = 0,
+    DEVICE = 1
+}
+
 /**
  * Source group row from database
  * 
@@ -313,7 +318,7 @@ export interface Group {
     ParentId: number;
     TargetId: number;
     TargetChannel: TargetChannels;
-    Type: number;
+    Type: R1GroupsType;
     Flags: number;
 }
 
