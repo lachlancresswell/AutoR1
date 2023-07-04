@@ -269,7 +269,7 @@ describe('getTemplateWidthHeight', () => {
     });
 
     it('should return the correct size for an existing template', () => {
-        const TEMPLATE_NAME = `Master Title`
+        const TEMPLATE_NAME = `Main Title`
         const size = templateFile.getTemplateWidthHeight(TEMPLATE_NAME);
         expect(size).toEqual({ width: 240, height: 42 });
     });
@@ -293,7 +293,7 @@ describe('getTemplateControlsFromName', () => {
     });
 
     it('should return the controls for an existing template', () => {
-        const controls = templateFile.getTemplateControlsFromName('Master Title');
+        const controls = templateFile.getTemplateControlsFromName('Main Title');
         expect(controls![0]).toHaveProperty('DisplayName')
     });
 
@@ -380,7 +380,7 @@ describe('clean', () => {
         const oldControlCount = projectFile.getAllControls().length;
 
         AutoR1.createMeterView(projectFile, templateFile);
-        AutoR1.createMasterView(projectFile, templateFile);
+        AutoR1.createMainView(projectFile, templateFile);
         const groupId = projectFile.createGrp('TEST', 1);
         projectFile.createSubLRCGroups(groupId);
 
@@ -439,7 +439,7 @@ describe('configureApChannels', () => {
     });
 });
 
-describe('createMasterView', () => {
+describe('createMainView', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
 
@@ -449,15 +449,15 @@ describe('createMasterView', () => {
         projectFile.getSrcGrpInfo();
     });
 
-    it('creates the master view', () => {
-        AutoR1.createMasterView(projectFile, templateFile);
-        expect(projectFile.getAllViews().filter(g => g.Name === AutoR1.MASTER_WINDOW_TITLE).length).toBe(1)
+    it('creates the main view', () => {
+        AutoR1.createMainView(projectFile, templateFile);
+        expect(projectFile.getAllViews().filter(g => g.Name === AutoR1.MAIN_WINDOW_TITLE).length).toBe(1)
     })
 
-    it('inserts the Master Title template', () => {
-        AutoR1.createMasterView(projectFile, templateFile);
-        const controls = projectFile.getControlsByViewId(projectFile.masterViewId);
-        expect(controls.find((c) => c.DisplayName === 'Auto - Master')).toBeTruthy();
+    it('inserts the Main Title template', () => {
+        AutoR1.createMainView(projectFile, templateFile);
+        const controls = projectFile.getControlsByViewId(projectFile.mainViewId);
+        expect(controls.find((c) => c.DisplayName === 'Auto - Main')).toBeTruthy();
     })
 })
 
@@ -478,7 +478,7 @@ describe('createSubLRCGroups', () => {
 
         const newGroupCount = projectFile.getAllGroups().length;
 
-        // 1 master group + 1 master sub group + 3 L/C/R groups + 4 sub L devices + 4 sub R devices + 1 sub C devices
+        // 1 main group + 1 main sub group + 3 L/C/R groups + 4 sub L devices + 4 sub R devices + 1 sub C devices
         expect(newGroupCount).toBe(oldGroupCount + 14);
     });
 });
@@ -502,7 +502,7 @@ describe('addSubCtoSubL', () => {
 
         const newGroupCount = projectFile.getAllGroups().length;
 
-        // 1 master group + 1 master sub group + 3 L/C/R groups + 4 sub L devices + 4 sub R devices + 1 sub C devices + 1 additional sub L device (sub C device)
+        // 1 main group + 1 main sub group + 3 L/C/R groups + 4 sub L devices + 4 sub R devices + 1 sub C devices + 1 additional sub L device (sub C device)
         expect(newGroupCount).toBe(oldGroupCount + 15)
     });
 });

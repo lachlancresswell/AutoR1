@@ -11,11 +11,11 @@ const METER_SPACING_Y = 15;
 const PARENT_GROUP_TITLE = "AUTO";
 export const AP_GROUP_TITLE = "AP";
 export const METER_WINDOW_TITLE = "AUTO - Meters";
-export const MASTER_WINDOW_TITLE = "AUTO - Master";
+export const MAIN_WINDOW_TITLE = "AUTO - Main";
 
 export const NAV_BUTTON_SPACING = 20;
 
-export const MASTER_GROUP_ID = 2;
+export const MAIN_GROUP_ID = 2;
 
 type ChannelGroupTypes = 'TYPE_SUBS_C' | 'TYPE_SUBS_R' | 'TYPE_SUBS_L' | 'TYPE_SUBS' | 'TYPE_TOPS_L' | 'TYPE_TOPS_R' | 'TYPE_TOPS' | 'TYPE_POINT';
 
@@ -35,8 +35,8 @@ interface ChannelGroup {
 }
 
 interface AutoR1SourceGroup extends dbpr.SourceGroup {
-    MasterGroupId: number;
-    MasterGroupName: string;
+    MainGroupId: number;
+    MainGroupName: string;
     NextSourceGroupId: number;
     SourceGroupId: number;
     SubGroupId: number;
@@ -88,8 +88,8 @@ class SourceGroup implements AutoR1SourceGroup {
     Mounting: dbpr.MountingFlag;
     RelativeDelay: number | null;
 
-    MasterGroupId: number;
-    MasterGroupName: string;
+    MainGroupId: number;
+    MainGroupName: string;
     SubGroupId: number;
     SubGroupName: string;
     SubCGroupId: number;
@@ -119,8 +119,8 @@ class SourceGroup implements AutoR1SourceGroup {
         this.ArrayProcessingEnable = row.ArrayProcessingEnable;
         this.ArraySightId = row.ArraySightId;
         this.System = row.System;
-        this.MasterGroupId = row.MasterGroupId;
-        this.MasterGroupName = row.MasterGroupName;
+        this.MainGroupId = row.MainGroupId;
+        this.MainGroupName = row.MainGroupName;
         this.TopGroupId = row.TopGroupId;
         this.TopGroupName = row.TopGroupName;
         this.TopLeftGroupId = row.TopLeftGroupId;
@@ -160,8 +160,8 @@ class SourceGroup implements AutoR1SourceGroup {
         }
 
         // Skip final group if subs or tops groups have been found, only use for point sources
-        if (!this.channelGroups.length && this.MasterGroupId && this.MasterGroupName) {
-            this.channelGroups.push({ groupId: this.MasterGroupId, name: this.MasterGroupName, type: 'TYPE_POINT', channels: [] });
+        if (!this.channelGroups.length && this.MainGroupId && this.MainGroupName) {
+            this.channelGroups.push({ groupId: this.MainGroupId, name: this.MainGroupName, type: 'TYPE_POINT', channels: [] });
         }
     }
 }
@@ -170,7 +170,7 @@ class SourceGroup implements AutoR1SourceGroup {
 export class AutoR1ProjectFile extends dbpr.ProjectFile {
     public parendID?: number;
     public apGroupID?: number;
-    public masterViewId: number;
+    public mainViewId: number;
     public meterViewId: number;
     public sourceGroups: SourceGroup[] = [];
 
@@ -181,7 +181,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     /**
      * Creates a new group with the given title and properties, and returns its GroupId.
      * @param title The name of the new group.
-     * @param parentId The GroupId of the parent group. Defaults to 1 (the Master group).
+     * @param parentId The GroupId of the parent group. Defaults to 1 (the Main group).
      * @param targetId The target ID of the new group. Defaults to 0.
      * @param targetChannel The target channel of the new group. Defaults to -1.
      * @param type The type of the new group. Defaults to 0.
@@ -231,7 +231,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         let query = `
             SELECT Views.ViewId, Views.Name, SourceGroups.SourceGroupId, NextSourceGroupId, SourceGroups.Type, ArrayProcessingEnable,
-            ArraySightId, System, masterGroup.GroupId as MasterGroupId, masterGroup.Name as MasterGroupName, topsGroup.GroupId as TopGroupId, topsGroup.Name as TopGroupName,
+            ArraySightId, System, mainGroup.GroupId as MainGroupId, mainGroup.Name as MainGroupName, topsGroup.GroupId as TopGroupId, topsGroup.Name as TopGroupName,
             topsLGroup.GroupId as TopLeftGroupId, topsLGroup.Name as TopLeftGroupName, topsRGroup.GroupId as TopRightGroupId, topsRGroup.Name as TopRightGroupName,
             subsGroup.GroupId as SubGroupId, subsGroup.Name as SubGroupName, subsLGroup.GroupId as SubLeftGroupId, subsLGroup.Name as SubLeftGroupName, subsRGroup.GroupId as
             SubRightGroupId, subsRGroup.Name as SubRightGroupName, subsCGroup.GroupId as SubCGroupId, subsCGroup.Name as SubCGroupName, i.DisplayName as xover
@@ -243,11 +243,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             JOIN Views
             ON Views.Name = SourceGroups.Name
             /* Combine R1 groups to Source Groups - We only have the name to go on here */
-            JOIN Groups masterGroup
-            ON SourceGroups.name = masterGroup.Name
+            JOIN Groups mainGroup
+            ON SourceGroups.name = mainGroup.Name
             /* Fetch TOPs groups which may or may not have L/R subgroups */
             LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs') topsGroup
-            ON topsGroup.ParentId = masterGroup.GroupId
+            ON topsGroup.ParentId = mainGroup.GroupId
             /* Fetch L/R TOP groups which will be under the main TOPs groups */
             LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs L' ) topsLGroup
             ON topsLGroup.ParentId  = topsGroup.GroupId
@@ -255,7 +255,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             ON topsRGroup.ParentId  = topsGroup.GroupId
             /* Fetch the SUBs groups */
             LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs') subsGroup
-            ON subsGroup.ParentId  = masterGroup.GroupId
+            ON subsGroup.ParentId  = mainGroup.GroupId
             /* Fetch L/R/C SUB groups we created earlier */
             LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs L' ) subsLGroup
             ON subsLGroup.ParentId  = subsGroup.GroupId
@@ -270,12 +270,12 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             WHERE SourceGroups.name != 'Unused channels'
             /* Skip second half of stereo pairs */
             AND OrderIndex != -1
-            /* Skip duplicate groups in Master group _only for arrays_. We want L/R groups for arrays. */
-            AND (SourceGroups.Type == 1 AND masterGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == 'Master'))
-            /* Skip existing Sub array group in Master */
-            OR (SourceGroups.Type == 3 AND masterGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == 'Master'))
-            /* Get point source groups from Master group */
-            OR (SourceGroups.Type == 2 AND masterGroup.ParentId == (SELECT GroupId FROM Groups WHERE Name == 'Master'))
+            /* Skip duplicate groups in Main group _only for arrays_. We want L/R groups for arrays. */
+            AND (SourceGroups.Type == 1 AND mainGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == 'Master'))
+            /* Skip existing Sub array group in Main */
+            OR (SourceGroups.Type == 3 AND mainGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == 'Master'))
+            /* Get point source groups from Main group */
+            OR (SourceGroups.Type == 2 AND mainGroup.ParentId == (SELECT GroupId FROM Groups WHERE Name == 'Master'))
             /* Device only groups */
             OR SourceGroups.Type == 4
             ORDER BY SourceGroups.OrderIndex ASC`;
@@ -438,19 +438,19 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     * @param proj R1 project file
     * @param parentGroupId Group id of the parent custom group
     */
-    public clean(parentGroupId = MASTER_GROUP_ID) {
+    public clean(parentGroupId = MAIN_GROUP_ID) {
         console.log("Cleaning R1 project.");
 
         try {
-            const masterViewId = this.getViewIdFromName(MASTER_WINDOW_TITLE);
+            const mainViewId = this.getViewIdFromName(MAIN_WINDOW_TITLE);
 
-            this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?').run(masterViewId);
-            console.log(`Deleted ${MASTER_WINDOW_TITLE} controls.`);
+            this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?').run(mainViewId);
+            console.log(`Deleted ${MAIN_WINDOW_TITLE} controls.`);
 
-            this.db.prepare('DELETE FROM Views WHERE "Name" = ?').run(MASTER_WINDOW_TITLE);
-            console.log(`Deleted ${MASTER_WINDOW_TITLE} view.`);
+            this.db.prepare('DELETE FROM Views WHERE "Name" = ?').run(MAIN_WINDOW_TITLE);
+            console.log(`Deleted ${MAIN_WINDOW_TITLE} view.`);
 
-            this.removeNavButtons(masterViewId);
+            this.removeNavButtons(mainViewId);
         } catch (error) {
             console.error(error);
         }
@@ -560,7 +560,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const views = getViewsStmt.all(1000) as { ViewId: number }[];
         for (const vId of views.map(v => v.ViewId)) {
-            if (vId !== this.masterViewId && vId !== this.meterViewId) {
+            if (vId !== this.mainViewId && vId !== this.meterViewId) {
 
                 increaseControlPosYByAmount.run(NAV_BUTTON_Y + NAV_BUTTON_SPACING, vId);
 
@@ -577,19 +577,19 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
     }
 
-    private removeNavButtons(masterViewId: number): void {
+    private removeNavButtons(mainViewId: number): void {
         const getControlsStmt = this.db.prepare('SELECT ViewId FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = -1');
         const updateControlsStmt = this.db.prepare('UPDATE Controls SET PosY = PosY - ? WHERE ViewId = ?');
         const deleteControlsStmt = this.db.prepare('DELETE FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = -1');
 
-        for (const vId of getControlsStmt.iterate(masterViewId)) {
-            if (vId !== this.masterViewId && vId !== this.meterViewId) {
+        for (const vId of getControlsStmt.iterate(mainViewId)) {
+            if (vId !== this.mainViewId && vId !== this.meterViewId) {
                 updateControlsStmt.run(NAV_BUTTON_Y + 20, vId);
             }
         }
 
-        deleteControlsStmt.run(masterViewId, -1);
-        console.log(`Deleted ${MASTER_WINDOW_TITLE} nav buttons.`);
+        deleteControlsStmt.run(mainViewId, -1);
+        console.log(`Deleted ${MAIN_WINDOW_TITLE} nav buttons.`);
     }
 
     /**
@@ -597,7 +597,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     * @param projectFile R1 project file 
     * @param parentGroupId Group id to create the AP group under
     */
-    private createApChannelGroup(parentGroupId = MASTER_GROUP_ID): void {
+    private createApChannelGroup(parentGroupId = MAIN_GROUP_ID): void {
         const apChannelGroups: any[] = [];
 
         for (const srcGrp of this.sourceGroups) {
@@ -626,7 +626,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
     }
 
-    public getChannelMasterGroupTotal(): number {
+    public getChannelMainGroupTotal(): number {
         let i = 0;
         for (const srcGrp of this.sourceGroups) {
             for (const chGrp of srcGrp.channelGroups) {
@@ -708,7 +708,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * const p = new ProjectFile(PROJECT_INIT)
      * createSubLRCGroups(p, 2)
      */
-    public createSubLRCGroups = (parentGroupId = MASTER_GROUP_ID): void => {
+    public createSubLRCGroups = (parentGroupId = MAIN_GROUP_ID): void => {
         const subArrayGroup = this.db.prepare(
             `SELECT Name FROM SourceGroups WHERE Type = ${dbpr.SourceGroupTypes.SUBARRAY}`
         ).get() as { Name: string };
@@ -944,37 +944,37 @@ export const createMeterView = (proj: AutoR1ProjectFile, templates: AutoR1Templa
     }
 }
 
-export function createMasterView(proj: AutoR1ProjectFile, templates: AutoR1TemplateFile) {
+export function createMainView(proj: AutoR1ProjectFile, templates: AutoR1TemplateFile) {
 
     // Get width + height of templates used
-    const { width: masterTempWidth, height: masterTempHeight } = templates.getTemplateWidthHeight('Master Main');
-    const { width: arraySightTempWidth, height: _ } = templates.getTemplateWidthHeight('Master ArraySight');
-    const { width: _masterTitleTempWidth, height: masterTitleTempHeight } = templates.getTemplateWidthHeight('Master Title');
+    const { width: mainTempWidth, height: mainTempHeight } = templates.getTemplateWidthHeight('Main Main');
+    const { width: arraySightTempWidth, height: _ } = templates.getTemplateWidthHeight('Main ArraySight');
+    const { width: _mainTitleTempWidth, height: mainTitleTempHeight } = templates.getTemplateWidthHeight('Main Title');
     const { width: meterTempWidth, height: meterTempHeight } = templates.getTemplateWidthHeight('Group LR AP CPL2');
     const meterTempBuffer = 200;
 
     const HRes = (
-        masterTempWidth
+        mainTempWidth
         + arraySightTempWidth
-        + ((METER_SPACING_X + meterTempWidth) * proj.getChannelMasterGroupTotal())
+        + ((METER_SPACING_X + meterTempWidth) * proj.getChannelMainGroupTotal())
         + meterTempBuffer
     );
 
-    const VRes = masterTitleTempHeight + Math.max(meterTempHeight, masterTempHeight) + 60;
+    const VRes = mainTitleTempHeight + Math.max(meterTempHeight, mainTempHeight) + 60;
     proj.db.prepare(
         `INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);`
-    ).run(1000, MASTER_WINDOW_TITLE, null, 4, null, -1, HRes, VRes, 100, null, null, null, null);
+    ).run(1000, MAIN_WINDOW_TITLE, null, 4, null, -1, HRes, VRes, 100, null, null, null, null);
     const rtn = proj.db.prepare(
         'SELECT max(ViewId) FROM Views'
     ).get() as { 'max(ViewId)': number };
 
-    proj.masterViewId = rtn['max(ViewId)'];
+    proj.mainViewId = rtn['max(ViewId)'];
 
     let posX = 10, posY = 10;
 
     proj.insertTemplate(
         templates.getTemplateByName('Nav Button'),
-        proj.masterViewId,
+        proj.mainViewId,
         NAV_BUTTON_X,
         posY + NAV_BUTTON_Y,
         METER_WINDOW_TITLE,
@@ -983,38 +983,39 @@ export function createMasterView(proj: AutoR1ProjectFile, templates: AutoR1Templ
     );
 
     proj.insertTemplate(
-        templates.getTemplateByName('Master Title'),
-        proj.masterViewId,
+        templates.getTemplateByName('Main Title'),
+        proj.mainViewId,
         posX,
         posY,
     )
-    posY += templates.getTemplateWidthHeight("Master Title").height + METER_SPACING_Y;
+    posY += templates.getTemplateWidthHeight("Main Title").height + METER_SPACING_Y;
+
 
     proj.insertTemplate(
-        templates.getTemplateByName('Master Main'),
-        proj.masterViewId,
+        templates.getTemplateByName('Main Main'),
+        proj.mainViewId,
         posX,
         posY,
         '',
         proj.getMasterGroupID(),
     )
-    posX += templates.getTemplateWidthHeight("Master Main").width + (METER_SPACING_X / 2);
+    posX += templates.getTemplateWidthHeight("Main Main").width + (METER_SPACING_X / 2);
 
     proj.insertTemplate(
-        templates.getTemplateByName('Master ArraySight'),
-        proj.masterViewId,
+        templates.getTemplateByName('Main ArraySight'),
+        proj.mainViewId,
         posX,
         posY,
         undefined,
         0,
     );
 
-    const { width: arraySightTempX, height: arraySightTempY } = templates.getTemplateWidthHeight("Master ArraySight");
+    const { width: arraySightTempX, height: arraySightTempY } = templates.getTemplateWidthHeight("Main ArraySight");
 
     if (proj.getApStatus()) {
         proj.insertTemplate(
             templates.getTemplateByName('THC'),
-            proj.masterViewId,
+            proj.mainViewId,
             posX,
             posY + arraySightTempY + (METER_SPACING_Y / 2),
             '',
@@ -1140,13 +1141,13 @@ export function createMasterView(proj: AutoR1ProjectFile, templates: AutoR1Templ
                     console.info(`${channelGroup.name} - Skipping View EQ Switch`)
                 } else {
                     proj.db.prepare(query).run(
-                        controlType, control.PosX + posX, control.PosY + posY, control.Width, control.Height, proj.masterViewId, displayName, joinedId, control.LimitMin, control.LimitMax, control.MainColor, control.SubColor, control.LabelColor, control.LabelFont, control.LabelAlignment, control.LineThickness, control.ThresholdValue, flag, control.ActionType, control.TargetType, targetId, targetChannel, targetProperty, control.TargetRecord, null, null, control.PictureIdDay, control.PictureIdNight, control.Font, control.Alignment, "");
+                        controlType, control.PosX + posX, control.PosY + posY, control.Width, control.Height, proj.mainViewId, displayName, joinedId, control.LimitMin, control.LimitMax, control.MainColor, control.SubColor, control.LabelColor, control.LabelFont, control.LabelAlignment, control.LineThickness, control.ThresholdValue, flag, control.ActionType, control.TargetType, targetId, targetChannel, targetProperty, control.TargetRecord, null, null, control.PictureIdDay, control.PictureIdNight, control.Font, control.Alignment, "");
                 }
 
             }
             proj.insertTemplate(
                 templates.getTemplateByName("Nav Button"),
-                proj.masterViewId,
+                proj.mainViewId,
                 posX,
                 posY,
                 channelGroup.name,
