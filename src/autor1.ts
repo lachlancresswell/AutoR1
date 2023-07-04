@@ -19,6 +19,17 @@ export const MAIN_GROUP_ID = 2;
 
 type ChannelGroupTypes = 'TYPE_SUBS_C' | 'TYPE_SUBS_R' | 'TYPE_SUBS_L' | 'TYPE_SUBS' | 'TYPE_TOPS_L' | 'TYPE_TOPS_R' | 'TYPE_TOPS' | 'TYPE_POINT';
 
+interface TemplateOptions {
+    DisplayName?: string,
+    TargetId?: number,
+    TargetChannel?: number,
+    Width?: number,
+    Height?: number,
+    TargetProperty?: string,
+    TargetRecord?: number,
+    joinedId?: number,
+    sourceGroupType?: dbpr.SourceGroupTypes;
+}
 interface Channel {
     CabinetId: number;
     GroupId: number;
@@ -323,15 +334,19 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         ViewId: number,
         posX = 0,
         posY = 0,
-        DisplayName = '',
-        TargetId?: number,
-        TargetChannel?: number,
-        Width?: number,
-        Height?: number,
-        TargetProperty: string | undefined = undefined,
-        TargetRecord: number | undefined = undefined,
-        joinedId: number | undefined = undefined,
+        options?: TemplateOptions
     ): void => {
+        let {
+            DisplayName,
+            TargetId,
+            TargetChannel,
+            Width,
+            Height,
+            TargetProperty,
+            TargetRecord,
+            joinedId,
+        } = options || {};
+
         // Increase global joined ID
         if (!joinedId) joinedId = this.getHighestJoinedID() + 1;
 
@@ -346,15 +361,23 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             // and a DisplayName has been provided, and we are not dealing with a fallback/regular button,
             // then set the display name to the provided name
             if ((control.Type === dbpr.ControlTypes.FRAME || (control.Type === dbpr.ControlTypes.SWITCH && control.TargetType === dbpr.TargetTypes.VIEW))
-                && (control.DisplayName && control.DisplayName !== "Fallback" && control.DisplayName !== "Regular")) {
+                && (control.DisplayName && control.DisplayName !== "Fallback" && control.DisplayName !== "Regular" && DisplayName)) {
                 control.setDisplayName(DisplayName);
             }
 
-            // If TargetProperty is of a particular type, and TargetChannel is not set, 
+            // If TargetProperty is set, and TargetChannel is not set, 
             // then set TargetChannel to 0
-            if (control.TargetProperty && Object.values(dbpr.TargetPropertyType).includes(control.TargetProperty as dbpr.TargetPropertyType)
+            if (Object.values(dbpr.TargetPropertyType).includes(control.TargetProperty as dbpr.TargetPropertyType)
                 && (control.TargetChannel > -1)) {
                 control.setTargetChannel(0);
+            }
+
+            if (control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY
+                && control.TargetChannel === -1 && TargetChannel) {
+                control.setTargetChannel(TargetChannel);
+                if (options?.sourceGroupType === dbpr.SourceGroupTypes.ARRAY) {
+                    control.setType(dbpr.ControlTypes.DISPLAY);
+                }
             }
 
             const targetProperty = TargetProperty ? TargetProperty : control.TargetProperty;
@@ -553,6 +576,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const getViewsStmt = this.db.prepare(`SELECT ViewId FROM Views WHERE Type = ?`);
         const increaseControlPosYByAmount = this.db.prepare('UPDATE Controls SET PosY = PosY + ? WHERE ViewId = ?');
         const navButtonTemplate = templates.templates.find(template => template.name === "Nav Button");
+        const POS_X = 15;
 
         if (!navButtonTemplate) {
             throw new Error("Nav Button template not found.");
@@ -564,14 +588,33 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
                 increaseControlPosYByAmount.run(NAV_BUTTON_Y + NAV_BUTTON_SPACING, vId);
 
+                const mainNavButtonTemplateOptions = {
+                    DisplayName: MAIN_WINDOW_TITLE,
+                    TargetId: this.meterViewId + 1,
+                    TargetChannel: -1,
+                }
                 this.insertTemplate(
                     navButtonTemplate,
                     vId,
-                    15,
+                    POS_X,
                     NAV_BUTTON_Y,
-                    MASTER_WINDOW_TITLE,
-                    this.meterViewId + 1,
-                    -1,
+                    mainNavButtonTemplateOptions
+                );
+
+                const metersNavButtonTemplateOptions = {
+                    DisplayName: METER_WINDOW_TITLE,
+                    TargetId: this.meterViewId,
+                    TargetChannel: -1,
+                }
+
+                const buttonWidth = templates.getTemplateWidthHeight('Nav Button').width
+                const spacing = 25;
+                this.insertTemplate(
+                    navButtonTemplate,
+                    vId,
+                    POS_X + + buttonWidth + spacing,
+                    NAV_BUTTON_Y,
+                    metersNavButtonTemplateOptions
                 );
             }
         }
@@ -667,9 +710,16 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      */
     private getSubArrayGroups = () => {
         let subGroups: Channel[][] = [];
-        let str = ["L", "R", "C"];
 
-        for (let s of str) {
+        // Order allows a specific order type to be returned from the database, allowing devices to be
+        // order from stage right to stage left across all groups
+        let groupOption = [
+            { prefix: "L", order: 'ASC' },
+            { prefix: "R", order: 'ASC' },
+            { prefix: "C", order: 'ASC' }
+        ];
+
+        for (let option of groupOption) {
             let query = `
                 WITH RECURSIVE
                 devs(GroupId, Name, ParentId, TargetId, TargetChannel, Type) AS (
@@ -685,7 +735,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 ON Cabinets.CabinetId = CabinetsAdditionalData.CabinetId
                 WHERE Linked = 0
                 /* Sub arrays always end with either L/C/R, two numbers, a dash and a further two numbers */
-                AND devs.Name LIKE '% ${s}__%'`;
+                AND devs.Name LIKE '% ${option.prefix}__%' ORDER BY GroupId ${option.order}`;
 
             const stmt = this.db.prepare(query);
 
@@ -855,9 +905,7 @@ export const createMeterView = (proj: AutoR1ProjectFile, templates: AutoR1Templa
     const metersGroupDimensions = templates.getTemplateWidthHeight("Meters Group");
     const meterGrpW = metersGroupDimensions.width;
     const meterGrpH = metersGroupDimensions.height;
-    const meterDimensions = templates.getTemplateWidthHeight("Meter");
-    const meterW = meterDimensions.width;
-    const meterH = meterDimensions.height;
+    const { width: meterW, height: meterH } = templates.getTemplateWidthHeight("Meter");
 
     const spacingX = Math.max(meterW, meterGrpW) + METER_SPACING_X;
     const spacingY = meterH + METER_SPACING_Y;
@@ -874,16 +922,19 @@ export const createMeterView = (proj: AutoR1ProjectFile, templates: AutoR1Templa
     let posX = METER_VIEW_STARTX;
     let posY = METER_VIEW_STARTY;
 
-    const template = templates.getTemplateByName("Nav Button");
+    const navButtonTemplate = templates.getTemplateByName("Nav Button");
 
+    const navButtonOptions: TemplateOptions = {
+        DisplayName: MAIN_WINDOW_TITLE,
+        TargetId: proj.meterViewId + 1,
+        TargetChannel: -1
+    }
     proj.insertTemplate(
-        template,
+        navButtonTemplate,
         proj.meterViewId,
         NAV_BUTTON_X,
         posY + NAV_BUTTON_Y,
-        MASTER_WINDOW_TITLE,
-        proj.meterViewId + 1,
-        -1);  // Use appropriate values
+        navButtonOptions);
 
     const metersTitleTemplate = templates.getTemplateByName("Meters Title");
 
@@ -913,26 +964,50 @@ export const createMeterView = (proj: AutoR1ProjectFile, templates: AutoR1Templa
                 continue;
             }
 
+            const joinedId = proj.getHighestJoinedID() + 1;
+            const metersGroupTemplateOptions: TemplateOptions = {
+                DisplayName: chGrp.name,
+                TargetId: chGrp.groupId,
+                joinedId
+            }
             proj.insertTemplate(
                 metersGroupTemplate,
                 proj.meterViewId,
                 posX,
                 posY,
-                chGrp.name,
-                chGrp.groupId
+                metersGroupTemplateOptions,
             );
+
+            const navButtonTemplateOptions: TemplateOptions = {
+                DisplayName: chGrp.name,
+                TargetId: srcGrp.ViewId,
+                TargetChannel: -1,
+                Width: meterW + 1, // R1 frames are to be 1px wider than expected
+                joinedId
+            }
+            proj.insertTemplate(
+                templates.getTemplateByName("Nav Button"),
+                proj.meterViewId,
+                posX - 1, // R1 frames are to be 1px further to the left than expected
+                posY - 1, // R1 frames are to be 1px higher than expected
+                navButtonTemplateOptions
+            )
 
             posY += metersGroupHeight + 10;
 
             for (const ch of chGrp.channels) {
+                const meterTemplateOptions: TemplateOptions = {
+                    DisplayName: ch.Name,
+                    TargetId: ch.TargetId,
+                    TargetChannel: ch.TargetChannel,
+                    sourceGroupType: srcGrp.Type
+                }
                 proj.insertTemplate(
                     meterTemplate,
                     proj.meterViewId,
                     posX,
                     posY,
-                    ch.Name,
-                    ch.TargetId,
-                    ch.TargetChannel
+                    meterTemplateOptions
                 );
 
                 posY += spacingY;
@@ -972,14 +1047,17 @@ export function createMainView(proj: AutoR1ProjectFile, templates: AutoR1Templat
 
     let posX = 10, posY = 10;
 
+    const navButtonTemplateOptions: TemplateOptions = {
+        DisplayName: METER_WINDOW_TITLE,
+        TargetId: proj.meterViewId,
+        TargetChannel: -1
+    }
     proj.insertTemplate(
         templates.getTemplateByName('Nav Button'),
         proj.mainViewId,
         NAV_BUTTON_X,
         posY + NAV_BUTTON_Y,
-        METER_WINDOW_TITLE,
-        proj.meterViewId,
-        -1,
+        navButtonTemplateOptions
     );
 
     proj.insertTemplate(
@@ -990,36 +1068,42 @@ export function createMainView(proj: AutoR1ProjectFile, templates: AutoR1Templat
     )
     posY += templates.getTemplateWidthHeight("Main Title").height + METER_SPACING_Y;
 
+    const mainMainTemplateOptions: TemplateOptions = {
+        TargetId: proj.getMasterGroupID()
+    }
 
     proj.insertTemplate(
         templates.getTemplateByName('Main Main'),
         proj.mainViewId,
         posX,
         posY,
-        '',
-        proj.getMasterGroupID(),
+        mainMainTemplateOptions
     )
     posX += templates.getTemplateWidthHeight("Main Main").width + (METER_SPACING_X / 2);
 
+    const arraySightTemplateOptions: TemplateOptions = {
+        TargetId: 0
+    }
     proj.insertTemplate(
         templates.getTemplateByName('Main ArraySight'),
         proj.mainViewId,
         posX,
         posY,
-        undefined,
-        0,
+        arraySightTemplateOptions
     );
 
     const { width: arraySightTempX, height: arraySightTempY } = templates.getTemplateWidthHeight("Main ArraySight");
 
     if (proj.getApStatus()) {
+        const thcTemplateOptions: TemplateOptions = {
+            TargetId: proj.apGroupID
+        }
         proj.insertTemplate(
             templates.getTemplateByName('THC'),
             proj.mainViewId,
             posX,
             posY + arraySightTempY + (METER_SPACING_Y / 2),
-            '',
-            proj.apGroupID,
+            thcTemplateOptions,
         )
         posX += templates.getTemplateWidthHeight('THC').width + (METER_SPACING_X * 4)
     } else {
@@ -1145,19 +1229,20 @@ export function createMainView(proj: AutoR1ProjectFile, templates: AutoR1Templat
                 }
 
             }
+
+            const navButtonTemplateOptions: TemplateOptions = {
+                DisplayName: channelGroup.name,
+                TargetId: sourceGroup.ViewId,
+                TargetChannel: -1,
+                joinedId,
+                Width: templates.getTemplateWidthHeight('Nav Button').width + 1, // R1 frames are to be 1px wider than expected
+            }
             proj.insertTemplate(
                 templates.getTemplateByName("Nav Button"),
                 proj.mainViewId,
-                posX,
-                posY,
-                channelGroup.name,
-                sourceGroup.ViewId,
-                -1,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                joinedId
+                posX - 1, // R1 frames are to be 1px further to the left than expected
+                posY - 1, // R1 frames are to be 1px higher than expected
+                navButtonTemplateOptions
             )
 
             posX += meterTempWidth + METER_SPACING_X;
