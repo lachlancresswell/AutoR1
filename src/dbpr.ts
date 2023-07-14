@@ -88,6 +88,11 @@ export enum ControlTypes {
     SOUND_OBJECT_ROUTING = 40,
 }
 
+export enum ControlFlags {
+    ABSOLUTE = 6,
+    RELATIVE = 14
+}
+
 /**
  * NONE for Controls of Type TEXT, FRAME and LOGO
  * DEVICE for main device controls
