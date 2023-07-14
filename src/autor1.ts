@@ -295,28 +295,27 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             this.sourceGroups.push(new SourceGroup(row));
         }
 
+        const subQuery = `
+            WITH RECURSIVE devs(GroupId, Name, ParentId, TargetId, TargetChannel, Type, Flags) AS (
+                SELECT Groups.GroupId, Groups.Name, Groups.ParentId, Groups.TargetId, Groups.TargetChannel, Groups.Type, Groups.Flags FROM Groups WHERE Groups.ParentId = ?
+                UNION
+                SELECT Groups.GroupId, Groups.Name, Groups.ParentId, Groups.TargetId, Groups.TargetChannel, Groups.Type, Groups.Flags FROM Groups, devs WHERE Groups.ParentId = devs.GroupId
+            )
+            SELECT GroupId, devs.Name, TargetId, TargetChannel, CabinetsAdditionalData.Name, Cabinets.CabinetId FROM devs
+            JOIN Cabinets
+            ON devs.TargetId = Cabinets.DeviceId
+            AND devs.TargetChannel = Cabinets.AmplifierChannel
+            JOIN CabinetsAdditionalData
+            ON Cabinets.CabinetId = CabinetsAdditionalData.CabinetId
+            AND Linked = 0
+            WHERE devs.type = 1`;
+
         // Discover all channels of previously discovered groups
         this.sourceGroups.forEach((srcGrp) => {
             srcGrp.channelGroups.forEach((devGrp) => {
-                let subQuery = `
-                    WITH RECURSIVE devs(GroupId, Name, ParentId, TargetId, TargetChannel, Type, Flags) AS (
-                        SELECT Groups.GroupId, Groups.Name, Groups.ParentId, Groups.TargetId, Groups.TargetChannel, Groups.Type, Groups.Flags FROM Groups WHERE Groups.ParentId = ${devGrp.groupId}
-                        UNION
-                        SELECT Groups.GroupId, Groups.Name, Groups.ParentId, Groups.TargetId, Groups.TargetChannel, Groups.Type, Groups.Flags FROM Groups, devs WHERE Groups.ParentId = devs.GroupId
-                    )
-                    SELECT GroupId, devs.Name, TargetId, TargetChannel, CabinetsAdditionalData.Name, Cabinets.CabinetId FROM devs
-                    JOIN Cabinets
-                    ON devs.TargetId = Cabinets.DeviceId
-                    AND devs.TargetChannel = Cabinets.AmplifierChannel
-                    JOIN CabinetsAdditionalData
-                    ON Cabinets.CabinetId = CabinetsAdditionalData.CabinetId
-                    AND Linked = 0
-                    WHERE devs.type = 1`;
-
                 const stmt = this.db.prepare(subQuery);
 
-                const rtn = stmt.all() as Channel[];
-
+                const rtn = stmt.all(devGrp.groupId) as Channel[];
                 for (let row of rtn) {
                     devGrp.channels.push(row);
                 }
