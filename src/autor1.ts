@@ -898,354 +898,378 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         return view;
     }
 
-    const metersTitleDimensions = templates.getTemplateWidthHeight("Meters Title");
-    const titleH = metersTitleDimensions.height
-    const metersGroupDimensions = templates.getTemplateWidthHeight("Meters Group");
-    const meterGrpW = metersGroupDimensions.width;
-    const meterGrpH = metersGroupDimensions.height;
-    const { width: meterW, height: meterH } = templates.getTemplateWidthHeight("Meter");
+    public createMeterView = (templates: AutoR1TemplateFile): void => {
+        if (!this.sourceGroups.length) {
+            throw (new Error("No source groups found."))
+        }
 
-    const spacingX = Math.max(meterW, meterGrpW) + METER_SPACING_X;
-    const spacingY = meterH + METER_SPACING_Y;
+        const metersTitleDimensions = templates.getTemplateWidthHeight("Meters Title");
+        const titleH = metersTitleDimensions.height
+        const metersGroupDimensions = templates.getTemplateWidthHeight("Meters Group");
+        const meterGrpW = metersGroupDimensions.width;
+        const meterGrpH = metersGroupDimensions.height;
+        const { width: meterW, height: meterH } = templates.getTemplateWidthHeight("Meter");
 
-    const HRes = (spacingX * proj.getChannelMeterGroupTotal()[0]) + METER_SPACING_X;
-    const VRes = titleH + meterGrpH + (spacingY * proj.getChannelMeterGroupTotal()[1]) + 100;
+        const spacingX = Math.max(meterW, meterGrpW) + METER_SPACING_X;
+        const spacingY = meterH + METER_SPACING_Y;
 
-    proj.db.prepare(`INSERT INTO Views('Type','Name','Icon','Flags','HomeViewIndex','NaviBarIndex','HRes','VRes','ZoomLevel','ScalingFactor','ScalingPosX','ScalingPosY','ReferenceVenueObjectId') VALUES (1000,'${METER_WINDOW_TITLE}',NULL,4,NULL,-1,${HRes},${VRes},100,NULL,NULL,NULL,NULL);`).run();
-    const rtn = proj.db.prepare(`SELECT max(ViewId) FROM Views`).get() as { 'max(ViewId)': number };
-    if (rtn != null) {
-        proj.meterViewId = rtn['max(ViewId)'];
-    }
+        const HRes = (spacingX * this.getChannelMeterGroupTotal()[0]) + METER_SPACING_X;
+        const VRes = titleH + meterGrpH + (spacingY * this.getChannelMeterGroupTotal()[1]) + 100;
 
-    let posX = METER_VIEW_STARTX;
-    let posY = METER_VIEW_STARTY;
+        this.db.prepare(`INSERT INTO Views('Type','Name','Icon','Flags','HomeViewIndex','NaviBarIndex','HRes','VRes','ZoomLevel','ScalingFactor','ScalingPosX','ScalingPosY','ReferenceVenueObjectId') VALUES (1000,'${METER_WINDOW_TITLE}',NULL,4,NULL,-1,${HRes},${VRes},100,NULL,NULL,NULL,NULL);`).run();
+        const rtn = this.db.prepare(`SELECT max(ViewId) FROM Views`).get() as { 'max(ViewId)': number };
+        if (!rtn) {
+            throw (Error(`Could not create Auto R1 Meter view`));
+        }
+        const meterViewId = rtn['max(ViewId)'];
 
-    const navButtonTemplate = templates.getTemplateByName("Nav Button");
+        let posX = METER_VIEW_STARTX;
+        let posY = METER_VIEW_STARTY;
 
-    const navButtonOptions: TemplateOptions = {
-        DisplayName: MAIN_WINDOW_TITLE,
-        TargetId: proj.meterViewId + 1,
-        TargetChannel: -1
-    }
-    proj.insertTemplate(
-        navButtonTemplate,
-        proj.meterViewId,
-        NAV_BUTTON_X,
-        posY + NAV_BUTTON_Y,
-        navButtonOptions);
+        const navButtonTemplate = templates.getTemplateByName("Nav Button");
 
-    const metersTitleTemplate = templates.getTemplateByName("Meters Title");
+        const navButtonOptions: TemplateOptions = {
+            DisplayName: MAIN_WINDOW_TITLE,
+            TargetId: meterViewId + 1,
+            TargetChannel: dbpr.TargetChannels.NONE
+        }
+        this.insertTemplate(
+            navButtonTemplate,
+            meterViewId,
+            NAV_BUTTON_X,
+            posY + NAV_BUTTON_Y,
+            navButtonOptions);
 
-    proj.insertTemplate(
-        metersTitleTemplate,
-        proj.meterViewId,
-        posX,
-        posY,
-    );
-    posY += templates.getTemplateWidthHeight("Meters Title").height + METER_SPACING_Y;
+        const metersTitleTemplate = templates.getTemplateByName("Meters Title");
 
-    let startY = posY;
+        this.insertTemplate(
+            metersTitleTemplate,
+            meterViewId,
+            posX,
+            posY,
+        );
+        posY += templates.getTemplateWidthHeight("Meters Title").height + METER_SPACING_Y;
 
-    const metersGroupTemplate = templates.getTemplateByName("Meters Group");
+        let startY = posY;
 
-    const meterTemplate = templates.getTemplateByName("Meter");
+        const metersGroupTemplate = templates.getTemplateByName("Meters Group");
 
-    const metersGroupHeight = templates.getTemplateWidthHeight("Meters Group").height
+        const meterTemplate = templates.getTemplateByName("Meter");
 
-    for (const srcGrp of proj.sourceGroups) {
-        for (const [idx, chGrp] of srcGrp.channelGroups.entries()) {
-            // Skip TOPs and SUBs group if L/R groups are present
-            if ((chGrp.type === 'TYPE_SUBS' && srcGrp.Type === dbpr.SourceGroupTypes.SUBARRAY)
-                || ((chGrp.type === 'TYPE_SUBS' || chGrp.type === 'TYPE_TOPS' || chGrp.type === 'TYPE_POINT')
-                    && srcGrp.channelGroups.length > 1
-                    && (idx === 0 || idx === 3))) {
-                continue;
-            }
+        const metersGroupHeight = templates.getTemplateWidthHeight("Meters Group").height
 
-            const joinedId = proj.getHighestJoinedID() + 1;
-            const metersGroupTemplateOptions: TemplateOptions = {
-                DisplayName: chGrp.name,
-                TargetId: chGrp.groupId,
-                joinedId
-            }
-            proj.insertTemplate(
-                metersGroupTemplate,
-                proj.meterViewId,
-                posX,
-                posY,
-                metersGroupTemplateOptions,
-            );
-
-            const navButtonTemplateOptions: TemplateOptions = {
-                DisplayName: chGrp.name,
-                TargetId: srcGrp.ViewId,
-                TargetChannel: -1,
-                Width: meterW + 1, // R1 frames are to be 1px wider than expected
-                joinedId
-            }
-            proj.insertTemplate(
-                templates.getTemplateByName("Nav Button"),
-                proj.meterViewId,
-                posX - 1, // R1 frames are to be 1px further to the left than expected
-                posY - 1, // R1 frames are to be 1px higher than expected
-                navButtonTemplateOptions
-            )
-
-            posY += metersGroupHeight + 10;
-
-            for (const ch of chGrp.channels) {
-                const meterTemplateOptions: TemplateOptions = {
-                    DisplayName: ch.Name,
-                    TargetId: ch.TargetId,
-                    TargetChannel: ch.TargetChannel,
-                    sourceGroupType: srcGrp.Type
+        for (const srcGrp of this.sourceGroups) {
+            for (const [idx, chGrp] of srcGrp.channelGroups.entries()) {
+                // Skip TOPs and SUBs group if L/R groups are present
+                if ((chGrp.type === 'TYPE_SUBS' && srcGrp.Type === dbpr.SourceGroupTypes.SUBARRAY)
+                    || ((chGrp.type === 'TYPE_SUBS' || chGrp.type === 'TYPE_TOPS' || chGrp.type === 'TYPE_POINT')
+                        && srcGrp.channelGroups.length > 1
+                        && (idx === 0 || idx === 3))) {
+                    continue;
                 }
-                proj.insertTemplate(
-                    meterTemplate,
-                    proj.meterViewId,
+
+                const joinedId = this.getHighestJoinedID() + 1;
+                const metersGroupTemplateOptions: TemplateOptions = {
+                    DisplayName: chGrp.name,
+                    TargetId: chGrp.groupId,
+                    joinedId
+                }
+                this.insertTemplate(
+                    metersGroupTemplate,
+                    meterViewId,
                     posX,
                     posY,
-                    meterTemplateOptions
+                    metersGroupTemplateOptions,
                 );
 
-                posY += spacingY;
+                const navButtonTemplateOptions: TemplateOptions = {
+                    DisplayName: chGrp.name,
+                    TargetId: srcGrp.ViewId,
+                    TargetChannel: dbpr.TargetChannels.NONE,
+                    Width: meterW + 1, // R1 frames are to be 1px wider than expected
+                    joinedId
+                }
+                this.insertTemplate(
+                    templates.getTemplateByName("Nav Button"),
+                    meterViewId,
+                    posX - 1, // R1 frames are to be 1px further to the left than expected
+                    posY - 1, // R1 frames are to be 1px higher than expected
+                    navButtonTemplateOptions
+                )
+
+                posY += metersGroupHeight + 10;
+
+                for (const ch of chGrp.channels) {
+                    const DisplayName = `${ch.Name} - ${this.getCanIdFromDeviceId(ch.TargetId)} - ${['', 'A', 'B', 'C', 'D'][ch.TargetChannel]}`;
+                    const meterTemplateOptions: TemplateOptions = {
+                        DisplayName,
+                        TargetId: ch.TargetId,
+                        TargetChannel: ch.TargetChannel,
+                        sourceGroupType: srcGrp.Type
+                    }
+                    this.insertTemplate(
+                        meterTemplate,
+                        meterViewId,
+                        posX,
+                        posY,
+                        meterTemplateOptions
+                    );
+
+                    posY += spacingY;
+                }
+
+                posX += spacingX;
+                posY = startY;
             }
-
-            posX += spacingX;
-            posY = startY;
         }
     }
-}
 
-export function createMainView(proj: AutoR1ProjectFile, templates: AutoR1TemplateFile) {
+    public createMainView(templates: AutoR1TemplateFile) {
 
-    // Get width + height of templates used
-    const { width: mainTempWidth, height: mainTempHeight } = templates.getTemplateWidthHeight('Main Main');
-    const { width: arraySightTempWidth, height: _ } = templates.getTemplateWidthHeight('Main ArraySight');
-    const { width: _mainTitleTempWidth, height: mainTitleTempHeight } = templates.getTemplateWidthHeight('Main Title');
-    const { width: meterTempWidth, height: meterTempHeight } = templates.getTemplateWidthHeight('Group LR AP CPL2');
-    const meterTempBuffer = 200;
+        // Get width + height of templates used
+        const { width: mainTempWidth, height: mainTempHeight } = templates.getTemplateWidthHeight('Main Main');
+        const { width: arraySightTempWidth, height: _ } = templates.getTemplateWidthHeight('Main ArraySight');
+        const { width: _mainTitleTempWidth, height: mainTitleTempHeight } = templates.getTemplateWidthHeight('Main Title');
+        const { width: meterTempWidth, height: meterTempHeight } = templates.getTemplateWidthHeight('Group LR AP CPL2');
+        const meterTempBuffer = 200;
 
-    const HRes = (
-        mainTempWidth
-        + arraySightTempWidth
-        + ((METER_SPACING_X + meterTempWidth) * proj.getChannelMainGroupTotal())
-        + meterTempBuffer
-    );
+        const HRes = (
+            mainTempWidth
+            + arraySightTempWidth
+            + ((METER_SPACING_X + meterTempWidth) * this.getChannelMainGroupTotal())
+            + meterTempBuffer
+        );
 
-    const VRes = mainTitleTempHeight + Math.max(meterTempHeight, mainTempHeight) + 60;
-    proj.db.prepare(
-        `INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);`
-    ).run(1000, MAIN_WINDOW_TITLE, null, 4, null, -1, HRes, VRes, 100, null, null, null, null);
-    const rtn = proj.db.prepare(
-        'SELECT max(ViewId) FROM Views'
-    ).get() as { 'max(ViewId)': number };
+        const VRes = mainTitleTempHeight + Math.max(meterTempHeight, mainTempHeight) + 60;
+        this.db.prepare(
+            `INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);`
+        ).run(1000, MAIN_WINDOW_TITLE, null, 4, null, -1, HRes, VRes, 100, null, null, null, null);
+        const rtn = this.db.prepare(
+            'SELECT max(ViewId) FROM Views'
+        ).get() as { 'max(ViewId)': number };
 
-    proj.mainViewId = rtn['max(ViewId)'];
+        const mainViewId = rtn['max(ViewId)'];
 
-    let posX = 10, posY = 10;
+        let posX = 10, posY = 10;
 
-    const navButtonTemplateOptions: TemplateOptions = {
-        DisplayName: METER_WINDOW_TITLE,
-        TargetId: proj.meterViewId,
-        TargetChannel: -1
-    }
-    proj.insertTemplate(
-        templates.getTemplateByName('Nav Button'),
-        proj.mainViewId,
-        NAV_BUTTON_X,
-        posY + NAV_BUTTON_Y,
-        navButtonTemplateOptions
-    );
+        const meterViewId = this.getMeterView().ViewId;
 
-    proj.insertTemplate(
-        templates.getTemplateByName('Main Title'),
-        proj.mainViewId,
-        posX,
-        posY,
-    )
-    posY += templates.getTemplateWidthHeight("Main Title").height + METER_SPACING_Y;
-
-    const mainMainTemplateOptions: TemplateOptions = {
-        TargetId: proj.getMasterGroupID()
-    }
-
-    proj.insertTemplate(
-        templates.getTemplateByName('Main Main'),
-        proj.mainViewId,
-        posX,
-        posY,
-        mainMainTemplateOptions
-    )
-    posX += templates.getTemplateWidthHeight("Main Main").width + (METER_SPACING_X / 2);
-
-    const arraySightTemplateOptions: TemplateOptions = {
-        TargetId: 0
-    }
-    proj.insertTemplate(
-        templates.getTemplateByName('Main ArraySight'),
-        proj.mainViewId,
-        posX,
-        posY,
-        arraySightTemplateOptions
-    );
-
-    const { width: arraySightTempX, height: arraySightTempY } = templates.getTemplateWidthHeight("Main ArraySight");
-
-    if (proj.getApStatus()) {
-        const thcTemplateOptions: TemplateOptions = {
-            TargetId: proj.apGroupID
+        const navButtonTemplateOptions: TemplateOptions = {
+            DisplayName: METER_WINDOW_TITLE,
+            TargetId: meterViewId,
+            TargetChannel: dbpr.TargetChannels.NONE
         }
-        proj.insertTemplate(
-            templates.getTemplateByName('THC'),
-            proj.mainViewId,
+        this.insertTemplate(
+            templates.getTemplateByName('Nav Button'),
+            mainViewId,
+            NAV_BUTTON_X,
+            posY + NAV_BUTTON_Y,
+            navButtonTemplateOptions
+        );
+
+        this.insertTemplate(
+            templates.getTemplateByName('Main Title'),
+            mainViewId,
             posX,
-            posY + arraySightTempY + (METER_SPACING_Y / 2),
-            thcTemplateOptions,
+            posY,
         )
-        posX += templates.getTemplateWidthHeight('THC').width + (METER_SPACING_X * 4)
-    } else {
-        posX += arraySightTempX + (METER_SPACING_X * 4);
-    }
+        posY += templates.getTemplateWidthHeight("Main Title").height + METER_SPACING_Y;
 
-    let lrGroups: ChannelGroup[] = [];
-
-    proj.sourceGroups.forEach((sourceGroup) => {
-        for (let channelGroupIndex = 0; channelGroupIndex < sourceGroup.channelGroups.length; channelGroupIndex++) {
-            const joinedId = proj.getHighestJoinedID() + 1;
-            const channelGroup = sourceGroup.channelGroups[channelGroupIndex];
-
-            if ([
-                'TYPE_SUBS_L',
-                'TYPE_SUBS_R',
-                'TYPE_SUBS_C',
-                'TYPE_TOPS_L',
-                'TYPE_TOPS_R',
-            ].find((s) => s === channelGroup.type)) {  // TOP or SUB L/R/C Group
-                return;
-            }
-
-            let templateName = 'Group';
-            if (sourceGroup.channelGroups.length >= 3) {  // Stereo groups
-                lrGroups = [
-                    sourceGroup.channelGroups[channelGroupIndex + 1],
-                    sourceGroup.channelGroups[channelGroupIndex + 2],
-                ];
-                templateName += ' LR';
-            }
-            if (sourceGroup.ArrayProcessingEnable) {
-                templateName += ' AP';
-            }
-
-            if (['GSL', 'KSL', 'XSL'].find((s) => s === sourceGroup.System)) {
-                templateName += ' CPL2';
-            }
-
-            const templateControls = templates.getTemplateControlsFromName(templateName);
-            let meterChannel = 0;  // Current channel of stereo pair
-            let muteChannel = 0;
-
-            for (const control of templateControls) {
-                let {
-                    Type: controlType,
-                    DisplayName: displayName,
-                    Flags: flag,
-                    TargetChannel: targetChannel,
-                    TargetProperty: targetProperty,
-                } = control;
-
-                let targetId = channelGroup.groupId;
-
-                // Update Infra/100hz button text
-                if (
-                    (channelGroup.type < 'TYPE_TOPS' || channelGroup.type > 'TYPE_TOPS_R')
-                    && displayName === 'CUT'
-                    && sourceGroup.xover !== null
-                ) {
-                    displayName = sourceGroup.xover;
-                    console.info(`${channelGroup.name} - Enabling ${sourceGroup.xover}`);
-                }
-
-                // Meters, these require a TargetChannel
-                if (controlType === dbpr.ControlTypes.METER) {
-                    if (templateName.includes('Group LR')) {
-                        [targetId, targetChannel] = [
-                            lrGroups[meterChannel].channels[0].TargetId,
-                            lrGroups[meterChannel].channels[0].TargetChannel,
-                        ];
-                        meterChannel += 1;
-                    } else {
-                        targetId = channelGroup.channels[0].TargetId;
-                        targetChannel = channelGroup.channels[0].TargetChannel;
-                    }
-                } else if (controlType === dbpr.ControlTypes.SWITCH) {
-                    if (templateName.includes('Group LR') && targetProperty === dbpr.TargetPropertyType.CONFIG_MUTE) {  // Mute
-                        targetId = lrGroups[muteChannel].groupId;
-                        muteChannel += 1;
-                    }
-
-                    if (displayName === 'View EQ') {
-                        targetId = sourceGroup.ViewId + 1;
-                    }
-                } else if (controlType === dbpr.ControlTypes.FRAME) {
-                    if (displayName) {
-                        displayName = channelGroup.name;
-                    }
-                } else if (controlType === dbpr.ControlTypes.METER) {
-                    if (targetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY && (
-                        channelGroup.name.toLowerCase().includes('fill') || channelGroup.type > 'TYPE_TOPS_L'
-                    )) {
-                        flag = 14;
-                        console.info(`${channelGroup.name} - Setting relative delay`);
-                    }
-                }
-
-                const query = `INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", \
-                    "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", \
-                        "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                            ?, ?, ?, ?, ?, ?, ?, ?)`
-
-                if (
-                    controlType === dbpr.ControlTypes.DIGITAL
-                    && targetProperty === dbpr.TargetPropertyType.CONFIG_FILTER3
-                    && (['TYPE_POINT', 'TYPE_TOPS_L', 'TYPE_SUBS', 'TYPE_SUBS_L', 'TYPE_SUBS_R', 'TYPE_SUBS_C'].find((s) => s === channelGroup.type))
-                    && sourceGroup.xover
-                ) {
-                    console.info(`${channelGroup.name} - Skipping CPL`)
-                } else if (sourceGroup.Type === dbpr.SourceGroupTypes.ADDITIONAL_AMPLIFIER
-                    && targetProperty === dbpr.TargetPropertyType.CONFIG_LOAD_MATCH_ENABLE
-                ) {
-                    console.info(`${channelGroup.name} - Skipping Load Match Enable`)
-                } else if (sourceGroup.Type === dbpr.SourceGroupTypes.ADDITIONAL_AMPLIFIER
-                    && displayName === 'View EQ'
-                ) {
-                    console.info(`${channelGroup.name} - Skipping View EQ Switch`)
-                } else {
-                    proj.db.prepare(query).run(
-                        controlType, control.PosX + posX, control.PosY + posY, control.Width, control.Height, proj.mainViewId, displayName, joinedId, control.LimitMin, control.LimitMax, control.MainColor, control.SubColor, control.LabelColor, control.LabelFont, control.LabelAlignment, control.LineThickness, control.ThresholdValue, flag, control.ActionType, control.TargetType, targetId, targetChannel, targetProperty, control.TargetRecord, null, null, control.PictureIdDay, control.PictureIdNight, control.Font, control.Alignment, "");
-                }
-
-            }
-
-            const navButtonTemplateOptions: TemplateOptions = {
-                DisplayName: channelGroup.name,
-                TargetId: sourceGroup.ViewId,
-                TargetChannel: -1,
-                joinedId,
-                Width: templates.getTemplateWidthHeight('Nav Button').width + 1, // R1 frames are to be 1px wider than expected
-            }
-            proj.insertTemplate(
-                templates.getTemplateByName("Nav Button"),
-                proj.mainViewId,
-                posX - 1, // R1 frames are to be 1px further to the left than expected
-                posY - 1, // R1 frames are to be 1px higher than expected
-                navButtonTemplateOptions
-            )
-
-            posX += meterTempWidth + METER_SPACING_X;
+        const mainMainTemplateOptions: TemplateOptions = {
+            TargetId: this.getMasterGroupID()
         }
-    })
+
+        this.insertTemplate(
+            templates.getTemplateByName('Main Main'),
+            mainViewId,
+            posX,
+            posY,
+            mainMainTemplateOptions
+        )
+        posX += templates.getTemplateWidthHeight("Main Main").width + (METER_SPACING_X / 2);
+
+        const arraySightTemplateOptions: TemplateOptions = {
+            TargetId: 0
+        }
+        this.insertTemplate(
+            templates.getTemplateByName('Main ArraySight'),
+            mainViewId,
+            posX,
+            posY,
+            arraySightTemplateOptions
+        );
+
+        const { width: arraySightTempX, height: arraySightTempY } = templates.getTemplateWidthHeight("Main ArraySight");
+
+        const apGroupId = (() => {
+            try {
+                return this.getAPGroup().GroupId;
+            } catch {
+                return undefined;
+            }
+        })();
+
+        if (apGroupId) {
+            const thcTemplateOptions: TemplateOptions = {
+                TargetId: apGroupId
+            }
+            this.insertTemplate(
+                templates.getTemplateByName('THC'),
+                mainViewId,
+                posX,
+                posY + arraySightTempY + (METER_SPACING_Y / 2),
+                thcTemplateOptions,
+            )
+            posX += templates.getTemplateWidthHeight('THC').width + (METER_SPACING_X * 4)
+        } else {
+            posX += arraySightTempX + (METER_SPACING_X * 4);
+        }
+
+        let lrGroups: ChannelGroup[] = [];
+
+        this.sourceGroups.forEach((sourceGroup) => {
+            for (let channelGroupIndex = 0; channelGroupIndex < sourceGroup.channelGroups.length; channelGroupIndex++) {
+                const joinedId = this.getHighestJoinedID() + 1;
+                const channelGroup = sourceGroup.channelGroups[channelGroupIndex];
+
+                if ([
+                    'TYPE_SUBS_L',
+                    'TYPE_SUBS_R',
+                    'TYPE_SUBS_C',
+                    'TYPE_TOPS_L',
+                    'TYPE_TOPS_R',
+                ].find((s) => s === channelGroup.type)) {  // TOP or SUB L/R/C Group
+                    return;
+                }
+
+                let templateName = 'Group';
+                if (sourceGroup.channelGroups.length >= 3) {  // Stereo groups
+                    lrGroups = [
+                        sourceGroup.channelGroups[channelGroupIndex + 1],
+                        sourceGroup.channelGroups[channelGroupIndex + 2],
+                    ];
+                    templateName += ' LR';
+                }
+                if (sourceGroup.ArrayProcessingEnable) {
+                    templateName += ' AP';
+                }
+
+                if (['GSL', 'KSL', 'XSL'].find((s) => s === sourceGroup.System)) {
+                    templateName += ' CPL2';
+                }
+
+                const templateControls = templates.getTemplateControlsFromName(templateName);
+                let meterChannel = 0;  // Current channel of stereo pair
+                let muteChannel = 0;
+
+                for (const control of templateControls) {
+                    let {
+                        Type: controlType,
+                        DisplayName: displayName,
+                        Flags: flag,
+                        TargetChannel: targetChannel,
+                        TargetProperty: targetProperty,
+                    } = control;
+
+                    let targetId = channelGroup.groupId;
+
+                    // Update Infra/100hz button text
+                    if (
+                        (channelGroup.type < 'TYPE_TOPS' || channelGroup.type > 'TYPE_TOPS_R')
+                        && displayName === 'CUT'
+                        && sourceGroup.xover !== null
+                    ) {
+                        displayName = sourceGroup.xover;
+                        console.info(`${channelGroup.name} - Enabling ${sourceGroup.xover}`);
+                    }
+
+                    // Meters, these require a TargetChannel
+                    if (controlType === dbpr.ControlTypes.METER) {
+                        if (templateName.includes('Group LR')) {
+                            [targetId, targetChannel] = [
+                                lrGroups[meterChannel].channels[0].TargetId,
+                                lrGroups[meterChannel].channels[0].TargetChannel,
+                            ];
+                            meterChannel += 1;
+                        } else {
+                            targetId = channelGroup.channels[0].TargetId;
+                            targetChannel = channelGroup.channels[0].TargetChannel;
+                        }
+                    } else if (controlType === dbpr.ControlTypes.SWITCH) {
+                        if (templateName.includes('Group LR') && targetProperty === dbpr.TargetPropertyType.CONFIG_MUTE) {  // Mute
+                            targetId = lrGroups[muteChannel].groupId;
+                            muteChannel += 1;
+                        }
+
+                        if (displayName === 'View EQ') {
+                            targetId = sourceGroup.ViewId + 1;
+                        }
+                    } else if (controlType === dbpr.ControlTypes.FRAME) {
+                        if (displayName) {
+                            displayName = channelGroup.name;
+                        }
+                    } else if (controlType === dbpr.ControlTypes.DIGITAL) {
+                        if (targetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY
+                            || targetProperty === dbpr.TargetPropertyType.CONFIG_LEVEL
+                            && (
+                                channelGroup.name.toLowerCase().includes('fill')
+                                || channelGroup.type === 'TYPE_SUBS'
+                                || channelGroup.type === 'TYPE_POINT'
+                            )) {
+                            flag = dbpr.ControlFlags.RELATIVE;
+                            control.setLimitMin(-9999.5);
+                            control.setLimitMax(9999);
+                            console.info(`${channelGroup.name} - Setting relative digital control`);
+                        }
+                    }
+
+                    const query = `INSERT INTO Controls ("Type", "PosX", "PosY", "Width", "Height", "ViewId", "DisplayName", "JoinedId", "LimitMin", "LimitMax", "MainColor", "SubColor", \
+                        "LabelColor", "LabelFont", "LabelAlignment", "LineThickness", "ThresholdValue", "Flags", "ActionType", "TargetType", "TargetId", "TargetChannel", "TargetProperty", \
+                            "TargetRecord", "ConfirmOnMsg", "ConfirmOffMsg", "PictureIdDay", "PictureIdNight", "Font", "Alignment", "Dimension") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                                ?, ?, ?, ?, ?, ?, ?, ?)`
+
+                    if (
+                        controlType === dbpr.ControlTypes.DIGITAL
+                        && targetProperty === dbpr.TargetPropertyType.CONFIG_FILTER3
+                        && (['TYPE_POINT', 'TYPE_TOPS_L', 'TYPE_SUBS', 'TYPE_SUBS_L', 'TYPE_SUBS_R', 'TYPE_SUBS_C'].find((s) => s === channelGroup.type))
+                        && sourceGroup.xover
+                    ) {
+                        console.info(`${channelGroup.name} - Skipping CPL`)
+                    } else if (sourceGroup.Type === dbpr.SourceGroupTypes.ADDITIONAL_AMPLIFIER
+                        && targetProperty === dbpr.TargetPropertyType.CONFIG_LOAD_MATCH_ENABLE
+                    ) {
+                        console.info(`${channelGroup.name} - Skipping Load Match Enable`)
+                    } else if (sourceGroup.Type === dbpr.SourceGroupTypes.ADDITIONAL_AMPLIFIER
+                        && displayName === 'View EQ'
+                    ) {
+                        console.info(`${channelGroup.name} - Skipping View EQ Switch`)
+                    } else {
+                        this.db.prepare(query).run(
+                            controlType, control.PosX + posX, control.PosY + posY, control.Width, control.Height, mainViewId, displayName, joinedId, control.LimitMin, control.LimitMax, control.MainColor, control.SubColor, control.LabelColor, control.LabelFont, control.LabelAlignment, control.LineThickness, control.ThresholdValue, flag, control.ActionType, control.TargetType, targetId, targetChannel, targetProperty, control.TargetRecord, null, null, control.PictureIdDay, control.PictureIdNight, control.Font, control.Alignment, "");
+                    }
+
+                }
+
+                const navButtonTemplateOptions: TemplateOptions = {
+                    DisplayName: channelGroup.name,
+                    TargetId: sourceGroup.ViewId,
+                    TargetChannel: dbpr.TargetChannels.NONE,
+                    joinedId,
+                    Width: templates.getTemplateWidthHeight('Nav Button').width + 1, // R1 frames are to be 1px wider than expected
+                }
+                this.insertTemplate(
+                    templates.getTemplateByName("Nav Button"),
+                    mainViewId,
+                    posX - 1, // R1 frames are to be 1px further to the left than expected
+                    posY - 1, // R1 frames are to be 1px higher than expected
+                    navButtonTemplateOptions
+                )
+
+                posX += meterTempWidth + METER_SPACING_X;
+            }
+        })
+    }
 }
 
 interface ControlBuilder {
