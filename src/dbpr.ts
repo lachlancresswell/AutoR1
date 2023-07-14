@@ -119,14 +119,27 @@ export enum TargetTypes {
 }
 
 export enum TargetPropertyType {
+    ARRAYPROCESSING_NAME = "ArrayProcessing_Name",
     ARRAYPROCESSING_COMMENT = "ArrayProcessing_Comment",
     ARRAYPROCESSING_ENABLE = "ArrayProcessing_Enable",
     CHANNEL_STATUS_AMP_TEMPERATURE = "ChStatus_AmpTemperature",
     CHANNEL_STATUS_GAIN_REDUCTION_HEADROOM = "ChStatus_GrHead",
     CHANNEL_STATUS_MS_DELAY = "ChStatus_MsDelay",
     CHANNEL_STATUS_SPEAKER_IMPEDANCE = "ChStatus_SpeakerImpedance",
-    CHANNEL_STATUS_OVL = "ChStatus_RemHold_Ovl",
     CHANNEL_STATUS_GAIN_REDUCTION = "ChStatus_RemHold_GR",
+    CHANNEL_STATUS_ERROR_TEXT = "ChErr_ErrorText",
+    CHANNEL_STATUS_INPUT_VOLTAGE = "ChStatus_InputVoltage",
+    CHANNEL_STATUS_INPUT_VOLTAGE_PEAK = "ChStatus_InputVoltagePeak",
+    CHANNEL_STATUS_OUTPUT_POWER = "ChStatus_OutputPower",
+    CHANNEL_STATUS_OUTPUT_POWER_PEAK = "ChStatus_OutputPowerPeak",
+    CHANNEL_ERROR_AMP_PROTECTION = "ChErr_AmpProt",
+    CHANNEL_ERROR_AMP_TEMP_OFF = "ChErr_AmpTempOff",
+    CHANNEL_ERROR = "ChErr_AmpTempWarn",
+    CHANNEL_ERROR_CHANNEL_ERROR = "ChErr_ChannelErr",
+    CHANNEL_STATUS_REM_HOLD_GR = "ChStatus_RemHold_Gr",
+    CHANNEL_STATUS_ISP = "ChStatus_Isp",
+    CHANNEL_STATUS_REM_HOLD_OVL = "ChStatus_RemHold_Ovl",
+    CONFIG_CHANNEL_NAME = "Config_ChannelName",
     CONFIG_DELAY_ON = "Config_DelayOn",
     CONFIG_FREQ_GEN_FREQ = "Config_FreqGenFreq",
     CONFIG_FREQ_GEN_LEVEL = "Config_FreqGenLevel",
@@ -155,7 +168,8 @@ export enum TargetPropertyType {
     CONFIG_LOAD_MATCH_SPEAKER_COUNT = "Config_LoadMatchSpeakerCount",
     CONFIG_MUTE = "Config_Mute",
     CONFIG_POTI_LEVEL = "Config_PotiLevel",
-    ERROR_GNRL_ERR = "Error_GnrlErr",
+    ERROR_GENERAL_ERR = "Error_GnrlErr",
+    ERROR_ERROR_TEXT = "Error_ErrorText",
     ERROR_SMPS_TEMP_OFF = "Error_SmpsTempOff",
     ERROR_SMPS_TEMP_WARN = "Error_SmpsTempWarn",
     INPUT_MONITORING_DIGITAL_DETECTION_TIME = "InputMonitoring_Digital_DetectionTime",
@@ -176,7 +190,7 @@ export enum TargetPropertyType {
     SETTINGS_INPUT_GAIN_ENABLE = "Settings_InputGainEnable",
     SETTINGS_LOCK_CMD = "Settings_LockCmd",
     SETTINGS_MCL_ENABLE = "Settings_MCLEnable",
-    SETTINGS_PWR_ON = "Settings_PwrOn",
+    SETTINGS_MCL_VALUE = "Settings_MCLValue",
     STATUS_HUMIDITY = "Status_Humidity",
     STATUS_INPUT_FALLBACK_ACTIVE = "Status_InputFallbackActive",
     STATUS_TEMPERATURE = "Status_Temperature",
@@ -186,7 +200,9 @@ export enum TargetPropertyType {
     STATUS_SMPS_TEMPERATURE = "Status_SmpsTemperature",
     STATUS_LOCK_MODE = "Status_LockMode",
     STATUS_STATUS_TEXT = "Status_StatusText",
-    STATUS_PWR_OK = "Status_PwrOk",
+    STATUS_POWER_OK = "Status_PwrOk",
+    STATUS_CO_TEMPERATURE = "Status_CoTemperature",
+};
 };
 
 /**
