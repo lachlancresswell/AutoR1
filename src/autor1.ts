@@ -641,8 +641,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     * @param projectFile R1 project file 
     * @param parentGroupId Group id to create the AP group under
     */
-    private createApChannelGroup(parentGroupId = MAIN_GROUP_ID): void {
-        const apChannelGroups: any[] = [];
+    public createAPGroup(parentGroupId = MAIN_GROUP_ID): void {
+        const apChannelGroups: Channel[] = [];
 
         for (const srcGrp of this.sourceGroups) {
             if (srcGrp.ArrayProcessingEnable) {
@@ -654,20 +654,32 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             }
         }
 
-        if (apChannelGroups.length > 0) {
-            this.createGrp(AP_GROUP_TITLE, parentGroupId);
-            const apGroupId = this.getHighestGroupID();
-
-            const insertStmt = this.db.prepare(
-                'INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) SELECT ?, ?, ?, ?, 1, 0'
-            );
-
-            for (const ch of apChannelGroups) {
-                insertStmt.run(ch.name, apGroupId, ch.targetId, ch.targetChannel);
-            }
-        } else {
+        if (apChannelGroups.length < 1) {
             throw (new Error("No AP channel groups found."))
         }
+
+        this.createGrp(AP_GROUP_TITLE, parentGroupId);
+        const apGroupId = this.getHighestGroupID();
+
+        const insertStmt = (ch: Channel) => this.db.prepare(
+            'INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) SELECT ?, ?, ?, ?, 1, 0'
+        ).run(ch.Name, apGroupId, ch.TargetId, ch.TargetChannel);
+
+        apChannelGroups.forEach(insertStmt);
+    }
+
+    public getAPGroup() {
+        const stmt = this.db.prepare(
+            `SELECT * FROM Groups WHERE Name = ?`
+        )
+
+        const rtn = stmt.get(AP_GROUP_TITLE) as dbpr.Group;
+
+        if (!rtn) {
+            throw (Error('No AP group found.'))
+        }
+
+        return rtn;
     }
 
     public getChannelMainGroupTotal(): number {
@@ -851,31 +863,6 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
         return groupCount;
     }
-
-    public configureApChannels = (): void => {
-        if (!this.sourceGroups.length) {
-            throw new Error("No source groups found");
-        };
-        const apGroup: Channel[] = [];
-        for (const sourceGroupWithApEnabled of this.sourceGroups.filter((g) => g.ArrayProcessingEnable)) {
-            const topsChannelGroupsWithApEnabled = sourceGroupWithApEnabled.channelGroups.filter((g) => g.type === 'TYPE_TOPS')
-            for (const topsChannelGroup of topsChannelGroupsWithApEnabled) {
-                apGroup.push(...topsChannelGroup.channels);
-            }
-        }
-
-        if (apGroup.length > 0) {
-            this.createGrp(AP_GROUP_TITLE, this.parendID);
-            this.apGroupID = this.getHighestGroupID();
-            const stmt = this.db.prepare(
-                `INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) VALUES (?, ?, ?, ?, 1, 0)`
-            );
-            for (const ch of apGroup) {
-                stmt.run(ch.Name, this.apGroupID, ch.TargetId, ch.TargetChannel);
-            }
-        }
-    }
-
 
     /**
      * Finds if any source groups have ArrayProcessing enabled.
