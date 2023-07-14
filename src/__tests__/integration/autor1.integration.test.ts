@@ -107,14 +107,14 @@ describe('createApChannelGroup', () => {
     });
 
     it('should create an AP group', () => {
-        (projectFileAP as any).createApChannelGroup(1);
+        (projectFileAP as any).createAPGroup(1);
 
         const apGroup = projectFileAP.getGroupIdFromName(AutoR1.AP_GROUP_TITLE);
         expect(apGroup).toBeDefined();
     });
 
     it('should throw an error if no AP channel groups are found', () => {
-        expect(() => (projectFileNoAP as any).createApChannelGroup()).toThrow('No AP channel groups found.');
+        expect(() => (projectFileNoAP as any).createAPGroup()).toThrow('No AP channel groups found.');
     });
 });
 
@@ -322,12 +322,15 @@ describe('createNavButtons', () => {
         const overviewViewId = projectFile.getViewIdFromName('Overview')
         const oldControls = projectFile.getControlsByViewId(overviewViewId);
 
+        projectFile.getSrcGrpInfo();
+        projectFile.createMeterView(templateFile);
+        projectFile.createMainView(templateFile);
         projectFile.createNavButtons(templateFile);
 
         const newControls = projectFile.getControlsByViewId(overviewViewId);
 
         expect(projectFile.getHighestJoinedID()).toBeGreaterThan(oldJoinedId);
-        expect(newControls.length).toBe(oldControls.length + 1);
+        expect(newControls.length).toBe(oldControls.length + 2);
         oldControls.forEach((oldControl, index) => {
             const newControl = newControls[index];
             expect(newControl.PosY).toBe(oldControl.PosY + AutoR1.NAV_BUTTON_Y + AutoR1.NAV_BUTTON_SPACING);
@@ -351,7 +354,7 @@ describe('createMeterView', () => {
         const oldViewCount = projectFile.getAllViews().length;
         expect(projectFile.getHighestJoinedID()).toBe(135);
 
-        AutoR1.createMeterView(projectFile, templateFile);
+        projectFile.createMeterView(templateFile);
 
         const newViewCount = projectFile.getAllViews().length;
 
@@ -379,8 +382,8 @@ describe('clean', () => {
         const oldGroupCount = projectFile.getAllGroups().length;
         const oldControlCount = projectFile.getAllControls().length;
 
-        AutoR1.createMeterView(projectFile, templateFile);
-        AutoR1.createMainView(projectFile, templateFile);
+        projectFile.createMeterView(templateFile);
+        projectFile.createMainView(templateFile);
         const groupId = projectFile.createGrp('TEST', 1);
         projectFile.createSubLRCGroups(groupId);
 
@@ -410,32 +413,23 @@ describe('configureApChannels', () => {
     it('should create a group containing all AP enabled sources', () => {
         projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
         projectFile.getSrcGrpInfo();
-        projectFile.configureApChannels();
+        projectFile.createAPGroup();
         expect(projectFile.getAllGroups().filter((g) => g.Name === AutoR1.AP_GROUP_TITLE).length).toBe(1);
     });
 
-
-    it('should not create a group if AP is not enabled for any sources', () => {
+    it('should throw if AP is not enabled for any sources', () => {
         projectFile = new AutoR1ProjectFile(PROJECT_INIT);
         projectFile.getSrcGrpInfo();
-        projectFile.configureApChannels();
+        expect(() => projectFile.createAPGroup()).toThrow()
         expect(projectFile.getAllGroups().filter((g) => g.Name === AutoR1.AP_GROUP_TITLE).length).toBe(0);
     });
 
     it('should populate the apGroupID var when AP group is made', () => {
         projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
         projectFile.getSrcGrpInfo();
-        expect(projectFile.apGroupID).toBeFalsy()
-        projectFile.configureApChannels();
-        expect(projectFile.apGroupID).toBeTruthy()
-    });
-
-    it('should not populate the apGroupID var if AP group is not made', () => {
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT);
-        projectFile.getSrcGrpInfo();
-        expect(projectFile.apGroupID).toBeFalsy();
-        (projectFile as any).configureApChannels();
-        expect(projectFile.apGroupID).toBeFalsy()
+        expect(() => projectFile.getAPGroup()).toThrow()
+        projectFile.createAPGroup();
+        expect(projectFile.getAPGroup()).toBeTruthy()
     });
 });
 
@@ -450,13 +444,16 @@ describe('createMainView', () => {
     });
 
     it('creates the main view', () => {
-        AutoR1.createMainView(projectFile, templateFile);
+        projectFile.createMeterView(templateFile);
+        projectFile.createMainView(templateFile);
         expect(projectFile.getAllViews().filter(g => g.Name === AutoR1.MAIN_WINDOW_TITLE).length).toBe(1)
     })
 
     it('inserts the Main Title template', () => {
-        AutoR1.createMainView(projectFile, templateFile);
-        const controls = projectFile.getControlsByViewId(projectFile.mainViewId);
+        projectFile.createMeterView(templateFile);
+        projectFile.createMainView(templateFile);
+        const mainViewId = (projectFile as any).getMainView().ViewId;
+        const controls = projectFile.getControlsByViewId(mainViewId);
         expect(controls.find((c) => c.DisplayName === 'Auto - Main')).toBeTruthy();
     })
 })
