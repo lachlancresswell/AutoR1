@@ -88,8 +88,14 @@ export enum ControlTypes {
     SOUND_OBJECT_ROUTING = 40,
 }
 
+/**
+ * NONE for Controls of Type TEXT, FRAME and LOGO
+ * DEVICE for main device controls
+ * CHANNEL_x for channel specific controls
+ */
 export enum TargetChannels {
     NONE = -1,
+    DEVICE = 0,
     CHANNEL_A = 1,
     CHANNEL_B = 2,
     CHANNEL_C = 3,
