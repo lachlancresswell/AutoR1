@@ -360,17 +360,13 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 control.setDisplayName(DisplayName);
             }
 
-            // If TargetProperty is set, and TargetChannel is not set, 
-            // then set TargetChannel to 0
-            if (Object.values(dbpr.TargetPropertyType).includes(control.TargetProperty as dbpr.TargetPropertyType)
-                && (control.TargetChannel > -1)) {
-                control.setTargetChannel(0);
-            }
-
-            if (control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY
-                && control.TargetChannel === -1 && TargetChannel) {
+            // Set TargetChannel if required
+            if (Object.values({ ...dbpr.TargetPropertyTypeChannel, ...dbpr.TargetPropertyDisplayChannel, ...dbpr.TargetPropertyLedChannel, ...dbpr.TargetPropertyMeterChannel, ...dbpr.TargetPropertySwitchChannel, ...dbpr.TargetProprtyDigitalChannel, ...dbpr.TargetPropertyDisplayChannel }).includes(control.TargetProperty as dbpr.TargetPropertyType) && TargetChannel) {
                 control.setTargetChannel(TargetChannel);
-                if (options?.sourceGroupType === dbpr.SourceGroupTypes.ARRAY) {
+
+                // Convert the digital input to a read-only display control for delay setting on a flown array
+                if (control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY
+                    && options?.sourceGroupType === dbpr.SourceGroupTypes.ARRAY) {
                     control.setType(dbpr.ControlTypes.DISPLAY);
                 }
             }
@@ -378,7 +374,6 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             const targetProperty = TargetProperty ? TargetProperty : control.TargetProperty;
             const targetRecord = TargetRecord ? TargetRecord : control.TargetRecord;
             const targetId = TargetId ? TargetId : control.TargetId;
-            const targetChannel = TargetChannel ? TargetChannel : control.TargetChannel;
             const width = Width ? Width : control.Width;
             const height = Height ? Height : control.Height;
 
@@ -438,7 +433,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 control.ActionType.toString(),
                 control.TargetType.toString(),
                 targetId.toString(),
-                targetChannel.toString(),
+                control.TargetChannel.toString(),
                 targetProperty,
                 targetRecord,
                 control.ConfirmOnMsg?.toString(),
