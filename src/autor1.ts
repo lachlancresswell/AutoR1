@@ -179,10 +179,6 @@ class SourceGroup implements AutoR1SourceGroup {
 
 
 export class AutoR1ProjectFile extends dbpr.ProjectFile {
-    public parendID?: number;
-    public apGroupID?: number;
-    public mainViewId: number;
-    public meterViewId: number;
     public sourceGroups: SourceGroup[] = [];
 
     constructor(f: string) {
@@ -582,9 +578,12 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             throw new Error("Nav Button template not found.");
         }
 
+        const mainViewId = this.getMainView().ViewId;
+        const meterViewId = this.getMeterView().ViewId;
+
         const views = getViewsStmt.all(1000) as { ViewId: number }[];
         for (const vId of views.map(v => v.ViewId)) {
-            if (vId !== this.mainViewId && vId !== this.meterViewId) {
+            if (vId !== mainViewId && vId !== meterViewId) {
 
                 increaseControlPosYByAmount.run(NAV_BUTTON_Y + NAV_BUTTON_SPACING, vId);
 
@@ -621,16 +620,19 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     }
 
     private removeNavButtons(mainViewId: number): void {
-        const getControlsStmt = this.db.prepare('SELECT ViewId FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = -1');
+        const getControlsStmt = this.db.prepare(`SELECT ViewId FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = ?`);
         const updateControlsStmt = this.db.prepare('UPDATE Controls SET PosY = PosY - ? WHERE ViewId = ?');
-        const deleteControlsStmt = this.db.prepare('DELETE FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = -1');
+        const deleteControlsStmt = this.db.prepare(`DELETE FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = ?`);
+
+        const meterViewId = this.getMeterView().ViewId;
 
         for (const vId of getControlsStmt.iterate(mainViewId, dbpr.TargetChannels.NONE)) {
+            if (vId !== mainViewId && vId !== meterViewId) {
                 updateControlsStmt.run(NAV_BUTTON_Y + 20, vId);
             }
         }
 
-        deleteControlsStmt.run(mainViewId, -1);
+        deleteControlsStmt.run(mainViewId, dbpr.TargetChannels.NONE);
         console.log(`Deleted ${MAIN_WINDOW_TITLE} nav buttons.`);
     }
 
@@ -892,11 +894,27 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         return this.sourceGroups.find((src) => src.ArrayProcessingEnable) ? true : false;
     }
-}
 
-export const createMeterView = (proj: AutoR1ProjectFile, templates: AutoR1TemplateFile): void => {
-    if (!proj.sourceGroups.length) {
-        throw (new Error("No source groups found."))
+    private getMainView() {
+        const stmt = this.db.prepare(`SELECT * from Views WHERE Name = ?`);
+        const view = stmt.get(MAIN_WINDOW_TITLE) as dbpr.View;
+
+        if (!view) {
+            throw (Error(`Could not find Auto R1 Meter view with name ${MAIN_WINDOW_TITLE}`))
+        }
+
+        return view;
+    }
+
+    private getMeterView() {
+        const stmt = this.db.prepare(`SELECT * from Views WHERE Name = ?`);
+        const view = stmt.get(METER_WINDOW_TITLE) as dbpr.View;
+
+        if (!view) {
+            throw (Error(`Could not find Auto R1 Meter view with name ${METER_WINDOW_TITLE}`))
+        }
+
+        return view;
     }
 
     const metersTitleDimensions = templates.getTemplateWidthHeight("Meters Title");
