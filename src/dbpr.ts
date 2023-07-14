@@ -651,6 +651,24 @@ export class ProjectFile extends SqlDbFile {
         }
         return rtn;
     }
+
+    /**
+     * Find the CANid of a device from its DeviceId
+     * @returns CANid of device as a string
+     * 
+     * @example
+     * const p = new ProjectFile('path/to/project.dbpr');
+     * const canId = p.getCanIdFromDeviceId(1);
+     * console.log(canId); // => '1.01'
+     */
+    public getCanIdFromDeviceId(deviceId: number): string {
+        const stmt = this.db.prepare('SELECT RemoteIdSubnet, RemoteIdDevice FROM Devices WHERE DeviceId = ?');
+        const rtn = stmt.get(deviceId) as { RemoteIdSubnet: number, RemoteIdDevice: number };
+        if (!rtn) {
+            throw new Error(`Could not find device with id ${deviceId}`);
+        }
+        return `${rtn.RemoteIdSubnet}.${rtn.RemoteIdDevice < 9 ? `0${rtn.RemoteIdDevice}` : rtn.RemoteIdDevice}`;
+    }
 }
 
 /**
