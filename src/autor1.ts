@@ -15,7 +15,7 @@ export const MAIN_WINDOW_TITLE = "AUTO - Main";
 
 export const NAV_BUTTON_SPACING = 20;
 
-export const MAIN_GROUP_ID = 2;
+export const MAIN_GROUP_ID = 1;
 
 type ChannelGroupTypes = 'TYPE_SUBS_C' | 'TYPE_SUBS_R' | 'TYPE_SUBS_L' | 'TYPE_SUBS' | 'TYPE_TOPS_L' | 'TYPE_TOPS_R' | 'TYPE_TOPS' | 'TYPE_POINT';
 
