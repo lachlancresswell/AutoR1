@@ -203,6 +203,159 @@ export enum TargetPropertyType {
     STATUS_POWER_OK = "Status_PwrOk",
     STATUS_CO_TEMPERATURE = "Status_CoTemperature",
 };
+
+/**
+ * Allowed TargetProperty values for the Channel control type targeting a Channel
+ */
+export const TargetPropertyTypeChannel = {
+    CHANNEL_STATUS_AMP_TEMPERATURE: "ChStatus_AmpTemperature",
+    CHANNEL_STATUS_GAIN_REDUCTION_HEADROOM: "ChStatus_GrHead",
+    CHANNEL_STATUS_MS_DELAY: "ChStatus_MsDelay",
+    CHANNEL_STATUS_SPEAKER_IMPEDANCE: "ChStatus_SpeakerImpedance",
+    CHANNEL_STATUS_OVL: "ChStatus_RemHold_Ovl",
+    CHANNEL_STATUS_GAIN_REDUCTION: "ChStatus_RemHold_GR",
+}
+
+/**
+ * Allowed TargetProperty values for the Digital control type targeting a Channel
+ */
+export const TargetPropertyDigitalChannel = {
+    CHANNEL_STATUS_MS_DELAY: "ChStatus_MsDelay",
+    CONFIG_FREQ_GEN_FREQ: "Config_FreqGenFreq",
+    CONFIG_FREQ_GEN_LEVEL: "Config_FreqGenLevel",
+    CONFIG_FILTER2: "Config_Filter2",
+    CONFIG_LOAD_MATCH_CABLE_CROSS_SECTION: "Config_LoadMatchCableCrossSection",
+    CONFIG_LOAD_MATCH_CABLE_LENGTH: "Config_LoadMatchCableLength",
+    CONFIG_LOAD_MATCH_SPEAKER_COUNT: "Config_LoadMatchSpeakerCount",
+}
+
+/**
+ * Allowed TargetProperty values for the Display control type targeting a Channel
+ */
+export const TargetPropertyDisplayChannel = {
+    ARRAYPROCESSING_COMMENT: "ArrayProcessing_Comment",
+    ARRAYPROCESSING_NAME: "ArrayProcessing_Name",
+    CHANNEL_STATUS_AMP_TEMPERATURE: "ChStatus_AmpTemperature",
+    CHANNEL_STATUS_ERROR_TEXT: "ChErr_ErrorText",
+    CHANNEL_STATUS_CHANNEL_NAME: "Config_ChannelName",
+    CHANNEL_STATUS_MS_DELAY: "ChStatus_MsDelay",
+    CHANNEL_STATUS_INPUT_VOLTAGE: "ChStatus_InputVoltage",
+    CHANNEL_STATUS_INPUT_VOLTAGE_PEAK: "ChStatus_InputVoltagePeak",
+    CHANNEL_STATUS_LEVEL: "Config_PotiLevel",
+    CHANNEL_STATUS_OUTPUT_POWER: "ChStatus_OutputPower",
+    CHANNEL_STATUS_OUTPUT_POWER_PEAK: "ChStatus_OutputPowerPeak",
+    CHANNEL_STATUS_SPEAKER_IMPEDANCE: "ChStatus_SpeakerImpedance",
+}
+
+/**
+ * Allowed TargetProperty values for the LED control type targeting a Channel
+ */
+export const TargetPropertyLedChannel = {
+    ARRAYPROCCESING_ENABLE: "ArrayProcessing_Enable",
+    CHANNEL_ERROR_AMP_PROTECTION: "ChErr_AmpProt",
+    CHANNEL_ERROR_AMP_TEMP_OFF: "ChErr_AmpTempOff",
+    CHANNEL_ERROR: "ChErr_AmpTempWarn",
+    CHANNEL_ERROR_CHANNEL_ERROR: "ChErr_ChannelErr",
+    CONFIG_DELAY_ON: "Config_DelayOn",
+    CHANNEL_STATUS_REM_HOLD_GR: "ChStatus_RemHold_Gr",
+    CHANNEL_STATUS_ISP: "ChStatus_Isp",
+    CONFIG_MUTE: "Config_Mute",
+    CHANNEL_STATUS_REM_HOLD_OVL: "ChStatus_RemHold_Ovl",
+};
+
+/**
+ * Allowed TargetProperty values for the Display control type targeting a Device
+ */
+export const TargetPropertyDisplayDevice = {
+    ERROR_ERROR_TEXT: "Error_ErrorText",
+    SETTINGS_DEVICE_NAME: "Settings_DeviceName",
+    INPUT_DIGITAL_SYNC: "Input_Digital_Sync",
+    INPUT_DIGITAL_SAMPLE_STATUS: "Input_Digital_SampleStatus",
+    STATUS_SMPS_FREQUENCY: "Status_SmpsFrequency",
+    STATUS_MAINS_POWER_PEAK: "Status_MainsPowerPeak",
+    STATUS_SMPS_VOLTAGE: "Status_SmpsVoltage",
+    STATUS_SMPS_TEMPERATURE: "Status_SmpsTemperature",
+    STATUS_STATUS_TEXT: "Status_StatusText",
+};
+
+/**
+ * Allowed TargetProperty values for the Digital control type targeting a Device
+ */
+export const TargetPropertyDigitalDevice = {
+    INPUT_ANALOG_GAIN: "Input_Analog_Gain",
+    INPUT_DIGITAL_GAIN: "Input_Digital_Gain",
+    SETTINGS_MCL_VALUE: "Settings_MCLValue",
+};
+
+/**
+ * Allowed TargetProperty values for the LED control type targeting a Device
+ */
+export const TargetPropertyLedDevice = {
+    SETTINGS_BUZZER: "Settings_Buzzer",
+    ERROR_GENERAL_ERROR: "Error_GnrlErr",
+    SETTINGS_LOCK_CMD: "Settings_LockCmd",
+    STATUS_LOCK_MODE: "Status_LockMode",
+    SETTINGS_POWER_ON: "Settings_PwrOn",
+    STATUS_POWER_OK: "Status_PwrOk",
+    ERROR_SMPS_TEMP_OFF: "Error_SmpsTempOff",
+    ERROR_SMPS_TEMP_WARN: "Error_SmpsTempWarn",
+};
+
+/**
+ * Allowed TargetProperty values for the Switch control type targeting a Channel
+ */
+export const TargetPropertySwitchChannel = {
+    ARRAYPROCESSING_ENABLE: "ArrayProcessing_Enable",
+    CONFIG_FILTER1: "Config_Filter1",
+    CONFIG_DELAY_ON: "Config_DelayOn",
+    CONFIG_EQ1_ENABLE: "Config_Eq1Enable",
+    CONFIG_EQ2_ENABLE: "Config_Eq2Enable",
+    CONFIG_INPUT_ENABLE_1: "Config_InputEnable1",
+    CONFIG_INPUT_ENABLE_2: "Config_InputEnable2",
+    CONFIG_INPUT_ENABLE_3: "Config_InputEnable3",
+    CONFIG_INPUT_ENABLE_4: "Config_InputEnable4",
+    CONFIG_INPUT_ENABLE_5: "Config_InputEnable5",
+    CONFIG_INPUT_ENABLE_6: "Config_InputEnable6",
+    CONFIG_INPUT_ENABLE_7: "Config_InputEnable7",
+    CONFIG_INPUT_ENABLE_8: "Config_InputEnable8",
+    CONFIG_LOAD_MATCH_ENABLE: "Config_LoadMatchEnable",
+    CONFIG_MUTE: "Config_Mute",
+};
+
+/**
+ * Allowed TargetProperty values for the Switch control type targeting a Device
+ */
+export const TargetPropertySwitchDevice = {
+    SETTINGS_BUZZER: "Settings_Buzzer",
+    SETTINGS_INPUT_GAIN_ENABLE: "Settings_InputGainEnable",
+    SETTINGS_LOCK_CMD: "Settings_LockCmd",
+    SETTINGS_MCL_ENABLE: "Settings_MCLEnable",
+    SETTINGS_POWER_ON: "Settings_PwrOn",
+};
+
+/**
+ * Allowed TargetProperty values for the Meter control type targeting a Channel
+ */
+export const TargetPropertyMeterChannel = {
+    CHANNEL_STATUS_AMP_TEMPERATURE: "ChStatus_AmpTemperature",
+    CHANNEL_STATUS_GAIN_REDUCTION_HEADROOM: "ChStatus_GrHead",
+    CHANNEL_STATUS_INPUT_VOLTAGE: "ChStatus_InputVoltage",
+    CHANNEL_STATUS_INPUT_VOLTAGE_PEAK: "ChStatus_InputVoltagePeak",
+    CHANNEL_STATUS_LEVEL: "Config_PotiLevel",
+    CHANNEL_STATUS_OUTPUT_POWER: "ChStatus_OutputPower",
+    CHANNEL_STATUS_OUTPUT_POWER_PEAK: "ChStatus_OutputPowerPeak",
+    CHANNEL_STATUS_SPEAKER_IMPEDANCE: "ChStatus_SpeakerImpedance",
+};
+
+/**
+ * Allowed TargetProperty values for the Meter control type targeting a Device
+ */
+export const TargetPropertyMeterDevice = {
+    STATUS_CO_TEMPERATURE: "Status_CoTemperature",
+    STATUS_SMPS_FREQUENCY: "Status_SmpsFrequency",
+    STATUS_MAINS_POWER_PEAK: "Status_MainsPowerPeak",
+    STATUS_SMPS_VOLTAGE: "Status_SmpsVoltage",
+    STATUS_SMPS_TEMPERATURE: "Status_SmpsTemperature",
 };
 
 /**
