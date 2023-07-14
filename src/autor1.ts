@@ -1024,13 +1024,17 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
     }
 
-    public createMainView(templates: AutoR1TemplateFile) {
+    /**
+     * Create the main AutoR1 view within the project
+     * @param templateFile Loaded .r2t template file
+     */
+    public createMainView(templateFile: AutoR1TemplateFile) {
 
         // Get width + height of templates used
-        const { width: mainTempWidth, height: mainTempHeight } = templates.getTemplateWidthHeight('Main Main');
-        const { width: arraySightTempWidth, height: _ } = templates.getTemplateWidthHeight('Main ArraySight');
-        const { width: _mainTitleTempWidth, height: mainTitleTempHeight } = templates.getTemplateWidthHeight('Main Title');
-        const { width: meterTempWidth, height: meterTempHeight } = templates.getTemplateWidthHeight('Group LR AP CPL2');
+        const { width: mainTempWidth, height: mainTempHeight } = templateFile.getTemplateWidthHeight('Main Main');
+        const { width: arraySightTempWidth, height: _ } = templateFile.getTemplateWidthHeight('Main ArraySight');
+        const { width: _mainTitleTempWidth, height: mainTitleTempHeight } = templateFile.getTemplateWidthHeight('Main Title');
+        const { width: meterTempWidth, height: meterTempHeight } = templateFile.getTemplateWidthHeight('Group LR AP CPL2');
         const meterTempBuffer = 200;
 
         const HRes = (
@@ -1060,7 +1064,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             TargetChannel: dbpr.TargetChannels.NONE
         }
         this.insertTemplate(
-            templates.getTemplateByName('Nav Button'),
+            templateFile.getTemplateByName('Nav Button'),
             mainViewId,
             NAV_BUTTON_X,
             posY + NAV_BUTTON_Y,
@@ -1068,38 +1072,38 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         );
 
         this.insertTemplate(
-            templates.getTemplateByName('Main Title'),
+            templateFile.getTemplateByName('Main Title'),
             mainViewId,
             posX,
             posY,
         )
-        posY += templates.getTemplateWidthHeight("Main Title").height + METER_SPACING_Y;
+        posY += templateFile.getTemplateWidthHeight("Main Title").height + METER_SPACING_Y;
 
         const mainMainTemplateOptions: TemplateOptions = {
             TargetId: this.getMasterGroupID()
         }
 
         this.insertTemplate(
-            templates.getTemplateByName('Main Main'),
+            templateFile.getTemplateByName('Main Main'),
             mainViewId,
             posX,
             posY,
             mainMainTemplateOptions
         )
-        posX += templates.getTemplateWidthHeight("Main Main").width + (METER_SPACING_X / 2);
+        posX += templateFile.getTemplateWidthHeight("Main Main").width + (METER_SPACING_X / 2);
 
         const arraySightTemplateOptions: TemplateOptions = {
             TargetId: 0
         }
         this.insertTemplate(
-            templates.getTemplateByName('Main ArraySight'),
+            templateFile.getTemplateByName('Main ArraySight'),
             mainViewId,
             posX,
             posY,
             arraySightTemplateOptions
         );
 
-        const { width: arraySightTempX, height: arraySightTempY } = templates.getTemplateWidthHeight("Main ArraySight");
+        const { width: arraySightTempX, height: arraySightTempY } = templateFile.getTemplateWidthHeight("Main ArraySight");
 
         const apGroupId = (() => {
             try {
@@ -1114,13 +1118,13 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 TargetId: apGroupId
             }
             this.insertTemplate(
-                templates.getTemplateByName('THC'),
+                templateFile.getTemplateByName('THC'),
                 mainViewId,
                 posX,
                 posY + arraySightTempY + (METER_SPACING_Y / 2),
                 thcTemplateOptions,
             )
-            posX += templates.getTemplateWidthHeight('THC').width + (METER_SPACING_X * 4)
+            posX += templateFile.getTemplateWidthHeight('THC').width + (METER_SPACING_X * 4)
         } else {
             posX += arraySightTempX + (METER_SPACING_X * 4);
         }
@@ -1158,7 +1162,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                     templateName += ' CPL2';
                 }
 
-                const templateControls = templates.getTemplateControlsFromName(templateName);
+                const templateControls = templateFile.getTemplateControlsFromName(templateName);
                 let meterChannel = 0;  // Current channel of stereo pair
                 let muteChannel = 0;
 
@@ -1256,10 +1260,10 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                     TargetId: sourceGroup.ViewId,
                     TargetChannel: dbpr.TargetChannels.NONE,
                     joinedId,
-                    Width: templates.getTemplateWidthHeight('Nav Button').width + 1, // R1 frames are to be 1px wider than expected
+                    Width: templateFile.getTemplateWidthHeight('Nav Button').width + 1, // R1 frames are to be 1px wider than expected
                 }
                 this.insertTemplate(
-                    templates.getTemplateByName("Nav Button"),
+                    templateFile.getTemplateByName("Nav Button"),
                     mainViewId,
                     posX - 1, // R1 frames are to be 1px further to the left than expected
                     posY - 1, // R1 frames are to be 1px higher than expected
