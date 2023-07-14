@@ -66,7 +66,7 @@ interface AutoR1SourceGroup extends dbpr.SourceGroup {
     TopRightGroupId: number;
     TopRightGroupName: string;
     ViewId: number;
-    xover: any;
+    xover: string;
 }
 
 
@@ -117,7 +117,7 @@ class SourceGroup implements AutoR1SourceGroup {
     TopRightGroupId: number;
     TopRightGroupName: string;
     ViewId: number;
-    xover: any;
+    xover: string;
 
     channelGroups: ChannelGroup[] = [];
 
@@ -590,8 +590,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
                 const mainNavButtonTemplateOptions = {
                     DisplayName: MAIN_WINDOW_TITLE,
-                    TargetId: this.meterViewId + 1,
-                    TargetChannel: -1,
+                    TargetId: meterViewId + 1,
+                    TargetChannel: dbpr.TargetChannels.NONE,
                 }
                 this.insertTemplate(
                     navButtonTemplate,
@@ -603,8 +603,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
                 const metersNavButtonTemplateOptions = {
                     DisplayName: METER_WINDOW_TITLE,
-                    TargetId: this.meterViewId,
-                    TargetChannel: -1,
+                    TargetId: meterViewId,
+                    TargetChannel: dbpr.TargetChannels.NONE,
                 }
 
                 const buttonWidth = templates.getTemplateWidthHeight('Nav Button').width
@@ -625,8 +625,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const updateControlsStmt = this.db.prepare('UPDATE Controls SET PosY = PosY - ? WHERE ViewId = ?');
         const deleteControlsStmt = this.db.prepare('DELETE FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = -1');
 
-        for (const vId of getControlsStmt.iterate(mainViewId)) {
-            if (vId !== this.mainViewId && vId !== this.meterViewId) {
+        for (const vId of getControlsStmt.iterate(mainViewId, dbpr.TargetChannels.NONE)) {
                 updateControlsStmt.run(NAV_BUTTON_Y + 20, vId);
             }
         }
