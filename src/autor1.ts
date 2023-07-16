@@ -43,9 +43,11 @@ interface ChannelGroup {
     name: string;
     channels: Channel[];
     type: ChannelGroupTypes;
+    arraySightId?: number
 }
 
 interface AutoR1SourceGroup extends dbpr.SourceGroup {
+    ArraySightIdR: number;
     MainGroupId: number;
     MainGroupName: string;
     NextSourceGroupId: number;
@@ -94,6 +96,7 @@ class SourceGroup implements AutoR1SourceGroup {
     NextSourceGroupId: number;
     ArrayProcessingEnable: dbpr.ArrayProcessingFlag;
     ArraySightId: number;
+    ArraySightIdR: number;
     LinkMode: number;
     Symmetric: dbpr.SymmetricFlag;
     Mounting: dbpr.MountingFlag;
@@ -129,6 +132,7 @@ class SourceGroup implements AutoR1SourceGroup {
         this.Type = row.Type;
         this.ArrayProcessingEnable = row.ArrayProcessingEnable;
         this.ArraySightId = row.ArraySightId;
+        this.ArraySightIdR = row.ArraySightIdR;
         this.System = row.System;
         this.MainGroupId = row.MainGroupId;
         this.MainGroupName = row.MainGroupName;
@@ -237,55 +241,56 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         this.db.exec(`PRAGMA case_sensitive_like=ON;`);
 
         let query = `
-            SELECT Views.ViewId, Views.Name, SourceGroups.SourceGroupId, NextSourceGroupId, SourceGroups.Type, ArrayProcessingEnable,
-            ArraySightId, System, mainGroup.GroupId as MainGroupId, mainGroup.Name as MainGroupName, topsGroup.GroupId as TopGroupId, topsGroup.Name as TopGroupName,
-            topsLGroup.GroupId as TopLeftGroupId, topsLGroup.Name as TopLeftGroupName, topsRGroup.GroupId as TopRightGroupId, topsRGroup.Name as TopRightGroupName,
-            subsGroup.GroupId as SubGroupId, subsGroup.Name as SubGroupName, subsLGroup.GroupId as SubLeftGroupId, subsLGroup.Name as SubLeftGroupName, subsRGroup.GroupId as
-            SubRightGroupId, subsRGroup.Name as SubRightGroupName, subsCGroup.GroupId as SubCGroupId, subsCGroup.Name as SubCGroupName, i.DisplayName as xover
-            FROM SourceGroups
-            /* Combine additional source group data */
-            JOIN SourceGroupsAdditionalData 
-            ON SourceGroups.SourceGroupId = SourceGroupsAdditionalData.SourceGroupId
-            /* Combine view info */
-            JOIN Views
-            ON Views.Name = SourceGroups.Name
-            /* Combine R1 groups to Source Groups - We only have the name to go on here */
-            JOIN Groups mainGroup
-            ON SourceGroups.name = mainGroup.Name
-            /* Fetch TOPs groups which may or may not have L/R subgroups */
-            LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs') topsGroup
-            ON topsGroup.ParentId = mainGroup.GroupId
-            /* Fetch L/R TOP groups which will be under the main TOPs groups */
-            LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs L' ) topsLGroup
-            ON topsLGroup.ParentId  = topsGroup.GroupId
-            LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs R' ) topsRGroup
-            ON topsRGroup.ParentId  = topsGroup.GroupId
-            /* Fetch the SUBs groups */
-            LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs') subsGroup
-            ON subsGroup.ParentId  = mainGroup.GroupId
-            /* Fetch L/R/C SUB groups we created earlier */
-            LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs L' ) subsLGroup
-            ON subsLGroup.ParentId  = subsGroup.GroupId
-            LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs R' ) subsRGroup
-            ON subsRGroup.ParentId  = subsGroup.GroupId
-            LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs C' ) subsCGroup
-            /* Fetch crossover info for subs */
-            ON subsCGroup.ParentId  = subsGroup.GroupId
-            LEFT OUTER JOIN (SELECT * FROM Controls WHERE DisplayName = '100Hz' OR DisplayName = 'Infra') i
-            ON i.ViewId  = Views.ViewId
-            /* Skip unused channels group */
-            WHERE SourceGroups.name != 'Unused channels'
-            /* Skip second half of stereo pairs */
-            AND OrderIndex != -1
-            /* Skip duplicate groups in Main group _only for arrays_. We want L/R groups for arrays. */
-            AND (SourceGroups.Type == 1 AND mainGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == 'Master'))
-            /* Skip existing Sub array group in Main */
-            OR (SourceGroups.Type == 3 AND mainGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == 'Master'))
-            /* Get point source groups from Main group */
-            OR (SourceGroups.Type == 2 AND mainGroup.ParentId == (SELECT GroupId FROM Groups WHERE Name == 'Master'))
-            /* Device only groups */
-            OR SourceGroups.Type == 4
-            ORDER BY SourceGroups.OrderIndex ASC`;
+        SELECT Views.ViewId, Views.Name, SourceGroups.SourceGroupId, NextSourceGroupId, SourceGroups.Type, ArrayProcessingEnable,
+        ArraySightId, ArraySightIdR, System, mainGroup.GroupId as MainGroupId, mainGroup.Name as MainGroupName, topsGroup.GroupId as TopGroupId, topsGroup.Name as TopGroupName,
+        topsLGroup.GroupId as TopLeftGroupId, topsLGroup.Name as TopLeftGroupName, topsRGroup.GroupId as TopRightGroupId, topsRGroup.Name as TopRightGroupName,
+        subsGroup.GroupId as SubGroupId, subsGroup.Name as SubGroupName, subsLGroup.GroupId as SubLeftGroupId, subsLGroup.Name as SubLeftGroupName, subsRGroup.GroupId as
+        SubRightGroupId, subsRGroup.Name as SubRightGroupName, subsCGroup.GroupId as SubCGroupId, subsCGroup.Name as SubCGroupName, i.DisplayName as xover
+        FROM SourceGroups
+        LEFT OUTER JOIN (SELECT ArraySightId as ArraySightIdR, SourceGroupId as SGid FROM SourceGroups) ON SourceGroups.NextSourceGroupId = SGid
+        /* Combine additional source group data */
+        JOIN SourceGroupsAdditionalData 
+        ON SourceGroups.SourceGroupId = SourceGroupsAdditionalData.SourceGroupId
+        /* Combine view info */
+        JOIN Views
+        ON Views.Name = SourceGroups.Name
+        /* Combine R1 groups to Source Groups - We only have the name to go on here */
+        JOIN Groups mainGroup
+        ON SourceGroups.name = mainGroup.Name
+        /* Fetch TOPs groups which may or may not have L/R subgroups */
+        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs') topsGroup
+        ON topsGroup.ParentId = mainGroup.GroupId
+        /* Fetch L/R TOP groups which will be under the main TOPs groups */
+        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs L' ) topsLGroup
+        ON topsLGroup.ParentId  = topsGroup.GroupId
+        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs R' ) topsRGroup
+        ON topsRGroup.ParentId  = topsGroup.GroupId
+        /* Fetch the SUBs groups */
+        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs') subsGroup
+        ON subsGroup.ParentId  = mainGroup.GroupId
+        /* Fetch L/R/C SUB groups we created earlier */
+        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs L' ) subsLGroup
+        ON subsLGroup.ParentId  = subsGroup.GroupId
+        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs R' ) subsRGroup
+        ON subsRGroup.ParentId  = subsGroup.GroupId
+        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs C' ) subsCGroup
+        /* Fetch crossover info for subs */
+        ON subsCGroup.ParentId  = subsGroup.GroupId
+        LEFT OUTER JOIN (SELECT * FROM Controls WHERE DisplayName = '100Hz' OR DisplayName = 'Infra') i
+        ON i.ViewId  = Views.ViewId
+        /* Skip unused channels group */
+        WHERE SourceGroups.name != 'Unused channels'
+        /* Skip second half of stereo pairs */
+        AND OrderIndex != -1
+        /* Skip duplicate groups in Main group _only for arrays_. We want L/R groups for arrays. */
+        AND (SourceGroups.Type == 1 AND mainGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == 'Master'))
+        /* Skip existing Sub array group in Main */
+        OR (SourceGroups.Type == 3 AND mainGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == 'Master'))
+        /* Get point source groups from Main group */
+        OR (SourceGroups.Type == 2 AND mainGroup.ParentId == (SELECT GroupId FROM Groups WHERE Name == 'Master'))
+        /* Device only groups */
+        OR SourceGroups.Type == 4
+        ORDER BY SourceGroups.OrderIndex ASC`;
 
         const stmt = this.db.prepare(query);
 
@@ -1032,10 +1037,14 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         // Get width + height of templates used
         const { width: mainTempWidth, height: mainTempHeight } = templateFile.getTemplateWidthHeight('Main Main');
-        const { width: arraySightTempWidth, height: _ } = templateFile.getTemplateWidthHeight('Main ArraySight');
+        const { width: arraySightTempWidth, height: arraySightTempHeight } = templateFile.getTemplateWidthHeight('Main ArraySight Frame');
         const { width: _mainTitleTempWidth, height: mainTitleTempHeight } = templateFile.getTemplateWidthHeight('Main Title');
         const { width: meterTempWidth, height: meterTempHeight } = templateFile.getTemplateWidthHeight('Group LR AP CPL2');
         const meterTempBuffer = 200;
+
+        const hasArraySight = this.sourceGroups.some(srcGrp => srcGrp.ArraySightId);
+        let posX = 10, posY = 10;
+        if (hasArraySight) posY = arraySightTempHeight - mainTitleTempHeight;
 
         const HRes = (
             mainTempWidth
@@ -1044,7 +1053,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             + meterTempBuffer
         );
 
-        const VRes = mainTitleTempHeight + Math.max(meterTempHeight, mainTempHeight) + 60;
+        const VRes = mainTitleTempHeight + Math.max(meterTempHeight, mainTempHeight) + 60 + posY;
         this.db.prepare(
             `INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);`
         ).run(1000, MAIN_WINDOW_TITLE, null, 4, null, -1, HRes, VRes, 100, null, null, null, null);
@@ -1053,8 +1062,6 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         ).get() as { 'max(ViewId)': number };
 
         const mainViewId = rtn['max(ViewId)'];
-
-        let posX = 10, posY = 10;
 
         const meterViewId = this.getMeterView().ViewId;
 
@@ -1092,19 +1099,6 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         )
         posX += templateFile.getTemplateWidthHeight("Main Main").width + (METER_SPACING_X / 2);
 
-        const arraySightTemplateOptions: TemplateOptions = {
-            TargetId: 0
-        }
-        this.insertTemplate(
-            templateFile.getTemplateByName('Main ArraySight'),
-            mainViewId,
-            posX,
-            posY,
-            arraySightTemplateOptions
-        );
-
-        const { width: arraySightTempX, height: arraySightTempY } = templateFile.getTemplateWidthHeight("Main ArraySight");
-
         const apGroupId = (() => {
             try {
                 return this.getAPGroup().GroupId;
@@ -1121,12 +1115,12 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 templateFile.getTemplateByName('THC'),
                 mainViewId,
                 posX,
-                posY + arraySightTempY + (METER_SPACING_Y / 2),
+                posY,
                 thcTemplateOptions,
             )
             posX += templateFile.getTemplateWidthHeight('THC').width + (METER_SPACING_X * 4)
         } else {
-            posX += arraySightTempX + (METER_SPACING_X * 4);
+            posX += arraySightTempWidth + (METER_SPACING_X * 4);
         }
 
         let lrGroups: ChannelGroup[] = [];
@@ -1253,6 +1247,36 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                             controlType, control.PosX + posX, control.PosY + posY, control.Width, control.Height, mainViewId, displayName, joinedId, control.LimitMin, control.LimitMax, control.MainColor, control.SubColor, control.LabelColor, control.LabelFont, control.LabelAlignment, control.LineThickness, control.ThresholdValue, flag, control.ActionType, control.TargetType, targetId, targetChannel, targetProperty, control.TargetRecord, null, null, control.PictureIdDay, control.PictureIdNight, control.Font, control.Alignment, "");
                     }
 
+                }
+
+                if (hasArraySight) {
+                    const joinedId = this.getHighestJoinedID() + 1;
+
+                    this.insertTemplate(
+                        templateFile.getTemplateByName('Main ArraySight Frame'),
+                        mainViewId,
+                        posX,
+                        posY - arraySightTempHeight - 10,
+                        { joinedId }
+                    );
+
+                    const ids = [sourceGroup.ArraySightId, sourceGroup.ArraySightIdR].filter((id) => id);
+
+                    const arraySightTemplateName = sourceGroup.ArraySightIdR ? 'Main ArraySight LR' : 'Main ArraySight';
+
+                    ids.forEach((TargetId, i) => {
+                        const arraySightTemplateOptions: TemplateOptions = {
+                            TargetId,
+                            joinedId
+                        }
+                        this.insertTemplate(
+                            templateFile.getTemplateByName(arraySightTemplateName),
+                            mainViewId,
+                            posX + 5 + (i * 67),
+                            posY - arraySightTempHeight - 10 + 5,
+                            arraySightTemplateOptions
+                        );
+                    })
                 }
 
                 const navButtonTemplateOptions: TemplateOptions = {
