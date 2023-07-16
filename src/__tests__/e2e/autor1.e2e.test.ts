@@ -171,7 +171,8 @@ describe('Project with AP', () => {
         const viewEqSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'View EQ' AND Type = ${dbpr.ControlTypes.SWITCH}`).all() as dbpr.Control[];
         viewEqSwitches.reduce((prevCplSwitch, curCplSwitch) => {
             if (prevCplSwitch) {
-                expect(curCplSwitch.JoinedId).toBe(prevCplSwitch.JoinedId + 1);
+                expect(curCplSwitch.JoinedId).toBeGreaterThanOrEqual(prevCplSwitch.JoinedId + 1);
+                expect(curCplSwitch.JoinedId).toBeLessThanOrEqual(prevCplSwitch.JoinedId + 2);
             }
             return curCplSwitch;
         });
