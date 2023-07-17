@@ -671,7 +671,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                     UNION
                     SELECT Groups.GroupId, Groups.Name, Groups.ParentId, Groups.TargetId, Groups.TargetChannel, Groups.Type FROM Groups, devs WHERE Groups.ParentId = devs.GroupId
                 )
-                SELECT GroupId, devs.Name, TargetId, TargetChannel, CabinetsAdditionalData.Name, Cabinets.CabinetId FROM devs
+                SELECT GroupId, devs.Name, TargetId, TargetChannel, Cabinets.CabinetId FROM devs
                 JOIN Cabinets
                 ON devs.TargetId = Cabinets.DeviceId
                 AND devs.TargetChannel = Cabinets.AmplifierChannel
