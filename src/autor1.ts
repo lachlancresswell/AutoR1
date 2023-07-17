@@ -313,7 +313,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             JOIN CabinetsAdditionalData
             ON Cabinets.CabinetId = CabinetsAdditionalData.CabinetId
             AND Linked = 0
-            WHERE devs.type = 1`;
+            WHERE devs.type = 1
+            ORDER BY devs.Name`;
 
         // Discover all channels of previously discovered groups
         this.sourceGroups.forEach((srcGrp) => {
@@ -660,13 +661,9 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         // Order allows a specific order type to be returned from the database, allowing devices to be
         // order from stage right to stage left across all groups
-        let groupOption = [
-            { prefix: "L", order: 'ASC' },
-            { prefix: "R", order: 'ASC' },
-            { prefix: "C", order: 'ASC' }
-        ];
+        let prefixes = ["L", "R", "C"];
 
-        for (let option of groupOption) {
+        for (let prefix of prefixes) {
             let query = `
                 WITH RECURSIVE
                 devs(GroupId, Name, ParentId, TargetId, TargetChannel, Type) AS (
@@ -682,7 +679,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 ON Cabinets.CabinetId = CabinetsAdditionalData.CabinetId
                 WHERE Linked = 0
                 /* Sub arrays always end with either L/C/R, two numbers, a dash and a further two numbers */
-                AND devs.Name LIKE '% ${option.prefix}__%' ORDER BY GroupId ${option.order}`;
+                AND devs.Name LIKE '% ${prefix}__%'`;
 
             const stmt = this.db.prepare(query);
 
