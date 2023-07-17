@@ -926,7 +926,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                     DisplayName: chGrp.name,
                     TargetId: srcGrp.ViewId,
                     TargetChannel: dbpr.TargetChannels.NONE,
-                    Width: meterW + 1, // R1 frames are to be 1px wider than expected
+                    Width: meterW + 2, // R1 frames are to be 2px wider than expected
                     joinedId
                 }
                 this.insertTemplate(
@@ -1219,7 +1219,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                     TargetId: sourceGroup.ViewId,
                     TargetChannel: dbpr.TargetChannels.NONE,
                     joinedId,
-                    Width: templateFile.getTemplateWidthHeight('Nav Button').width + 1, // R1 frames are to be 1px wider than expected
+                    Width: templateFile.getTemplateWidthHeight('Nav Button').width + 2, // R1 frames are to be 2px wider than expected
                 }
                 this.insertTemplate(
                     templateFile.getTemplateByName("Nav Button"),
