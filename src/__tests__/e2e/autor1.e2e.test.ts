@@ -156,6 +156,16 @@ describe('Project with AP', () => {
         });
     });
 
+    it('should generate GR indicators properly', () => {
+        const ovlIndicators = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${meterViewId} AND Type = ${dbpr.ControlTypes.LED} and TargetProperty = '${dbpr.TargetPropertyType.CHANNEL_STATUS_REM_HOLD_GR}'`).all() as dbpr.Control[];
+        expect(ovlIndicators.length).toBeTruthy();
+        ovlIndicators.forEach(control => {
+            expect(control.TargetType).toBe(dbpr.TargetTypes.DIRECT_ACCESS);
+            expect(control.TargetId).toBeTruthy();
+            expect(control.TargetChannel).toBeGreaterThan(0);
+        });
+    });
+
     it('should generate OVL indicators properly', () => {
         const ovlIndicators = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${meterViewId} AND Type = ${dbpr.ControlTypes.LED} and TargetProperty = '${dbpr.TargetPropertyType.CHANNEL_STATUS_REM_HOLD_OVL}'`).all() as dbpr.Control[];
         ovlIndicators.forEach(control => {
