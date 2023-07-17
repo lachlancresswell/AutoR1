@@ -28,8 +28,6 @@ npm-debug.log.*
 *.sass.d.ts
 *.scss.d.ts
 
-#d&b files
-*.dbpr
-*.dbpr-journal
-*.dblock
-*.r2t
+# eslint ignores hidden directories by default:
+# https://github.com/eslint/eslint/issues/8429
+!.erb

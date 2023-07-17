@@ -87,7 +87,7 @@ interface AutoR1SourceGroup extends dbpr.SourceGroup {
  *      });
  *  });
  */
-class SourceGroup implements AutoR1SourceGroup {
+export class SourceGroup implements AutoR1SourceGroup {
     SourceGroupId: number;
     Type: dbpr.SourceGroupTypes;
     Name: string;
@@ -151,6 +151,12 @@ class SourceGroup implements AutoR1SourceGroup {
         this.SubCGroupId = row.SubCGroupId;
         this.SubCGroupName = row.SubCGroupName;
         this.xover = row.xover;
+        this.OrderIndex = row.OrderIndex;
+        this.RemarkableChangeDate = row.RemarkableChangeDate;
+        this.LinkMode = row.LinkMode;
+        this.Symmetric = row.Symmetric;
+        this.Mounting = row.Mounting;
+        this.RelativeDelay = row.RelativeDelay;
 
         if (this.TopGroupId && this.TopGroupName) {
             this.channelGroups.push({ groupId: this.TopGroupId, name: this.TopGroupName, type: 'TYPE_TOPS', channels: [] });
@@ -418,34 +424,34 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             const insertStmt = this.db.prepare(query);
 
             insertStmt.run(
-                control.Type.toString(),
-                (control.PosX + posX).toString(),
-                (control.PosY + posY).toString(),
-                width.toString(),
-                height.toString(),
+                control.Type?.toString(),
+                (control.PosX ?? 0 + posX).toString(),
+                (control.PosY ?? 0 + posY).toString(),
+                width?.toString(),
+                height?.toString(),
                 ViewId.toString(),
                 control.DisplayName,
                 joinedId?.toString(),
-                control.LimitMin.toString(),
-                control.LimitMax.toString(),
-                control.MainColor.toString(),
-                control.SubColor.toString(),
-                control.LabelColor.toString(),
-                control.LabelFont.toString(),
-                control.LabelAlignment.toString(),
-                control.LineThickness.toString(),
-                control.ThresholdValue.toString(),
-                control.Flags.toString(),
-                control.ActionType.toString(),
-                control.TargetType.toString(),
-                targetId.toString(),
-                control.TargetChannel.toString(),
+                control.LimitMin?.toString(),
+                control.LimitMax?.toString(),
+                control.MainColor?.toString(),
+                control.SubColor?.toString(),
+                control.LabelColor?.toString(),
+                control.LabelFont?.toString(),
+                control.LabelAlignment?.toString(),
+                control.LineThickness?.toString(),
+                control.ThresholdValue?.toString(),
+                control.Flags?.toString(),
+                control.ActionType?.toString(),
+                control.TargetType?.toString(),
+                targetId?.toString(),
+                control.TargetChannel?.toString(),
                 targetProperty,
                 targetRecord,
                 control.ConfirmOnMsg?.toString(),
                 control.ConfirmOffMsg?.toString(),
-                control.PictureIdDay.toString(),
-                control.PictureIdNight.toString(),
+                control.PictureIdDay?.toString(),
+                control.PictureIdNight?.toString(),
                 control.Font,
                 control.Alignment,
             );
@@ -1176,7 +1182,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                         console.info(`${channelGroup.name} - Skipping View EQ Switch`)
                     } else {
                         this.db.prepare(query).run(
-                            controlType, control.PosX + posX, control.PosY + posY, control.Width, control.Height, mainViewId, displayName, joinedId, control.LimitMin, control.LimitMax, control.MainColor, control.SubColor, control.LabelColor, control.LabelFont, control.LabelAlignment, control.LineThickness, control.ThresholdValue, flag, control.ActionType, control.TargetType, targetId, targetChannel, targetProperty, control.TargetRecord, null, null, control.PictureIdDay, control.PictureIdNight, control.Font, control.Alignment, "");
+                            controlType, control.PosX ?? 0 + posX, control.PosY ?? 0 + posY, control.Width, control.Height, mainViewId, displayName, joinedId, control.LimitMin, control.LimitMax, control.MainColor, control.SubColor, control.LabelColor, control.LabelFont, control.LabelAlignment, control.LineThickness, control.ThresholdValue, flag, control.ActionType, control.TargetType, targetId, targetChannel, targetProperty, control.TargetRecord, null, null, control.PictureIdDay, control.PictureIdNight, control.Font, control.Alignment, "");
                     }
 
                 }
@@ -1233,39 +1239,39 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 }
 
 interface ControlBuilder {
-    _ActionType: number;
-    _Alignment: number;
-    _ConfirmOffMsg: string | null;
-    _ConfirmOnMsg: string | null;
-    _ControlId: number;
-    _Dimension: Uint8Array;
-    _DisplayName: string | null;
-    _Flags: number;
-    _Font: string;
-    _Height: number;
-    _JoinedId: number;
-    _LabelAlignment: number;
-    _LabelColor: number;
-    _LabelFont: number;
-    _LimitMax: number;
-    _LimitMin: number;
-    _LineThickness: number;
-    _MainColor: number;
-    _PictureIdDay: number;
-    _PictureIdNight: number;
-    _PosX: number;
-    _PosY: number;
-    _SubColor: number;
-    _TargetChannel: number;
-    _TargetId: number;
-    _TargetProperty: string | null;
-    _TargetRecord: number;
-    _TargetType: number;
-    _ThresholdValue: number;
-    _Type: number;
-    _UniqueName: string | null;
-    _ViewId: number;
-    _Width: number;
+    _ActionType?: number;
+    _Alignment?: number;
+    _ConfirmOffMsg?: string | null;
+    _ConfirmOnMsg?: string | null;
+    _ControlId?: number;
+    _Dimension?: Uint8Array;
+    _DisplayName?: string | null;
+    _Flags?: number;
+    _Font?: string;
+    _Height?: number;
+    _JoinedId?: number;
+    _LabelAlignment?: number;
+    _LabelColor?: number;
+    _LabelFont?: number;
+    _LimitMax?: number;
+    _LimitMin?: number;
+    _LineThickness?: number;
+    _MainColor?: number;
+    _PictureIdDay?: number;
+    _PictureIdNight?: number;
+    _PosX?: number;
+    _PosY?: number;
+    _SubColor?: number;
+    _TargetChannel?: number;
+    _TargetId?: number;
+    _TargetProperty?: string | null;
+    _TargetRecord?: number;
+    _TargetType?: number;
+    _ThresholdValue?: number;
+    _Type?: number;
+    _UniqueName?: string | null;
+    _ViewId?: number;
+    _Width?: number;
 
     setDisplayName(val: string | null): void;
     setHeight(val: number): void;
@@ -1297,39 +1303,39 @@ interface ControlBuilder {
 }
 
 export class AutoR1Control implements ControlBuilder {
-    _ActionType: number;
-    _Alignment: number;
-    _ConfirmOffMsg: string | null;
-    _ConfirmOnMsg: string | null;
-    _ControlId: number;
-    _Dimension: Uint8Array;
-    _DisplayName: string | null;
-    _Flags: number;
-    _Font: string;
-    _Height: number;
-    _JoinedId: number;
-    _LabelAlignment: number;
-    _LabelColor: number;
-    _LabelFont: number;
-    _LimitMax: number;
-    _LimitMin: number;
-    _LineThickness: number;
-    _MainColor: number;
-    _PictureIdDay: number;
-    _PictureIdNight: number;
-    _PosX: number;
-    _PosY: number;
-    _SubColor: number;
-    _TargetChannel: number;
-    _TargetId: number;
-    _TargetProperty: string | null;
-    _TargetRecord: number;
-    _TargetType: number;
-    _ThresholdValue: number;
-    _Type: number;
-    _UniqueName: string | null;
-    _ViewId: number;
-    _Width: number;
+    _ActionType?: number;
+    _Alignment?: number;
+    _ConfirmOffMsg?: string | null;
+    _ConfirmOnMsg?: string | null;
+    _ControlId?: number;
+    _Dimension?: Uint8Array;
+    _DisplayName?: string | null;
+    _Flags?: number;
+    _Font?: string;
+    _Height?: number;
+    _JoinedId?: number;
+    _LabelAlignment?: number;
+    _LabelColor?: number;
+    _LabelFont?: number;
+    _LimitMax?: number;
+    _LimitMin?: number;
+    _LineThickness?: number;
+    _MainColor?: number;
+    _PictureIdDay?: number;
+    _PictureIdNight?: number;
+    _PosX?: number;
+    _PosY?: number;
+    _SubColor?: number;
+    _TargetChannel?: number;
+    _TargetId?: number;
+    _TargetProperty?: string | null;
+    _TargetRecord?: number;
+    _TargetType?: number;
+    _ThresholdValue?: number;
+    _Type?: number;
+    _UniqueName?: string | null;
+    _ViewId?: number;
+    _Width?: number;
 
     constructor(row?: dbpr.Control) {
         if (row) {

@@ -1,0 +1,21 @@
+{
+  "name": "autor1",
+  "version": "2.0",
+  "description": "Auto-generate fallback and meter display from existing group info in d&b audiotechnik's R1 and ArrayCalc software.",
+  "license": "MIT",
+  "author": {
+    "name": "Lachlan Cresswell",
+    "email": "lachlancresswell@gmail.com",
+    "url": "https://github.com/lachlancresswell"
+  },
+  "main": "./dist/main/main.js",
+  "scripts": {
+    "rebuild": "node -r ts-node/register ../../.erb/scripts/electron-rebuild.js",
+    "postinstall": "npm run rebuild && npm run link-modules",
+    "link-modules": "node -r ts-node/register ../../.erb/scripts/link-modules.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^8.4.0",
+    "node-abi": "^3.45.0"
+  }
+}
