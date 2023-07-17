@@ -1181,7 +1181,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
                 }
 
-                if (hasArraySight) {
+                if (sourceGroup.ArraySightId) {
                     const joinedId = this.getHighestJoinedID() + 1;
 
                     this.insertTemplate(
