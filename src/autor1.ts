@@ -87,7 +87,7 @@ interface AutoR1SourceGroup extends dbpr.SourceGroup {
  *      });
  *  });
  */
-class SourceGroup implements AutoR1SourceGroup {
+class SourceGroup implements dbpr.SourceGroup {
     SourceGroupId: number;
     Type: dbpr.SourceGroupTypes;
     Name: string;
@@ -101,24 +101,7 @@ class SourceGroup implements AutoR1SourceGroup {
     Symmetric: dbpr.SymmetricFlag;
     Mounting: dbpr.MountingFlag;
     RelativeDelay: number | null;
-
-    MainGroupId: number;
-    MainGroupName: string;
-    SubGroupId: number;
-    SubGroupName: string;
-    SubCGroupId: number;
-    SubCGroupName: string
-    SubLeftGroupId: number;
-    SubLeftGroupName: string;
-    SubRightGroupId: number;
-    SubRightGroupName: string;
     System: string;
-    TopGroupId: number;
-    TopGroupName: string;
-    TopLeftGroupId: number;
-    TopLeftGroupName: string;
-    TopRightGroupId: number;
-    TopRightGroupName: string;
     ViewId: number;
     xover: string;
 
@@ -134,49 +117,33 @@ class SourceGroup implements AutoR1SourceGroup {
         this.ArraySightId = row.ArraySightId;
         this.ArraySightIdR = row.ArraySightIdR;
         this.System = row.System;
-        this.MainGroupId = row.MainGroupId;
-        this.MainGroupName = row.MainGroupName;
-        this.TopGroupId = row.TopGroupId;
-        this.TopGroupName = row.TopGroupName;
-        this.TopLeftGroupId = row.TopLeftGroupId;
-        this.TopLeftGroupName = row.TopLeftGroupName;
-        this.TopRightGroupId = row.TopRightGroupId;
-        this.TopRightGroupName = row.TopRightGroupName;
-        this.SubGroupId = row.SubGroupId;
-        this.SubGroupName = row.SubGroupName;
-        this.SubLeftGroupId = row.SubLeftGroupId;
-        this.SubLeftGroupName = row.SubLeftGroupName;
-        this.SubRightGroupId = row.SubRightGroupId;
-        this.SubRightGroupName = row.SubRightGroupName;
-        this.SubCGroupId = row.SubCGroupId;
-        this.SubCGroupName = row.SubCGroupName;
         this.xover = row.xover;
 
-        if (this.TopGroupId && this.TopGroupName) {
-            this.channelGroups.push({ groupId: this.TopGroupId, name: this.TopGroupName, type: 'TYPE_TOPS', channels: [] });
+        if (row.TopGroupId && row.TopGroupName) {
+            this.channelGroups.push({ groupId: row.TopGroupId, name: row.TopGroupName, type: 'TYPE_TOPS', channels: [] });
         }
-        if (this.TopLeftGroupId && this.TopLeftGroupName) {
-            this.channelGroups.push({ groupId: this.TopLeftGroupId, name: this.TopLeftGroupName, type: 'TYPE_TOPS_L', channels: [] });
+        if (row.TopLeftGroupId && row.TopLeftGroupName) {
+            this.channelGroups.push({ groupId: row.TopLeftGroupId, name: row.TopLeftGroupName, type: 'TYPE_TOPS_L', channels: [] });
         }
-        if (this.TopRightGroupId && this.TopRightGroupName) {
-            this.channelGroups.push({ groupId: this.TopRightGroupId, name: this.TopRightGroupName, type: 'TYPE_TOPS_R', channels: [] });
+        if (row.TopRightGroupId && row.TopRightGroupName) {
+            this.channelGroups.push({ groupId: row.TopRightGroupId, name: row.TopRightGroupName, type: 'TYPE_TOPS_R', channels: [] });
         }
-        if (this.SubGroupId && this.SubGroupName) {
-            this.channelGroups.push({ groupId: this.SubGroupId, name: this.SubGroupName, type: 'TYPE_SUBS', channels: [] });
+        if (row.SubGroupId && row.SubGroupName) {
+            this.channelGroups.push({ groupId: row.SubGroupId, name: row.SubGroupName, type: 'TYPE_SUBS', channels: [] });
         }
-        if (this.SubLeftGroupId && this.SubLeftGroupName) {
-            this.channelGroups.push({ groupId: this.SubLeftGroupId, name: this.SubLeftGroupName, type: 'TYPE_SUBS_L', channels: [] });
+        if (row.SubLeftGroupId && row.SubLeftGroupName) {
+            this.channelGroups.push({ groupId: row.SubLeftGroupId, name: row.SubLeftGroupName, type: 'TYPE_SUBS_L', channels: [] });
         }
-        if (this.SubRightGroupId && this.SubRightGroupName) {
-            this.channelGroups.push({ groupId: this.SubRightGroupId, name: this.SubRightGroupName, type: 'TYPE_SUBS_R', channels: [] });
+        if (row.SubRightGroupId && row.SubRightGroupName) {
+            this.channelGroups.push({ groupId: row.SubRightGroupId, name: row.SubRightGroupName, type: 'TYPE_SUBS_R', channels: [] });
         }
-        if (this.SubCGroupId && this.SubCGroupName) {
-            this.channelGroups.push({ groupId: this.SubCGroupId, name: this.SubCGroupName, type: 'TYPE_SUBS_C', channels: [] });
+        if (row.SubCGroupId && row.SubCGroupName) {
+            this.channelGroups.push({ groupId: row.SubCGroupId, name: row.SubCGroupName, type: 'TYPE_SUBS_C', channels: [] });
         }
 
         // Skip final group if subs or tops groups have been found, only use for point sources
-        if (!this.channelGroups.length && this.MainGroupId && this.MainGroupName) {
-            this.channelGroups.push({ groupId: this.MainGroupId, name: this.MainGroupName, type: 'TYPE_POINT', channels: [] });
+        if (!this.channelGroups.length && row.MainGroupId && row.MainGroupName) {
+            this.channelGroups.push({ groupId: row.MainGroupId, name: row.MainGroupName, type: 'TYPE_POINT', channels: [] });
         }
     }
 }
