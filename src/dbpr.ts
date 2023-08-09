@@ -2,6 +2,7 @@ import { existsSync } from 'fs';
 import * as Database from 'better-sqlite3';
 export const ARRAYCALC_SNAPSHOT = 1;  // Snapshot ID
 export const INPUT_TYPES = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"];
+export type Crossover = '100hz' | 'Infra' | 'CUT';
 
 export enum SourceGroupTypes {
     ARRAY = 1,
