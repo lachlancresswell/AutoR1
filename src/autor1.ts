@@ -38,12 +38,49 @@ interface Channel {
     TargetId: number;
 }
 
-interface ChannelGroup {
+interface ChannelGroupInterface {
     groupId: number;
     name: string;
     channels: Channel[];
     type: ChannelGroupTypes;
-    arraySightId?: number
+    arraySightId?: number;
+}
+
+class ChannelGroup implements ChannelGroupInterface {
+    groupId: number;
+    name: string;
+    channels: Channel[];
+    type: ChannelGroupTypes;
+    arraySightId?: number;
+    mainGroup?: ChannelGroup;
+    leftGroup?: ChannelGroup;
+    rightGroup?: ChannelGroup;
+    centreGroup?: ChannelGroup;
+    removeFromMute?: boolean;
+    removeFromFallback?: boolean;
+
+    constructor(options: ChannelGroupInterface) {
+        this.groupId = options.groupId;
+        this.name = options.name;
+        this.channels = options.channels;
+        this.type = options.type;
+        this.arraySightId = options.arraySightId;
+    }
+
+    /**
+     * Returns true if the group is a Left or Right member of a stereo pair
+     * @returns boolean
+     * 
+     * @example
+     * const p = new ProjectFile(PROJECT_INIT)
+     * p.getSrcGrpInfo()
+     * const chGrp = srcGrp.channelGroups[0]
+     * chGrp.isLorR()
+     * // => true
+     */
+    public isLorR() {
+        return this.type === 'TYPE_SUBS_L' || this.type === 'TYPE_SUBS_R' || this.type === 'TYPE_TOPS_L' || this.type === 'TYPE_TOPS_R';
+    }
 }
 
 interface AutoR1SourceGroup extends dbpr.SourceGroup {
@@ -68,7 +105,7 @@ interface AutoR1SourceGroup extends dbpr.SourceGroup {
     TopRightGroupId: number;
     TopRightGroupName: string;
     ViewId: number;
-    xover: string;
+    xover: dbpr.Crossover | null;
 }
 
 
@@ -103,7 +140,7 @@ class SourceGroup implements dbpr.SourceGroup {
     RelativeDelay: number | null;
     System: string;
     ViewId: number;
-    xover: string;
+    xover: dbpr.Crossover;
 
     channelGroups: ChannelGroup[] = [];
 
@@ -117,36 +154,88 @@ class SourceGroup implements dbpr.SourceGroup {
         this.ArraySightId = row.ArraySightId;
         this.ArraySightIdR = row.ArraySightIdR;
         this.System = row.System;
-        this.xover = row.xover;
+        this.xover = row.xover || 'CUT';
 
         if (row.TopGroupId && row.TopGroupName) {
-            this.channelGroups.push({ groupId: row.TopGroupId, name: row.TopGroupName, type: 'TYPE_TOPS', channels: [] });
+            const mainGroup = new ChannelGroup({ groupId: row.TopGroupId, name: row.TopGroupName, type: 'TYPE_TOPS', channels: [] })
+            this.channelGroups.push(mainGroup)
+
+            if (row.TopLeftGroupId && row.TopLeftGroupName) {
+                const leftGroup = new ChannelGroup({ groupId: row.TopLeftGroupId, name: row.TopLeftGroupName, type: 'TYPE_TOPS_L', channels: [] });
+
+                leftGroup.mainGroup = mainGroup;
+
+                this.channelGroups.push(leftGroup);
+
+                mainGroup.leftGroup = leftGroup;
+            }
+            if (row.TopRightGroupId && row.TopRightGroupName) {
+                const rightGroup = new ChannelGroup({
+                    groupId: row.TopRightGroupId,
+                    name: row.TopRightGroupName,
+                    type: 'TYPE_TOPS_R',
+                    channels: []
+                });
+
+                rightGroup.mainGroup = mainGroup;
+
+                this.channelGroups.push(rightGroup);
+
+                mainGroup.rightGroup = rightGroup;
+            }
         }
-        if (row.TopLeftGroupId && row.TopLeftGroupName) {
-            this.channelGroups.push({ groupId: row.TopLeftGroupId, name: row.TopLeftGroupName, type: 'TYPE_TOPS_L', channels: [] });
-        }
-        if (row.TopRightGroupId && row.TopRightGroupName) {
-            this.channelGroups.push({ groupId: row.TopRightGroupId, name: row.TopRightGroupName, type: 'TYPE_TOPS_R', channels: [] });
-        }
+
         if (row.SubGroupId && row.SubGroupName) {
-            this.channelGroups.push({ groupId: row.SubGroupId, name: row.SubGroupName, type: 'TYPE_SUBS', channels: [] });
-        }
-        if (row.SubLeftGroupId && row.SubLeftGroupName) {
-            this.channelGroups.push({ groupId: row.SubLeftGroupId, name: row.SubLeftGroupName, type: 'TYPE_SUBS_L', channels: [] });
-        }
-        if (row.SubRightGroupId && row.SubRightGroupName) {
-            this.channelGroups.push({ groupId: row.SubRightGroupId, name: row.SubRightGroupName, type: 'TYPE_SUBS_R', channels: [] });
-        }
-        if (row.SubCGroupId && row.SubCGroupName) {
-            this.channelGroups.push({ groupId: row.SubCGroupId, name: row.SubCGroupName, type: 'TYPE_SUBS_C', channels: [] });
+            const subGroup = new ChannelGroup({ groupId: row.SubGroupId, name: row.SubGroupName, type: 'TYPE_SUBS', channels: [] });
+            this.channelGroups.push(subGroup)
+
+            if (row.SubLeftGroupId && row.SubLeftGroupName) {
+                const leftGroup = new ChannelGroup({ groupId: row.SubLeftGroupId, name: row.SubLeftGroupName, type: 'TYPE_SUBS_L', channels: [] });
+
+                leftGroup.mainGroup = subGroup;
+
+                this.channelGroups.push(leftGroup);
+
+                subGroup.leftGroup = leftGroup;
+            }
+            if (row.SubRightGroupId && row.SubRightGroupName) {
+                const rightGroup = new ChannelGroup({ groupId: row.SubRightGroupId, name: row.SubRightGroupName, type: 'TYPE_SUBS_R', channels: [] });
+
+                rightGroup.mainGroup = subGroup;
+
+                this.channelGroups.push(rightGroup);
+
+                subGroup.rightGroup = rightGroup;
+            }
+            if (row.SubCGroupId && row.SubCGroupName) {
+                const centreGroup = new ChannelGroup({ groupId: row.SubCGroupId, name: row.SubCGroupName, type: 'TYPE_SUBS_C', channels: [] });
+
+                centreGroup.mainGroup = subGroup;
+
+                this.channelGroups.push(centreGroup);
+
+                subGroup.centreGroup = centreGroup;
+            }
         }
 
         // Skip final group if subs or tops groups have been found, only use for point sources
         if (!this.channelGroups.length && row.MainGroupId && row.MainGroupName) {
-            this.channelGroups.push({ groupId: row.MainGroupId, name: row.MainGroupName, type: 'TYPE_POINT', channels: [] });
+            this.channelGroups.push(new ChannelGroup({ groupId: row.MainGroupId, name: row.MainGroupName, type: 'TYPE_POINT', channels: [] }));
         }
     }
-}
+
+    public isStereo() {
+        return this.channelGroups.length >= 3;
+    }
+
+    public hasArrayProcessingEnabled() {
+        return this.ArrayProcessingEnable;
+    }
+
+    public hasCPLv2() {
+        return this.System === 'GSL' || this.System === 'KSL' || this.System === 'XSL';
+    }
+    
 
 
 export class AutoR1ProjectFile extends dbpr.ProjectFile {
