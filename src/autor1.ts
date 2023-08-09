@@ -17,7 +17,7 @@ export const NAV_BUTTON_SPACING = 20;
 
 export const MAIN_GROUP_ID = 1;
 
-type ChannelGroupTypes = 'TYPE_SUBS_C' | 'TYPE_SUBS_R' | 'TYPE_SUBS_L' | 'TYPE_SUBS' | 'TYPE_TOPS_L' | 'TYPE_TOPS_R' | 'TYPE_TOPS' | 'TYPE_POINT';
+type ChannelGroupTypes = 'TYPE_SUBS_C' | 'TYPE_SUBS_R' | 'TYPE_SUBS_L' | 'TYPE_SUBS' | 'TYPE_TOPS_L' | 'TYPE_TOPS_R' | 'TYPE_TOPS' | 'TYPE_POINT_TOPS' | 'TYPE_POINT_SUBS' | 'TYPE_ADDITIONAL_AMPLIFIER';
 
 interface TemplateOptions {
     DisplayName?: string,
@@ -79,7 +79,19 @@ class ChannelGroup implements ChannelGroupInterface {
      * // => true
      */
     public isLorR() {
-        return this.type === 'TYPE_SUBS_L' || this.type === 'TYPE_SUBS_R' || this.type === 'TYPE_TOPS_L' || this.type === 'TYPE_TOPS_R';
+        return this.type === 'TYPE_SUBS_L'
+            || this.type === 'TYPE_SUBS_R'
+            || this.type === 'TYPE_SUBS_C'
+            || this.type === 'TYPE_TOPS_L'
+            || this.type === 'TYPE_TOPS_R';
+    }
+
+    public hasCPL() {
+        return this.type === 'TYPE_TOPS'
+            || this.type === 'TYPE_TOPS_L'
+            || this.type === 'TYPE_TOPS_R'
+            || this.type === 'TYPE_POINT_TOPS'
+            || this.type === 'TYPE_ADDITIONAL_AMPLIFIER'
     }
 }
 
@@ -187,10 +199,12 @@ class SourceGroup implements dbpr.SourceGroup {
 
         if (row.SubGroupId && row.SubGroupName) {
             const subGroup = new ChannelGroup({ groupId: row.SubGroupId, name: row.SubGroupName, type: 'TYPE_SUBS', channels: [] });
-            this.channelGroups.push(subGroup)
+            this.channelGroups.push(subGroup);
+            let leftGroup: ChannelGroup;
+            let rightGroup: ChannelGroup;
 
             if (row.SubLeftGroupId && row.SubLeftGroupName) {
-                const leftGroup = new ChannelGroup({ groupId: row.SubLeftGroupId, name: row.SubLeftGroupName, type: 'TYPE_SUBS_L', channels: [] });
+                leftGroup = new ChannelGroup({ groupId: row.SubLeftGroupId, name: row.SubLeftGroupName, type: 'TYPE_SUBS_L', channels: [] });
 
                 leftGroup.mainGroup = subGroup;
 
@@ -199,7 +213,7 @@ class SourceGroup implements dbpr.SourceGroup {
                 subGroup.leftGroup = leftGroup;
             }
             if (row.SubRightGroupId && row.SubRightGroupName) {
-                const rightGroup = new ChannelGroup({ groupId: row.SubRightGroupId, name: row.SubRightGroupName, type: 'TYPE_SUBS_R', channels: [] });
+                rightGroup = new ChannelGroup({ groupId: row.SubRightGroupId, name: row.SubRightGroupName, type: 'TYPE_SUBS_R', channels: [] });
 
                 rightGroup.mainGroup = subGroup;
 
@@ -211,6 +225,8 @@ class SourceGroup implements dbpr.SourceGroup {
                 const centreGroup = new ChannelGroup({ groupId: row.SubCGroupId, name: row.SubCGroupName, type: 'TYPE_SUBS_C', channels: [] });
 
                 centreGroup.mainGroup = subGroup;
+                centreGroup.leftGroup = subGroup;
+                centreGroup.rightGroup = subGroup;
 
                 this.channelGroups.push(centreGroup);
 
@@ -220,7 +236,13 @@ class SourceGroup implements dbpr.SourceGroup {
 
         // Skip final group if subs or tops groups have been found, only use for point sources
         if (!this.channelGroups.length && row.MainGroupId && row.MainGroupName) {
-            this.channelGroups.push(new ChannelGroup({ groupId: row.MainGroupId, name: row.MainGroupName, type: 'TYPE_POINT', channels: [] }));
+            const type: ChannelGroupTypes =
+                this.System !== 'mixed' ?
+                    this.System === 'SUBs' ?
+                        'TYPE_POINT_SUBS' :
+                        'TYPE_POINT_TOPS'
+                    : 'TYPE_ADDITIONAL_AMPLIFIER';
+            this.channelGroups.push(new ChannelGroup({ groupId: row.MainGroupId, name: row.MainGroupName, type, channels: [] }));
         }
     }
 
@@ -229,13 +251,43 @@ class SourceGroup implements dbpr.SourceGroup {
     }
 
     public hasArrayProcessingEnabled() {
-        return this.ArrayProcessingEnable;
+        return !!this.ArrayProcessingEnable;
     }
 
     public hasCPLv2() {
         return this.System === 'GSL' || this.System === 'KSL' || this.System === 'XSL';
     }
     
+
+
+class TemporaryTemplate {
+    _isLR = false;
+    _isAP = false;
+    _isCPL2 = false;
+    _name: string;
+    _controls: AutoR1Control[];
+
+    setLR = (isLR: boolean) => this._isLR = isLR;
+    setAP = (isAP: boolean) => this._isAP = isAP;
+    setCPL2 = (isCPL2: boolean) => this._isCPL2 = isCPL2;
+    setName = (name: string) => this._name = name;
+
+    get isLR() { return this._isLR; }
+    get isAP() { return this._isAP; }
+    get isCPL2() { return this._isCPL2; }
+    get name() {
+        let name = this._name;
+        if (this.isLR) name += ' LR';
+        if (this.isAP) name += ' AP';
+        if (this.isCPL2) name += ' CPL2';
+        return name;
+    }
+    get controls() { return this._controls; }
+
+    public load(templateFile: AutoR1TemplateFile) {
+        this._controls = templateFile.getTemplateControlsFromName(this.name);
+    }
+}
 
 
 export class AutoR1ProjectFile extends dbpr.ProjectFile {
@@ -679,7 +731,9 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             for (const chGrp of srcGrp.channelGroups) {
                 if (chGrp.type === 'TYPE_SUBS'
                     || chGrp.type === 'TYPE_TOPS'
-                    || chGrp.type === 'TYPE_POINT') {
+                    || chGrp.type === 'TYPE_POINT_SUBS'
+                    || chGrp.type === 'TYPE_POINT_TOPS'
+                    || chGrp.type === 'TYPE_ADDITIONAL_AMPLIFIER') {
                     i += 1;
                 }
             }
@@ -955,7 +1009,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             for (const [idx, chGrp] of srcGrp.channelGroups.entries()) {
                 // Skip TOPs and SUBs group if L/R groups are present
                 if ((chGrp.type === 'TYPE_SUBS' && srcGrp.Type === dbpr.SourceGroupTypes.SUBARRAY)
-                    || ((chGrp.type === 'TYPE_SUBS' || chGrp.type === 'TYPE_TOPS' || chGrp.type === 'TYPE_POINT')
+                    || ((chGrp.type === 'TYPE_SUBS' || chGrp.type === 'TYPE_TOPS' || chGrp.type === 'TYPE_POINT_TOPS' || chGrp.type === 'TYPE_POINT_SUBS' || chGrp.type === 'TYPE_ADDITIONAL_AMPLIFIER')
                         && srcGrp.channelGroups.length > 1
                         && (idx === 0 || idx === 3))) {
                     continue;
@@ -1111,8 +1165,6 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             posX += arraySightTempWidth + (METER_SPACING_X * 4);
         }
 
-        let lrGroups: ChannelGroup[] = [];
-
         this.sourceGroups.forEach((sourceGroup) => {
             sourceGroup.channelGroups.forEach((channelGroup) => {
                 const joinedId = this.getHighestJoinedID() + 1;
@@ -1121,64 +1173,54 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                     return;
                 }
 
-                let templateName = 'Group';
-                if (sourceGroup.isStereo() && channelGroup.leftGroup && channelGroup.rightGroup) {  // Stereo groups
-                    lrGroups = [channelGroup.leftGroup, channelGroup.rightGroup];
-                    templateName += ' LR';
-                }
-                if (sourceGroup.hasArrayProcessingEnabled()) {
-                    templateName += ' AP';
-                }
+                const template = new TemporaryTemplate();
+                template.setName('Group');
+                template.setLR(sourceGroup.isStereo());
+                template.setAP(sourceGroup.hasArrayProcessingEnabled());
+                template.setCPL2(sourceGroup.hasCPLv2());
+                template.load(templateFile);
 
-                if (sourceGroup.hasCPLv2()) templateName += ' CPL2';
-
-
-                const templateControls = templateFile.getTemplateControlsFromName(templateName);
                 let meterChannel = 0;  // Current channel of stereo pair
                 let muteChannel = 0;
 
-                for (const control of templateControls) {
-                    let {
-                        Type: controlType,
-                        DisplayName: displayName,
-                        Flags: flag,
-                        TargetChannel: targetChannel,
-                        TargetProperty: targetProperty,
-                    } = control;
-
+                for (const control of template.controls) {
                     let targetId = channelGroup.groupId;
 
                     // Update Infra/100hz button text
-                    if (displayName === 'CUT') {
-                        displayName = sourceGroup.xover;
+                    if (control.isCUT()) {
+                        control.setDisplayName(sourceGroup.xover);
                         console.info(`${channelGroup.name} - Enabling ${sourceGroup.xover}`);
                     }
 
                     // Meters, these require a TargetChannel
-                    if (controlType === dbpr.ControlTypes.METER) {
-                        if (templateName.includes('Group LR')) {
+                    if (control.Type === dbpr.ControlTypes.METER) {
+                        if (template.isLR) {
                             switch (meterChannel) {
                                 case 0:
                                     targetId = channelGroup.leftGroup!.channels[0].TargetId;
-                                    targetChannel = channelGroup.leftGroup!.channels[0].TargetChannel;
+                                    control.setTargetChannel(channelGroup.leftGroup!.channels[0].TargetChannel);
 
                                     break;
                                 case 1:
                                     targetId = channelGroup.rightGroup!.channels[0].TargetId;
-                                    targetChannel = channelGroup.rightGroup!.channels[0].TargetChannel;
+                                    control.setTargetChannel(channelGroup.rightGroup!.channels[0].TargetChannel);
 
                                     break;
                             }
                             meterChannel += 1;
                         } else {
                             targetId = channelGroup.channels[0].TargetId;
-                            targetChannel = channelGroup.channels[0].TargetChannel;
+                            control.setTargetChannel(channelGroup.channels[0].TargetChannel);
                         }
-                    } else if (controlType === dbpr.ControlTypes.SWITCH) {
-                        if (templateName.includes('Group LR') && targetProperty === dbpr.TargetPropertyType.CONFIG_MUTE) {  // Mute
+                    } else if (control.Type === dbpr.ControlTypes.SWITCH) {
+                        if (template.isLR && control.TargetProperty === dbpr.TargetPropertyType.CONFIG_MUTE) {  // Mute
                             switch (muteChannel) {
                                 case 0:
-                                    targetId = channelGroup.leftGroup!.channels[0].TargetId;
+                                    try {
+                                        targetId = channelGroup.leftGroup!.channels[0].TargetId;
+                                    } catch {
+                                        debugger;
+                                    }
 
                                     break;
                                 case 1:
@@ -1190,22 +1232,23 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                             muteChannel += 1;
                         }
 
-                        if (displayName === 'View EQ') {
+                        if (control.isViewEQButton()) {
                             targetId = sourceGroup.ViewId + 1;
                         }
-                    } else if (controlType === dbpr.ControlTypes.FRAME) {
-                        if (displayName) {
-                            displayName = channelGroup.name;
+                    } else if (control.Type === dbpr.ControlTypes.FRAME) {
+                        if (control.DisplayName) {
+                            control.setDisplayName(channelGroup.name);
                         }
-                    } else if (controlType === dbpr.ControlTypes.DIGITAL) {
-                        if (targetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY
-                            || targetProperty === dbpr.TargetPropertyType.CONFIG_LEVEL
+                    } else if (control.Type === dbpr.ControlTypes.DIGITAL) {
+                        if (control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY
+                            || control.TargetProperty === dbpr.TargetPropertyType.CONFIG_LEVEL
                             && (
                                 channelGroup.name.toLowerCase().includes('fill')
                                 || channelGroup.type === 'TYPE_SUBS'
-                                || channelGroup.type === 'TYPE_POINT'
+                                || channelGroup.type === 'TYPE_POINT_TOPS'
+                                || channelGroup.type === 'TYPE_POINT_SUBS'
                             )) {
-                            flag = dbpr.ControlFlags.RELATIVE;
+                            control.setFlags(dbpr.ControlFlags.RELATIVE);
                             control.setLimitMin(-9999.5);
                             control.setLimitMax(9999);
                             console.info(`${channelGroup.name} - Setting relative digital control`);
@@ -1219,23 +1262,22 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                                 ?, ?, ?, ?, ?, ?, ?, ?)`
 
                     if (
-                        controlType === dbpr.ControlTypes.DIGITAL
-                        && targetProperty === dbpr.TargetPropertyType.CONFIG_FILTER3
-                        && (['TYPE_POINT', 'TYPE_TOPS_L', 'TYPE_SUBS', 'TYPE_SUBS_L', 'TYPE_SUBS_R', 'TYPE_SUBS_C'].find((s) => s === channelGroup.type))
-                        && sourceGroup.xover
+                        control.Type === dbpr.ControlTypes.DIGITAL
+                        && control.TargetProperty === dbpr.TargetPropertyType.CONFIG_FILTER3
+                        && !channelGroup.hasCPL()
                     ) {
                         console.info(`${channelGroup.name} - Skipping CPL`)
                     } else if (sourceGroup.Type === dbpr.SourceGroupTypes.ADDITIONAL_AMPLIFIER
-                        && targetProperty === dbpr.TargetPropertyType.CONFIG_LOAD_MATCH_ENABLE
+                        && control.TargetProperty === dbpr.TargetPropertyType.CONFIG_LOAD_MATCH_ENABLE
                     ) {
                         console.info(`${channelGroup.name} - Skipping Load Match Enable`)
                     } else if (sourceGroup.Type === dbpr.SourceGroupTypes.ADDITIONAL_AMPLIFIER
-                        && displayName === 'View EQ'
+                        && control.DisplayName === 'View EQ'
                     ) {
-                        console.info(`${channelGroup.name} - Skipping View EQ Switch`)
+                        console.info(`${channelGroup.name} - Skipping View EQ Switch for additional amplifier`)
                     } else {
                         this.db.prepare(query).run(
-                            controlType, control.PosX + posX, control.PosY + posY, control.Width, control.Height, mainViewId, displayName, joinedId, control.LimitMin, control.LimitMax, control.MainColor, control.SubColor, control.LabelColor, control.LabelFont, control.LabelAlignment, control.LineThickness, control.ThresholdValue, flag, control.ActionType, control.TargetType, targetId, targetChannel, targetProperty, control.TargetRecord, null, null, control.PictureIdDay, control.PictureIdNight, control.Font, control.Alignment, "");
+                            control.Type, control.PosX + posX, control.PosY + posY, control.Width, control.Height, mainViewId, control.DisplayName, joinedId, control.LimitMin, control.LimitMax, control.MainColor, control.SubColor, control.LabelColor, control.LabelFont, control.LabelAlignment, control.LineThickness, control.ThresholdValue, control.Flags, control.ActionType, control.TargetType, targetId, control.TargetChannel, control.TargetProperty, control.TargetRecord, null, null, control.PictureIdDay, control.PictureIdNight, control.Font, control.Alignment, "");
                     }
 
                 }
@@ -1426,6 +1468,18 @@ export class AutoR1Control implements ControlBuilder {
             this.setThresholdValue(ThresholdValue);
             this.setUniqueName(UniqueName);
         }
+    }
+
+    public isCPL = (): boolean => {
+        return this._DisplayName === 'CPL';
+    }
+
+    public isCUT = (): boolean => {
+        return this._DisplayName === 'CUT';
+    }
+
+    public isViewEQButton = (): boolean => {
+        return this._DisplayName === 'View EQ';
     }
 
     get Alignment() {
