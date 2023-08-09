@@ -636,7 +636,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const apChannelGroups: Channel[] = [];
 
         for (const srcGrp of this.sourceGroups) {
-            if (srcGrp.ArrayProcessingEnable) {
+            if (srcGrp.hasArrayProcessingEnabled()) {
                 for (const chGrp of srcGrp.channelGroups) {
                     if (chGrp.type === 'TYPE_TOPS') {
                         apChannelGroups.push(...chGrp.channels);
@@ -866,7 +866,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             throw new Error("SourceGroups not loaded");
         }
 
-        return this.sourceGroups.find((src) => src.ArrayProcessingEnable) ? true : false;
+        return this.sourceGroups.find((src) => src.hasArrayProcessingEnabled()) ? true : false;
     }
 
     private getMainView() {
@@ -1114,35 +1114,24 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         let lrGroups: ChannelGroup[] = [];
 
         this.sourceGroups.forEach((sourceGroup) => {
-            for (let channelGroupIndex = 0; channelGroupIndex < sourceGroup.channelGroups.length; channelGroupIndex++) {
+            sourceGroup.channelGroups.forEach((channelGroup) => {
                 const joinedId = this.getHighestJoinedID() + 1;
-                const channelGroup = sourceGroup.channelGroups[channelGroupIndex];
 
-                if ([
-                    'TYPE_SUBS_L',
-                    'TYPE_SUBS_R',
-                    'TYPE_SUBS_C',
-                    'TYPE_TOPS_L',
-                    'TYPE_TOPS_R',
-                ].find((s) => s === channelGroup.type)) {  // TOP or SUB L/R/C Group
+                if (channelGroup.isLorR()) {  // TOP or SUB L/R/C Group
                     return;
                 }
 
                 let templateName = 'Group';
-                if (sourceGroup.channelGroups.length >= 3) {  // Stereo groups
-                    lrGroups = [
-                        sourceGroup.channelGroups[channelGroupIndex + 1],
-                        sourceGroup.channelGroups[channelGroupIndex + 2],
-                    ];
+                if (sourceGroup.isStereo() && channelGroup.leftGroup && channelGroup.rightGroup) {  // Stereo groups
+                    lrGroups = [channelGroup.leftGroup, channelGroup.rightGroup];
                     templateName += ' LR';
                 }
-                if (sourceGroup.ArrayProcessingEnable) {
+                if (sourceGroup.hasArrayProcessingEnabled()) {
                     templateName += ' AP';
                 }
 
-                if (['GSL', 'KSL', 'XSL'].find((s) => s === sourceGroup.System)) {
-                    templateName += ' CPL2';
-                }
+                if (sourceGroup.hasCPLv2()) templateName += ' CPL2';
+
 
                 const templateControls = templateFile.getTemplateControlsFromName(templateName);
                 let meterChannel = 0;  // Current channel of stereo pair
@@ -1160,11 +1149,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                     let targetId = channelGroup.groupId;
 
                     // Update Infra/100hz button text
-                    if (
-                        (channelGroup.type < 'TYPE_TOPS' || channelGroup.type > 'TYPE_TOPS_R')
-                        && displayName === 'CUT'
-                        && sourceGroup.xover !== null
-                    ) {
+                    if (displayName === 'CUT') {
                         displayName = sourceGroup.xover;
                         console.info(`${channelGroup.name} - Enabling ${sourceGroup.xover}`);
                     }
@@ -1172,10 +1157,18 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                     // Meters, these require a TargetChannel
                     if (controlType === dbpr.ControlTypes.METER) {
                         if (templateName.includes('Group LR')) {
-                            [targetId, targetChannel] = [
-                                lrGroups[meterChannel].channels[0].TargetId,
-                                lrGroups[meterChannel].channels[0].TargetChannel,
-                            ];
+                            switch (meterChannel) {
+                                case 0:
+                                    targetId = channelGroup.leftGroup!.channels[0].TargetId;
+                                    targetChannel = channelGroup.leftGroup!.channels[0].TargetChannel;
+
+                                    break;
+                                case 1:
+                                    targetId = channelGroup.rightGroup!.channels[0].TargetId;
+                                    targetChannel = channelGroup.rightGroup!.channels[0].TargetChannel;
+
+                                    break;
+                            }
                             meterChannel += 1;
                         } else {
                             targetId = channelGroup.channels[0].TargetId;
@@ -1183,7 +1176,17 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                         }
                     } else if (controlType === dbpr.ControlTypes.SWITCH) {
                         if (templateName.includes('Group LR') && targetProperty === dbpr.TargetPropertyType.CONFIG_MUTE) {  // Mute
-                            targetId = lrGroups[muteChannel].groupId;
+                            switch (muteChannel) {
+                                case 0:
+                                    targetId = channelGroup.leftGroup!.channels[0].TargetId;
+
+                                    break;
+                                case 1:
+                                    targetId = channelGroup.rightGroup!.channels[0].TargetId;
+
+                                    break;
+                            }
+
                             muteChannel += 1;
                         }
 
@@ -1283,7 +1286,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 )
 
                 posX += meterTempWidth + METER_SPACING_X;
-            }
+            });
         })
     }
 }
