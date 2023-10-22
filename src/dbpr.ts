@@ -428,7 +428,7 @@ export interface Control {
     PictureIdNight: number;
     Font: string;
     Alignment: number;
-    Dimension: Uint8Array;
+    Dimension: Uint8Array | null;
 }
 
 enum ViewTypes {
