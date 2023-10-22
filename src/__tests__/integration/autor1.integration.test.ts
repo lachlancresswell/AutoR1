@@ -395,3 +395,38 @@ describe('addSubCtoSubL', () => {
         expect(newGroupCount).toBe(oldGroupCount + 15)
     });
 });
+
+describe('group discover', () => {
+    let projectFile: AutoR1.AutoR1ProjectFile;
+
+    beforeEach(() => {
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
+    });
+
+    it('should not have assigned a main group for the main group', () => {
+        projectFile.getSrcGrpInfo();
+        expect(projectFile.sourceGroups[0].channelGroups[0].mainGroup).toBeFalsy()
+    })
+
+    it('should discover the left group', () => {
+        projectFile.getSrcGrpInfo();
+        expect(projectFile.sourceGroups[0].channelGroups[0].leftGroup).toBeTruthy()
+    })
+
+    it('should discover the right group', () => {
+        projectFile.getSrcGrpInfo();
+        expect(projectFile.sourceGroups[0].channelGroups[0].rightGroup).toBeTruthy()
+    })
+
+    it('should discover the main group for the left group', () => {
+        projectFile.getSrcGrpInfo();
+
+        expect(projectFile.sourceGroups[0].channelGroups[0].leftGroup!.mainGroup).toBeTruthy()
+    })
+
+    it('should discover the main group for the right group', () => {
+        projectFile.getSrcGrpInfo();
+
+        expect(projectFile.sourceGroups[0].channelGroups[0].rightGroup!.mainGroup).toBeTruthy()
+    });
+})
