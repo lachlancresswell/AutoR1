@@ -645,6 +645,30 @@ export class ProjectFile extends SqlDbFile {
     }
 
     /**
+     * Get the controls associated with a JoinedId
+     * @param joinedId The JoinedId to search for
+     * @returns Array of controls
+     * 
+     * @example
+     * const p = new ProjectFile('path/to/project.dbpr');
+     * const controls = p.getControlsByJoinedId(1);
+     * console.log(controls);
+     * // => [{...}, {...}, ...]
+     */
+    public getControlsByJoinedId(joinedId: number): Control[] {
+        const query = `SELECT * FROM Controls WHERE JoinedId = ${joinedId}`;
+        const stmt = this.db.prepare(query);
+        const rtn = stmt.all() as Control[];
+
+        if (!rtn || !rtn.length) {
+            throw new Error(`Could not find any controls with JoinedId ${joinedId}`);
+        }
+
+        return rtn;
+    }
+
+
+    /**
      * Get the ID of a source group from its name
      * @param name Name of source group
      * @returns SourceGroupId
