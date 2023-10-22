@@ -847,6 +847,124 @@ export class ProjectFile extends SqlDbFile {
         }
         return `${rtn.RemoteIdSubnet}.${rtn.RemoteIdDevice < 9 ? `0${rtn.RemoteIdDevice}` : rtn.RemoteIdDevice}`;
     }
+
+    /**
+     * Insert a control into the Controls table
+     * @param control Control to insert
+     * 
+     * @example
+     * const p = new ProjectFile('path/to/project.dbpr');
+     * const control = {
+     * ControlId: 1,
+     * Type: 1,
+     * PosX: 1,
+     * PosY: 1,
+     * Width: 1,
+     * Height: 1,
+     * ViewId: 1,
+     * DisplayName: 'Test',
+     * UniqueName: 'Test',
+     * JoinedId: 1,
+     * LimitMin: 1,
+     * LimitMax: 1,
+     * MainColor: 1,
+     * SubColor: 1,
+     * LabelColor: 1,
+     * LabelFont: 1,
+     * LabelAlignment: 1,
+     * LineThickness: 1,
+     * ThresholdValue: 1,
+     * Flags: 1,
+     * ActionType: 1,
+     * TargetType: 1,
+     * TargetId: 1,
+     * TargetChannel: 1,
+     * TargetProperty: 1,
+     * TargetRecord: 1,
+     * ConfirmOnMsg: 'Test',
+     * ConfirmOffMsg: 'Test',
+     * PictureIdDay: 1,
+     * PictureIdNight: 1,
+     * Font: 'Test',
+     * Alignment: 1,
+     * Dimension: new Uint8Array(1),
+     * };
+     * p.insertControl(control);
+     * console.log(p.getAllControls());
+     * // => [{...}, {...}, ...]
+     */
+    public insertControl(control: Control) {
+        const query = `INSERT INTO Controls ('Type', 
+                            'PosX', 
+                            'PosY', 
+                            'Width', 
+                            'Height', 
+                            'ViewId', 
+                            'DisplayName', 
+                            'JoinedId', 
+                            'LimitMin',
+                            'LimitMax', 
+                            'MainColor', 
+                            'SubColor', 
+                            'LabelColor', 
+                            'LabelFont', 
+                            'LabelAlignment', 
+                            'LineThickness', 
+                            'ThresholdValue', 
+                            'Flags', 
+                            'ActionType', 
+                            'TargetType', 
+                            'TargetId', 
+                            'TargetChannel', 
+                            'TargetProperty', 
+                            'TargetRecord', 
+                            'ConfirmOnMsg', 
+                            'ConfirmOffMsg', 
+                            'PictureIdDay', 
+                            'PictureIdNight', 
+                            'Font', 
+                            'Alignment', 
+                            'Dimension') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        const insertStmt = this.db.prepare(query);
+
+        try {
+            insertStmt.run(
+                control.Type,
+                control.PosX,
+                control.PosY,
+                control.Width,
+                control.Height,
+                control.ViewId,
+                control.DisplayName,
+                control.JoinedId,
+                control.LimitMin,
+                control.LimitMax,
+                control.MainColor,
+                control.SubColor,
+                control.LabelColor,
+                control.LabelFont,
+                control.LabelAlignment,
+                control.LineThickness,
+                control.ThresholdValue,
+                control.Flags,
+                control.ActionType,
+                control.TargetType,
+                control.TargetId,
+                control.TargetChannel,
+                control.TargetProperty,
+                control.TargetRecord,
+                control.ConfirmOnMsg,
+                control.ConfirmOffMsg,
+                control.PictureIdDay,
+                control.PictureIdNight,
+                control.Font,
+                control.Alignment,
+                control.Dimension || ' '
+            );
+        } catch (e) {
+            console.log(e);
+        }
+    }
 }
 
 /**
