@@ -1,4 +1,5 @@
-import { AutoR1ProjectFile, AutoR1TemplateFile } from '../../autor1';
+import { AutoR1ProjectFile, AutoR1TemplateFile, AutoR1Control, AutoR1Template } from '../../autor1';
+import { Control } from '../../dbpr'
 import * as fs from 'fs';
 
 const PROJECT_NO_INIT_START = './src/__tests__/Projects/test_no_init.dbpr';
@@ -119,42 +120,86 @@ describe('Variables', () => {
 describe('insertTemplate', () => {
     let projectFile: AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
+    let template: AutoR1Template;
+    let prevJoinedId: number;
+    let JoinedId: number;
+    let insertedControls: Control[];
+    let insertedControl: Control;
+
+    const posX = 100;
+    const posY = 200;
+    const TargetId = 123;
+    const TargetChannel = 1;
+    const Width = 100;
+    const Height = 50;
+    const ViewId = 1000;
+    const DisplayName = 'My Display Name';
 
     beforeEach(() => {
         projectFile = new AutoR1ProjectFile(PROJECT_INIT);
         templateFile = new AutoR1TemplateFile(TEMPLATES);
-    });
+        template = templateFile.templates[1];
 
-    it('should insert a new template into the project file', () => {
-        const posX = 100;
-        const posY = 200;
-        const TargetId = 123;
-        const TargetChannel = 1;
-        const Width = 100;
-        const Height = 50;
-
-        const template = templateFile.templates[1];
-        const ViewId = 1000;
-        const DisplayName = 'My Display Name';
-
-        const oldJoinedId = projectFile.getHighestJoinedID();
+        prevJoinedId = projectFile.getHighestJoinedID();
         projectFile.insertTemplate(template, ViewId, posX, posY, { DisplayName, TargetId, TargetChannel, Width, Height });
-        const newJoinedId = projectFile.getHighestJoinedID();
+        JoinedId = projectFile.getHighestJoinedID();
 
-        const controls = projectFile.getControlsByViewId(ViewId);
-        expect(newJoinedId).toBeGreaterThan(oldJoinedId);
-        const insertedControls = controls.filter((c) => c.JoinedId === newJoinedId)
+        insertedControls = projectFile.getControlsByViewId(ViewId);
+        insertedControl = insertedControls.filter((c) => c.JoinedId === JoinedId)[0]
 
-        const insertedControl = insertedControls[0];
-        expect(insertedControl).toBeDefined();
-        expect(insertedControl!.Type).toBe(template.controls![0].Type);
-        expect(insertedControl!.PosX).toBe(posX);
-        expect(insertedControl!.PosY).toBe(posY);
-        expect(insertedControl!.Width).toBe(Width);
-        expect(insertedControl!.Height).toBe(Height);
-        expect(insertedControl!.TargetId).toBe(TargetId);
-        // expect(insertedControl!.TargetChannel).toBe(TargetChannel);
     });
+
+    it('should cause the highest JoinedId to be incremented', () => {
+        expect(JoinedId).toBeGreaterThan(prevJoinedId);
+    })
+
+    it('should cause insert a new control into the Control table', () => {
+        expect(insertedControl).toBeDefined();
+    })
+
+    it('should correctly set the DisplayName of a new control', () => {
+        expect(insertedControl!.DisplayName).toBe(DisplayName);
+    })
+
+    it('should correctly set the TargetId of a new control', () => {
+        expect(insertedControl!.TargetId).toBe(TargetId);
+    })
+
+    it('should correctly set the TargetChannel of a new control', () => {
+        expect(insertedControls!.find((control) => control.TargetChannel === TargetChannel)).toBeTruthy();
+    })
+
+    it('should correctly set the Width of a new control', () => {
+        expect(insertedControl!.Width).toBe(Width);
+    })
+
+    it('should correctly set the Height of a new control', () => {
+        expect(insertedControl!.Height).toBe(Height);
+    })
+
+    it('should correctly set the Type of a new control', () => {
+        expect(insertedControl!.Type).toBe(template.controls![0].Type);
+    })
+
+    it('should correctly set the PosX of a new control', () => {
+        expect(insertedControl!.PosX).toBe(posX);
+    })
+
+    it('should correctly set the PosY of a new control', () => {
+        expect(insertedControl!.PosY).toBe(posY);
+    })
+
+    it('should correctly set the Width of a new control', () => {
+        expect(insertedControl!.Width).toBe(Width);
+    })
+
+    it('should correctly set the Height of a new control', () => {
+        expect(insertedControl!.Height).toBe(Height);
+    })
+
+    it('should correctly set the TargetId of a new control', () => {
+        expect(insertedControl!.TargetId).toBe(TargetId);
+    })
 });
 
 describe('getTemplateWidthHeight', () => {
