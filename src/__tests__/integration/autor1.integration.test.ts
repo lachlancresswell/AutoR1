@@ -396,6 +396,31 @@ describe('addSubCtoSubL', () => {
     });
 });
 
+describe('Crossover', () => {
+    let projectFile: AutoR1.AutoR1ProjectFile;
+    let templateFile: AutoR1TemplateFile;
+
+    beforeEach(() => {
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
+        templateFile = new AutoR1TemplateFile(TEMPLATES);
+    });
+
+    it('should discover a CUT crossover', () => {
+        projectFile.getSrcGrpInfo();
+        expect(projectFile.sourceGroups[0].xover).toBe('CUT')
+    })
+
+    it('should discover an Infra crossover', () => {
+        projectFile.getSrcGrpInfo();
+        expect(projectFile.sourceGroups[2].xover).toBe('Infra')
+    })
+
+    it('should discover a 100Hz crossover', () => {
+        projectFile.getSrcGrpInfo();
+        expect(projectFile.sourceGroups[3].xover).toBe('100Hz')
+    })
+});
+
 describe('group discover', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
 
