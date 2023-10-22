@@ -217,3 +217,52 @@ describe('getTemplateWidthHeight', () => {
         expect(size.height).toBe(214);
     });
 });
+
+describe('insertControls', () => {
+    let projectFile: AutoR1ProjectFile;
+    let control: AutoR1Control;
+
+    const joinedId = 7777;
+
+    beforeEach(() => {
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
+        control = new AutoR1Control();
+        control.setJoinedId(joinedId);
+    });
+
+    it('should insert a control into the project file', () => {
+        projectFile.insertControl(control);
+
+        const loadedControl = projectFile.getControlsByJoinedId(joinedId)[0];
+        expect(loadedControl).toBeTruthy();
+    });
+
+    it('should insert a control into the project file with the correct JoinedId', () => {
+        projectFile.insertControl(control);
+
+        const loadedControl = projectFile.getControlsByJoinedId(joinedId)[0]
+
+        expect(loadedControl.JoinedId).toBe(joinedId);
+    })
+
+    it('should insert a control into the project file with the correct Font', () => {
+        const font = 'myfont';
+        control.setFont(font);
+
+        projectFile.insertControl(control);
+
+        const loadedControl = projectFile.getControlsByJoinedId(joinedId)[0]
+        expect(loadedControl.Font).toBe(font);
+    })
+
+    it('should insert a control into the project file with the correct PosX', () => {
+        const PosX = 10;
+        control.setPosX(PosX);
+
+        projectFile.insertControl(control);
+
+        const loadedControl = projectFile.getControlsByJoinedId(joinedId)[0]
+        expect(loadedControl.PosX).toBe(PosX);
+    })
+});
+
