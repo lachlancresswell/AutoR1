@@ -1830,15 +1830,15 @@ export class AutoR1Control implements ControlBuilder {
         if (this.isTypeDigital() && this.targetsCPL() && !channelGroup.hasCPL()
         ) {
             // Skip CPL
-            return true;
+            return false;
         } else if (this.targetsLoadMatchEnable() && !sourceGroup.hasLoadMatch()) {
             // Skip Load Match Enable
-            return true;
+            return false;
         } else if (this.isViewEQButton() && !sourceGroup.hasEQView()) {
             // Skip View EQ Switch for additional amplifier
-            return true;
-        } else {
             return false;
+        } else {
+            return true;
         }
     }
 
