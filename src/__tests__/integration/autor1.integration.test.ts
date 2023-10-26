@@ -348,7 +348,56 @@ describe('createMainView', () => {
         const controls = projectFile.getControlsByViewId(mainViewId);
         expect(controls.find((c) => c.DisplayName === 'Auto - Main')).toBeTruthy();
     })
+
+    it('correctly assigns ViewId value', () => {
+        projectFile.createMeterView(templateFile);
+
+        let controls = projectFile.getAllControls();
+        controls.forEach((c) => expect(c.ViewId).toBeTruthy());
+
+        projectFile.createMainView(templateFile);
+        controls = projectFile.getAllControls();
+        controls.forEach((c) => expect(c.ViewId).toBeTruthy());
+    })
 })
+
+describe('createMainViewOverview', () => {
+    let projectFile: AutoR1.AutoR1ProjectFile;
+    let templateFile: AutoR1TemplateFile;
+
+    beforeEach(() => {
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
+        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        projectFile.getSrcGrpInfo();
+    });
+
+    it('correctly assigns ViewId value', () => {
+        projectFile.createMeterView(templateFile);
+        (projectFile as any).createMainViewOverview(templateFile, 10, 10, 1500);
+        let controls = projectFile.getAllControls();
+        controls.forEach((c) => expect(c.ViewId).toBeTruthy());
+    })
+});
+
+
+describe('createMainViewMeters', () => {
+    let projectFile: AutoR1.AutoR1ProjectFile;
+    let templateFile: AutoR1TemplateFile;
+
+    beforeEach(() => {
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
+        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        projectFile.getSrcGrpInfo();
+    });
+
+    it('correctly assigns ViewId value', () => {
+        const viewId = 1500
+        projectFile.createMeterView(templateFile);
+        (projectFile as any).createMainViewMeters(templateFile, 10, 10, viewId);
+        let controls = projectFile.getAllControls();
+        controls.forEach((c) => expect(c.ViewId).toBeTruthy());
+    })
+});
 
 describe('createSubLRCGroups', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;

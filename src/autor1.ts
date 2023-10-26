@@ -1276,12 +1276,14 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             const meterChannelCallback = () => meterChannelIndex += 1;
             const muteChannelCallback = () => muteChannelIndex += 1;
 
-            control.configureForMainView(commonJoinedId, meterTarget, muteGroup, sourceGroup, channelGroup, posX, posY, mainViewId, meterChannelCallback, muteChannelCallback);
+            if (control.isVisible(channelGroup, sourceGroup)) {
+                control.configureForMainView(commonJoinedId, meterTarget, muteGroup, sourceGroup, channelGroup, posX, posY, mainViewId, meterChannelCallback, muteChannelCallback);
 
-            if (control.isTypeSwitch() && control.TargetProperty === dbpr.TargetPropertyType.CONFIG_MUTE) {
+                if (control.isTypeSwitch() && control.TargetProperty === dbpr.TargetPropertyType.CONFIG_MUTE) {
+                }
+
+                controls.push(control);
             }
-
-            controls.push(control);
         });
 
         return controls;
@@ -1818,6 +1820,28 @@ export class AutoR1Control implements ControlBuilder {
         return this.TargetProperty === dbpr.TargetPropertyType.CONFIG_LEVEL;
     }
 
+    /**
+     * Determins whether a control will be displayed or not
+     * @param channelGroup ChannelGroup control will be associated with
+     * @param sourceGroup SourceGroup control will be associated with
+     * @returns True if will be visible, false if not
+     */
+    public isVisible(channelGroup: ChannelGroup, sourceGroup: SourceGroup) {
+        if (this.isTypeDigital() && this.targetsCPL() && !channelGroup.hasCPL()
+        ) {
+            // Skip CPL
+            return true;
+        } else if (this.targetsLoadMatchEnable() && !sourceGroup.hasLoadMatch()) {
+            // Skip Load Match Enable
+            return true;
+        } else if (this.isViewEQButton() && !sourceGroup.hasEQView()) {
+            // Skip View EQ Switch for additional amplifier
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public configureForMainView(joinedId: number, MeterChannel: {
         TargetId: number,
         TargetChannel: number
@@ -1865,15 +1889,7 @@ export class AutoR1Control implements ControlBuilder {
             }
         }
 
-        if (this.isTypeDigital() && this.targetsCPL() && !channelGroup.hasCPL()
-        ) {
-            // Skip CPL
-        } else if (this.targetsLoadMatchEnable() && !sourceGroup.hasLoadMatch()) {
-            // Skip Load Match Enable
-        } else if (this.isViewEQButton() && !sourceGroup.hasEQView()) {
-            // Skip View EQ Switch for additional amplifier
-        } else {
-
+        if (this.isVisible(channelGroup, sourceGroup)) {
             this.setPosX(this.PosX + posX)
             this.setPosY(this.PosY + posY)
             this.setViewId(viewId);
@@ -1953,15 +1969,7 @@ export class AutoR1Template {
                 }
             }
 
-            if (control.isTypeDigital() && control.targetsCPL() && !channelGroup.hasCPL()
-            ) {
-                // Skip CPL
-            } else if (control.targetsLoadMatchEnable() && !sourceGroup.hasLoadMatch()) {
-                // Skip Load Match Enable
-            } else if (control.isViewEQButton() && !sourceGroup.hasEQView()) {
-                // Skip View EQ Switch for additional amplifier
-            } else {
-
+            if (control.isVisible(channelGroup, sourceGroup)) {
                 control.setPosX(control.PosX + posX)
                 control.setPosY(control.PosY + posY)
                 control.setViewId(viewId);
