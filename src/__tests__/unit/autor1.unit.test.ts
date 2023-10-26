@@ -421,44 +421,38 @@ describe('ChannelGroup', () => {
     });
 
     describe('hasRelativeDelay', () => {
+        const group = new ChannelGroup({
+            groupId: 1,
+            name: 'test',
+            channels: [],
+            type: 'TYPE_ADDITIONAL_AMPLIFIER'
+        });
+
+        const sourceGroup = {
+            Type: DBPR.SourceGroupTypes.UNUSED_CHANNELS
+        } as any;
         it('should return true if the group has a relative delay', () => {
-            const group = new ChannelGroup({
-                groupId: 1,
-                name: 'test',
-                channels: [],
-                type: 'TYPE_SUBS'
-            });
-            expect(group.hasRelativeDelay()).toBe(true);
+            group.type = 'TYPE_SUBS'
+            sourceGroup.Type = DBPR.SourceGroupTypes.POINT_SOURCE;
+            expect(group.hasRelativeDelay(sourceGroup)).toBe(true);
         });
 
         it('should return true if the group is a Point Source TOPs group', () => {
-            const group = new ChannelGroup({
-                groupId: 1,
-                name: 'test',
-                channels: [],
-                type: 'TYPE_POINT_TOPS'
-            });
-            expect(group.hasRelativeDelay()).toBe(true);
+            group.type = 'TYPE_POINT_TOPS'
+            sourceGroup.Type = DBPR.SourceGroupTypes.POINT_SOURCE;
+            expect(group.hasRelativeDelay(sourceGroup)).toBe(true);
         });
 
         it('should return true if the group is a Point Source SUBs group', () => {
-            const group = new ChannelGroup({
-                groupId: 1,
-                name: 'test',
-                channels: [],
-                type: 'TYPE_POINT_SUBS'
-            });
-            expect(group.hasRelativeDelay()).toBe(true);
+            group.type = 'TYPE_POINT_SUBS'
+            sourceGroup.Type = DBPR.SourceGroupTypes.POINT_SOURCE;
+            expect(group.hasRelativeDelay(sourceGroup)).toBe(true);
         });
 
         it('should return false if the group does not have a relative delay', () => {
-            const group = new ChannelGroup({
-                groupId: 1,
-                name: 'test',
-                channels: [],
-                type: 'TYPE_TOPS'
-            });
-            expect(group.hasRelativeDelay()).toBe(false);
+            group.type = 'TYPE_TOPS'
+            sourceGroup.Type = DBPR.SourceGroupTypes.ARRAY;
+            expect(group.hasRelativeDelay(sourceGroup)).toBe(false);
         });
     });
 });
@@ -601,6 +595,7 @@ describe('configureMainViewMeterTemplate', () => {
     const joinedId = 1;
     const TargetChannel = 2
     const muteTargetId = 3
+    const TargetId = 4
     const posX = 0
     const posY = 0
     const viewId = 1000;
@@ -655,7 +650,7 @@ describe('configureMainViewMeterTemplate', () => {
         // Arrange
 
         // Act
-        control.configureForMainView(joinedId, TargetChannel, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
+        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
 
 
         // Assert
@@ -669,7 +664,7 @@ describe('configureMainViewMeterTemplate', () => {
         sourceGroup.xover = 'xover' as any;
 
         // Act
-        control.configureForMainView(joinedId, TargetChannel, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
+        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
 
         expect(control.DisplayName).toBe('xover');
     });
@@ -679,7 +674,7 @@ describe('configureMainViewMeterTemplate', () => {
         control.setDisplayName('test');
 
         // Act
-        control.configureForMainView(joinedId, TargetChannel, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
+        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
 
         expect(control.DisplayName).toBe('test');
     });
@@ -689,7 +684,7 @@ describe('configureMainViewMeterTemplate', () => {
         control.setType(DBPR.ControlTypes.METER);
 
         // Act
-        control.configureForMainView(joinedId, TargetChannel, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
+        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
 
         expect(control.TargetChannel).toBe(TargetChannel);
     });
@@ -699,7 +694,7 @@ describe('configureMainViewMeterTemplate', () => {
         control.setType(DBPR.ControlTypes.DIGITAL);
 
         // Act
-        control.configureForMainView(joinedId, TargetChannel, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
+        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
 
         expect(control.TargetChannel).not.toBe(TargetChannel);
     });
@@ -710,7 +705,7 @@ describe('configureMainViewMeterTemplate', () => {
         control.setTargetProperty(DBPR.TargetPropertyType.CONFIG_MUTE);
 
         // Act
-        control.configureForMainView(joinedId, TargetChannel, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
+        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
 
         expect(control.TargetId).toBe(muteTargetId);
     });
@@ -721,7 +716,7 @@ describe('configureMainViewMeterTemplate', () => {
         control.setTargetProperty(DBPR.TargetPropertyType.CHANNEL_ERROR);
 
         // Act
-        control.configureForMainView(joinedId, TargetChannel, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
+        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
 
         expect(control.TargetId).not.toBe(muteTargetId);
     });
