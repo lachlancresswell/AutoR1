@@ -1,4 +1,4 @@
-import { AutoR1ProjectFile, AutoR1TemplateFile, MAIN_WINDOW_TITLE, METER_WINDOW_TITLE } from '../../autor1';
+import { AutoR1ProjectFile, AutoR1TemplateFile, MAIN_WINDOW_TITLE, METER_SPACING_X, METER_WINDOW_TITLE } from '../../autor1';
 import * as fs from 'fs';
 import * as dbpr from '../../dbpr'
 
@@ -74,6 +74,64 @@ describe('Project with AP', () => {
             expect(groupRow.length).toBe(1);
             expect(groupRow[0].Type).toBe(dbpr.TargetTypes.GROUP)
         })
+    });
+
+    /**
+     * Addresses bug where meter were disappearing due to objects being passed as references
+     */
+    it('should correctly position meters', () => {
+        const controls = projectFile.getControlsByViewId(mainViewId).filter(control =>
+            control.Type === dbpr.ControlTypes.FRAME
+            && Math.round(control.PosX) >= 483
+            && Math.round(control.PosY) == 110
+        );
+
+        const { width: meterTempWidth, height: meterTempHeight } = templateFile.getTemplateWidthHeight('Group LR AP CPL2');
+
+        controls.forEach((control, index) => {
+            expect(Math.round(control.PosX)).toBe(483 + (index * METER_SPACING_X) + (index * meterTempWidth))
+        });
+    });
+
+    /**
+     * Addresses bug where mute controls were either not assigned, assigned to the same channel within a pair of controls or, were assigned to a parent or child of the neighbouring mute control
+     */
+    it('should correctly assign TargetId for mute controls', () => {
+        const muteControls = projectFile.getControlsByViewId(mainViewId).filter(control => (
+            control.Type === dbpr.ControlTypes.SWITCH
+            && control.TargetProperty === dbpr.TargetPropertyType.CONFIG_MUTE
+            && Math.round(control.PosY) === 446
+        ));
+
+        expect(muteControls.length).toBeTruthy();
+
+        const allGroups = projectFile.getAllGroups();
+
+        const discoveredMuteChannelTargetIDs: number[] = []
+        muteControls.forEach(control => {
+            expect(control.TargetId).toBeGreaterThan(1);
+            expect(discoveredMuteChannelTargetIDs.includes(control.TargetId)).toBeFalsy();
+
+            // Check that the neighbouring mute control is not a parent or child of the current mute control
+            if (discoveredMuteChannelTargetIDs.length) {
+                const thisGroup = allGroups.find((group) => group.GroupId === control.TargetId);
+                const lastGroupId = discoveredMuteChannelTargetIDs[discoveredMuteChannelTargetIDs.length - 1];
+
+                expect(thisGroup).toBeTruthy();
+                expect(thisGroup!.ParentId).not.toEqual(lastGroupId)
+
+                if (discoveredMuteChannelTargetIDs.length > 1) {
+
+                    const lastGroup = allGroups.find((group) => group.GroupId === lastGroupId);
+
+                    expect(lastGroupId).toBeTruthy();
+
+                    expect(lastGroup!.ParentId).not.toEqual(control.TargetId)
+                }
+            }
+
+            discoveredMuteChannelTargetIDs.push(control.TargetId);
+        });
     });
 
     it('should correctly assign TargetChannel value digital sync display for groups', () => {
@@ -206,6 +264,20 @@ describe('Project with AP', () => {
         const templateTitle = templateFile.db.prepare(`SELECT * FROM Controls WHERE DisplayName = ? and Type = ?`).get('Auto - Main', dbpr.ControlTypes.TEXT) as dbpr.Control;
 
         expect(projectTitle.Font).toBe(templateTitle.Font);
+    })
+
+    /**
+     * Addresses bug where relative delay controls were not being set correctly
+     */
+    it('should correctly set relative delay controls', () => {
+        const overviewView = projectFile.getAllViews().find(view => view.Name === 'Overview')
+
+        const regularRelDelayControls = projectFile.db.prepare(`
+        SELECT * FROM Controls WHERE ViewId != ${mainViewId} AND ViewId != ${overviewView?.ViewId} AND DisplayName = ? AND TargetProperty = ?`).all('rel. Delay', dbpr.TargetPropertyDigitalChannel.CHANNEL_STATUS_MS_DELAY) as dbpr.Control[];
+
+        const mainViewRelDelayControls = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND TargetProperty = ? AND Flags = ?`).all(dbpr.TargetPropertyDigitalChannel.CHANNEL_STATUS_MS_DELAY, dbpr.ControlFlags.RELATIVE) as dbpr.Control[];
+
+        expect(mainViewRelDelayControls.length).toBe(regularRelDelayControls.length)
     })
 });
 
