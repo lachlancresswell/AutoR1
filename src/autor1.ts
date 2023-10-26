@@ -1250,23 +1250,35 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const controls: AutoR1Control[] = [];
 
+        let meterChannelIndex = 0;
         let muteChannelIndex = 0;
         template.controls.forEach((control) => {
             // Handle mono ChannelGroup
-            const meterChannel = channelGroup.leftGroup ? channelGroup.leftGroup.channels[0].TargetChannel : channelGroup.channels[0].TargetChannel;
-
-            // Handle mono ChannelGroup
-            let muteChannel = channelGroup.groupId;
+            let meterChannelGroup = channelGroup;
             if (channelGroup.leftGroup && muteChannelIndex === 0) {
-                muteChannel = channelGroup.leftGroup.groupId
-            } else if (channelGroup.rightGroup && muteChannelIndex === 1) {
-                muteChannel = channelGroup.rightGroup.groupId;
+                meterChannelGroup = channelGroup.leftGroup;
+            } else if (channelGroup.rightGroup && meterChannelIndex === 1) {
+                meterChannelGroup = channelGroup.rightGroup;
             }
 
-            control.configureForMainView(commonJoinedId, meterChannel, muteChannel, sourceGroup, channelGroup, posX, posY, mainViewId);
+            const meterTarget = {
+                TargetId: meterChannelGroup.channels[0].TargetId,
+                TargetChannel: meterChannelGroup.channels[0].TargetChannel
+            };
+
+            let muteGroup = channelGroup.groupId;
+            if (channelGroup.leftGroup && muteChannelIndex === 0) {
+                muteGroup = channelGroup.leftGroup.groupId
+            } else if (channelGroup.rightGroup && muteChannelIndex === 1) {
+                muteGroup = channelGroup.rightGroup.groupId;
+            }
+
+            const meterChannelCallback = () => meterChannelIndex += 1;
+            const muteChannelCallback = () => muteChannelIndex += 1;
+
+            control.configureForMainView(commonJoinedId, meterTarget, muteGroup, sourceGroup, channelGroup, posX, posY, mainViewId, meterChannelCallback, muteChannelCallback);
 
             if (control.isTypeSwitch() && control.TargetProperty === dbpr.TargetPropertyType.CONFIG_MUTE) {
-                muteChannelIndex += 1;
             }
 
             controls.push(control);
@@ -1281,8 +1293,6 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         this.sourceGroups.forEach((sourceGroup, srcGrpIndex) => {
             sourceGroup.channelGroups.forEach((channelGroup, chGrpIndex) => {
-                const initialPosX = posX;
-                const initialPosY = posY;
                 const commonJoinedId = this.getHighestJoinedID() + 1;
 
                 if (channelGroup.isLorR()) {  // TOP or SUB L/R/C Group
@@ -1808,7 +1818,10 @@ export class AutoR1Control implements ControlBuilder {
         return this.TargetProperty === dbpr.TargetPropertyType.CONFIG_LEVEL;
     }
 
-    public configureForMainView(joinedId: number, MeterChannel: number, muteTargetId: number, sourceGroup: SourceGroup, channelGroup: ChannelGroup, posX: number, posY: number, viewId: number) {
+    public configureForMainView(joinedId: number, MeterChannel: {
+        TargetId: number,
+        TargetChannel: number
+    }, muteTargetId: number, sourceGroup: SourceGroup, channelGroup: ChannelGroup, posX: number, posY: number, viewId: number, meterChannelCallback?: () => void, muteChannelCallback?: () => void) {
         this.setJoinedId(joinedId);
         this.setTargetId(channelGroup.groupId);
 
@@ -1819,11 +1832,16 @@ export class AutoR1Control implements ControlBuilder {
 
         // Meters, these require a TargetChannel
         if (this.isTypeMeter()) {
-            this.setTargetChannel(MeterChannel);
+            this.setTargetId(MeterChannel.TargetId);
+            this.setTargetChannel(MeterChannel.TargetChannel);
+
+            if (meterChannelCallback) meterChannelCallback();
         } else if (this.isTypeSwitch()) {
             if (this.TargetProperty === dbpr.TargetPropertyType.CONFIG_MUTE) {
                 // Mute
                 this.setTargetId(muteTargetId);
+
+                if (muteChannelCallback) muteChannelCallback();
             }
 
             if (this.isViewEQButton()) {

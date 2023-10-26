@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { AutoR1ProjectFile, AutoR1TemplateFile, MAIN_WINDOW_TITLE, METER_SPACING_X, METER_WINDOW_TITLE } from '../../autor1';
 import * as fs from 'fs';
 import * as dbpr from '../../dbpr'
@@ -30,11 +31,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    fs.unlinkSync(PROJECT_NO_INIT);
-    fs.unlinkSync(PROJECT_INIT);
-    fs.unlinkSync(PROJECT_INIT_AP);
-    fs.unlinkSync(PROJECT_SUB_ARRAY);
-    fs.unlinkSync(TEMPLATES);
+    //fs.unlinkSync(PROJECT_NO_INIT);
+    //fs.unlinkSync(PROJECT_INIT);
+    //fs.unlinkSync(PROJECT_INIT_AP);
+    //fs.unlinkSync(PROJECT_SUB_ARRAY);
+    //fs.unlinkSync(TEMPLATES);
 });
 
 
@@ -134,6 +135,32 @@ describe('Project with AP', () => {
         });
     });
 
+    it('should correctly assign TargetId for meter controls', () => {
+        const meterControls = projectFile.getControlsByViewId(mainViewId).filter(control => (
+            control.Type === dbpr.ControlTypes.METER
+            && control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_GAIN_REDUCTION_HEADROOM
+            && Math.round(control.PosY) === 149
+        ));
+
+        expect(meterControls.length).toBeTruthy();
+
+        const discoveredMeterChannelTargetIDs: {
+            TargetId: number, TargetChannel: number
+        }[] = []
+        meterControls.forEach(control => {
+            expect(control.TargetId).toBeGreaterThan(0);
+            expect(control.TargetChannel).toBeGreaterThan(0);
+            expect(discoveredMeterChannelTargetIDs.includes({
+                TargetId: control.TargetId, TargetChannel: control.TargetChannel
+            })).toBeFalsy();
+
+
+            discoveredMeterChannelTargetIDs.push({
+                TargetId: control.TargetId, TargetChannel: control.TargetChannel
+            });
+        });
+    });
+
     it('should correctly assign TargetChannel value digital sync display for groups', () => {
         const digitalSyncControl = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${meterViewId} AND TargetProperty = '${dbpr.TargetPropertyType.INPUT_DIGITAL_SYNC}' AND TargetType = ${dbpr.TargetTypes.GROUP}`).all() as dbpr.Control[];
 
@@ -204,9 +231,12 @@ describe('Project with AP', () => {
     });
 
     it('should correctly skip CPL controls for sources which it is not available for', () => {
-        const cplSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'CPL' AND Type = ${dbpr.ControlTypes.DIGITAL}`).all() as dbpr.Control[];
-        expect(cplSwitches.length).toBe(6)
-        cplSwitches.forEach(cplSwitch => {
+        const overviewView = projectFile.getAllViews().find(view => view.Name === 'Overview')
+        const regularCplSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId != ${mainViewId} AND ViewId != ${overviewView?.ViewId} AND DisplayName = 'CPL' AND Type = ${dbpr.ControlTypes.DIGITAL}`).all() as dbpr.Control[];
+
+        const mainViewCplSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'CPL' AND Type = ${dbpr.ControlTypes.DIGITAL}`).all() as dbpr.Control[];
+        expect(mainViewCplSwitches.length).toBe(regularCplSwitches.length)
+        mainViewCplSwitches.forEach(cplSwitch => {
             expect(cplSwitch.TargetType).toBe(dbpr.TargetTypes.GROUP);
             expect(cplSwitch.TargetChannel).toBe(dbpr.TargetChannels.NONE);
             expect(cplSwitch.TargetId).toBeTruthy();
@@ -249,7 +279,7 @@ describe('Project with AP', () => {
     it('should not insert View EQ switch for an additional amp device', () => {
         const viewEqSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'View EQ' AND Type = ${dbpr.ControlTypes.SWITCH}`).all() as dbpr.Control[];
         // const nonAdditionalDeviceSources = projectFile.db.prepare(`SELECT * FROM Views WHERE Name LIKE '%EQ%'`).all();
-        expect(viewEqSwitches.length).toBe(13)
+        expect(viewEqSwitches.length).toBe(14)
         //TODO: Sub controls on main page are not created for mixed sub/top arrays so the above value cannot be calculated properly currently
     })
 
