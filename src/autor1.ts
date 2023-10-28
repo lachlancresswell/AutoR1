@@ -403,12 +403,12 @@ export class SourceGroup implements dbpr.SourceGroup {
 
     //TODO
     public hasSUBs() {
-        return this.channelGroups.find((chGrp) => chGrp.isSUBs());
+        return !!this.channelGroups.find((chGrp) => chGrp.isSUBs());
     }
 
     //TODO
     public hasTOPs() {
-        return this.channelGroups.find((chGrp) => chGrp.isTOPs());
+        return !!this.channelGroups.find((chGrp) => chGrp.isTOPs());
     }
 
     public hasLoadMatch() {
