@@ -233,7 +233,7 @@ export class ChannelGroup implements ChannelGroupInterface {
     }
 }
 
-interface AutoR1SourceGroup extends dbpr.SourceGroup {
+export interface AutoR1SourceGroup extends dbpr.SourceGroup {
     ArraySightIdR: number;
     MainGroupId: number;
     MainGroupName: string;
