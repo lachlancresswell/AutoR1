@@ -297,12 +297,17 @@ export class SourceGroup implements dbpr.SourceGroup {
     constructor(row: AutoR1SourceGroup) {
         this.ViewId = row.ViewId;
         this.Name = row.Name;
+        this.OrderIndex = row.OrderIndex;
         this.SourceGroupId = row.SourceGroupId;
         this.NextSourceGroupId = row.NextSourceGroupId;
         this.Type = row.Type;
         this.ArrayProcessingEnable = row.ArrayProcessingEnable;
         this.ArraySightId = row.ArraySightId;
         this.ArraySightIdR = row.ArraySightIdR;
+        this.LinkMode = row.LinkMode;
+        this.Symmetric = row.Symmetric;
+        this.Mounting = row.Mounting;
+        this.RelativeDelay = row.RelativeDelay;
         this.System = row.System;
         this.xover = row.xover || 'CUT';
 
