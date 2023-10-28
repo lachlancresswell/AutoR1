@@ -503,42 +503,27 @@ describe('ChannelGroup', () => {
 describe('SourceGroup', () => {
     let sourceGroup: SourceGroup;
     let channelGroup: ChannelGroup;
+    const defaultRow: any = {
+        SourceGroupId: 1,
+        Type: DBPR.SourceGroupTypes.ARRAY,
+        Name: 'test',
+        OrderIndex: 1,
+        RemarkableChangeDate: 0,
+        NextSourceGroupId: 0,
+        ArrayProcessingEnable: DBPR.ArrayProcessingFlag.DISABLED,
+        ArraySightId: 0,
+        ArraySightIdR: 0,
+        LinkMode: 0,
+        Symmetric: DBPR.SymmetricFlag.ENABLED,
+        Mounting: DBPR.MountingFlag.FLOWN,
+        RelativeDelay: null,
+        System: '',
+        ViewId: 0,
+        xover: null,
+    };
 
     beforeEach(() => {
-        sourceGroup = new SourceGroup({
-            SourceGroupId: 1,
-            Type: DBPR.SourceGroupTypes.ARRAY,
-            Name: 'test',
-            OrderIndex: 1,
-            RemarkableChangeDate: 0,
-            NextSourceGroupId: 0,
-            ArrayProcessingEnable: DBPR.ArrayProcessingFlag.DISABLED,
-            ArraySightId: 0,
-            ArraySightIdR: 0,
-            LinkMode: 0,
-            Symmetric: DBPR.SymmetricFlag.ENABLED,
-            Mounting: DBPR.MountingFlag.FLOWN,
-            RelativeDelay: null,
-            System: '',
-            ViewId: 0,
-            xover: 'CUT',
-            MainGroupId: -1,
-            MainGroupName: '',
-            SubGroupId: -1,
-            SubGroupName: '',
-            SubCGroupId: -1,
-            SubCGroupName: '',
-            SubLeftGroupId: -1,
-            SubLeftGroupName: '',
-            SubRightGroupId: -1,
-            SubRightGroupName: '',
-            TopGroupId: -1,
-            TopGroupName: '',
-            TopLeftGroupId: -1,
-            TopLeftGroupName: '',
-            TopRightGroupId: -1,
-            TopRightGroupName: '',
-        });
+        sourceGroup = new SourceGroup(defaultRow);
 
         channelGroup = new ChannelGroup({
             groupId: 1,
@@ -547,6 +532,144 @@ describe('SourceGroup', () => {
             channels: []
         });
     })
+
+    describe('constructor', () => {
+        it('should assign common properties', () => {
+            const newSourceGroup = new SourceGroup(defaultRow);
+
+            expect(newSourceGroup.SourceGroupId).toBe(defaultRow.SourceGroupId);
+            expect(newSourceGroup.Type).toBe(defaultRow.Type);
+            expect(newSourceGroup.Name).toBe(defaultRow.Name);
+            expect(newSourceGroup.OrderIndex).toBe(defaultRow.OrderIndex);
+            expect(newSourceGroup.NextSourceGroupId).toBe(defaultRow.NextSourceGroupId);
+            expect(newSourceGroup.ArrayProcessingEnable).toBe(defaultRow.ArrayProcessingEnable);
+            expect(newSourceGroup.ArraySightId).toBe(defaultRow.ArraySightId);
+            expect(newSourceGroup.ArraySightIdR).toBe(defaultRow.ArraySightIdR);
+            expect(newSourceGroup.LinkMode).toBe(defaultRow.LinkMode);
+            expect(newSourceGroup.Symmetric).toBe(defaultRow.Symmetric);
+            expect(newSourceGroup.Mounting).toBe(defaultRow.Mounting);
+            expect(newSourceGroup.RelativeDelay).toBe(defaultRow.RelativeDelay);
+            expect(newSourceGroup.System).toBe(defaultRow.System);
+            expect(newSourceGroup.ViewId).toBe(defaultRow.ViewId);
+            expect(newSourceGroup.xover).toBe("CUT");
+        });
+
+        it('should assign Top Group properties', () => {
+            const row = { ...defaultRow }
+            const index = 0;
+
+            row.TopGroupId = 101
+            row.TopGroupName = 'TopGroupName'
+            const newSourceGroup = new SourceGroup(row);
+
+            expect(newSourceGroup.channelGroups[index].name).toBe(row.TopGroupName);
+            expect(newSourceGroup.channelGroups[index].groupId).toBe(row.TopGroupId);
+        });
+
+        it('should assign Top Left properties', () => {
+            const row = { ...defaultRow }
+            const parentIndex = 0;
+            const index = 1;
+
+            row.TopGroupId = 101
+            row.TopGroupName = 'TopGroupName'
+            row.TopLeftGroupId = 103
+            row.TopLeftGroupName = 'TopLeftGroupName'
+            const newSourceGroup = new SourceGroup(row);
+
+            expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.name).toBe(row.TopLeftGroupName);
+            expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.groupId).toBe(row.TopLeftGroupId);
+
+            expect(newSourceGroup.channelGroups[index].name).toBe(row.TopLeftGroupName);
+            expect(newSourceGroup.channelGroups[index].groupId).toBe(row.TopLeftGroupId);
+        });
+
+        it('should assign Top Group Right properties', () => {
+            const row = { ...defaultRow }
+            const parentIndex = 0;
+            const index = 2;
+
+            row.TopGroupId = 101
+            row.TopGroupName = 'TopGroupName'
+            row.TopCGroupId = 102
+            row.TopCGroupName = 'TopCGroupName'
+            row.TopLeftGroupId = 103
+            row.TopLeftGroupName = 'TopLeftGroupName'
+            row.TopRightGroupId = 104
+            row.TopRightGroupName = 'TopRightGroupName'
+            const newSourceGroup = new SourceGroup(row);
+
+            expect(newSourceGroup.channelGroups[parentIndex].rightGroup?.name).toBe(row.TopRightGroupName);
+            expect(newSourceGroup.channelGroups[parentIndex].rightGroup?.groupId).toBe(row.TopRightGroupId);
+
+            expect(newSourceGroup.channelGroups[index].name).toBe(row.TopRightGroupName);
+            expect(newSourceGroup.channelGroups[index].groupId).toBe(row.TopRightGroupId);
+        });
+
+        it('should assign Sub Group properties', () => {
+            const row = { ...defaultRow }
+            const index = 0;
+
+            row.SubGroupId = 101
+            row.SubGroupName = 'SubGroupName'
+            const newSourceGroup = new SourceGroup(row);
+
+            expect(newSourceGroup.channelGroups[index].name).toBe(row.SubGroupName);
+            expect(newSourceGroup.channelGroups[index].groupId).toBe(row.SubGroupId);
+        });
+
+        it('should assign Sub Group Left properties', () => {
+            const row = { ...defaultRow }
+            const parentIndex = 0;
+            const index = 1;
+
+            row.SubGroupId = 101
+            row.SubGroupName = 'SubGroupName'
+            row.SubCGroupId = 102
+            row.SubCGroupName = 'SubCGroupName'
+            row.SubLeftGroupId = 103
+            row.SubLeftGroupName = 'SubLeftGroupName'
+            const newSourceGroup = new SourceGroup(row);
+
+            expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.name).toBe(row.SubLeftGroupName);
+            expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.groupId).toBe(row.SubLeftGroupId);
+
+            expect(newSourceGroup.channelGroups[index].name).toBe(row.SubLeftGroupName);
+            expect(newSourceGroup.channelGroups[index].groupId).toBe(row.SubLeftGroupId);
+        });
+
+        it('should assign Sub Group Right properties', () => {
+            const row = { ...defaultRow }
+            const parentIndex = 0;
+            const index = 2;
+
+            row.SubGroupId = 101
+            row.SubGroupName = 'SubGroupName'
+            row.SubLeftGroupId = 103
+            row.SubLeftGroupName = 'SubLeftGroupName'
+            row.SubRightGroupId = 104
+            row.SubRightGroupName = 'SubRightGroupName'
+            const newSourceGroup = new SourceGroup(row);
+
+            expect(newSourceGroup.channelGroups[parentIndex].rightGroup?.name).toBe(row.SubRightGroupName);
+            expect(newSourceGroup.channelGroups[parentIndex].rightGroup?.groupId).toBe(row.SubRightGroupId);
+
+            expect(newSourceGroup.channelGroups[index].name).toBe(row.SubRightGroupName);
+            expect(newSourceGroup.channelGroups[index].groupId).toBe(row.SubRightGroupId);
+        });
+
+        it('should assign Point Source properties', () => {
+            const row = { ...defaultRow }
+            const index = 0;
+
+            row.MainGroupId = 100
+            row.MainGroupName = 'MainGroupName'
+            const newSourceGroup = new SourceGroup(row);
+
+            expect(newSourceGroup.channelGroups[index].name).toBe(row.MainGroupName);
+            expect(newSourceGroup.channelGroups[index].groupId).toBe(row.MainGroupId);
+        });
+    });
 
     describe('isStereo', () => {
         it('should return true if the group has at least 3 channel groups', () => {
@@ -588,6 +711,34 @@ describe('SourceGroup', () => {
         it('should return false if the System is not GSL, KSL, or XSL', () => {
             sourceGroup.System = 'mixed';
             expect(sourceGroup.hasCPLv2()).toBe(false);
+        });
+    });
+
+    describe('hasSUBs', () => {
+        it('should return true if the System is has any SUB sources', () => {
+            sourceGroup.channelGroups.push(channelGroup)
+            sourceGroup.channelGroups[0].type = 'TYPE_SUBS'
+            expect(sourceGroup.hasSUBs()).toBe(true);
+        });
+
+        it('should return false if the System does not have any SUB sources', () => {
+            sourceGroup.channelGroups.push(channelGroup)
+            sourceGroup.channelGroups[0].type = 'TYPE_POINT_TOPS'
+            expect(sourceGroup.hasSUBs()).toBe(false);
+        });
+    });
+
+    describe('haTOPs', () => {
+        it('should return true if the System is has any TOP sources', () => {
+            sourceGroup.channelGroups.push(channelGroup)
+            sourceGroup.channelGroups[0].type = 'TYPE_POINT_TOPS'
+            expect(sourceGroup.hasTOPs()).toBe(true);
+        });
+
+        it('should return false if the System does not have any TOP sources', () => {
+            sourceGroup.channelGroups.push(channelGroup)
+            sourceGroup.channelGroups[0].type = 'TYPE_SUBS'
+            expect(sourceGroup.hasTOPs()).toBe(false);
         });
     });
 
