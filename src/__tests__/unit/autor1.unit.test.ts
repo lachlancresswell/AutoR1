@@ -1,5 +1,47 @@
-import { ChannelGroup, SourceGroup, AutoR1Control, AutoR1Template } from '../../autor1';
+/* eslint-disable */
+import { ChannelGroup, SourceGroup, AutoR1Control, AutoR1Template, AutoR1TemplateFile } from '../../autor1';
 import * as DBPR from '../../dbpr';
+import { existsSync } from 'fs';
+import * as Database from 'better-sqlite3';
+
+jest.mock('fs');
+jest.mock('better-sqlite3');
+
+const CONTROL = {
+    ControlId: 1,
+    Type: DBPR.ControlTypes.METER,
+    PosX: 1,
+    PosY: 1,
+    Width: 1,
+    Height: 1,
+    ViewId: 1,
+    DisplayName: null,
+    UniqueName: null,
+    JoinedId: 1,
+    LimitMin: 1,
+    LimitMax: 1,
+    MainColor: 1,
+    SubColor: 1,
+    LabelColor: 1,
+    LabelFont: 1,
+    LabelAlignment: 1,
+    LineThickness: 1,
+    ThresholdValue: 1,
+    Flags: 1,
+    ActionType: 1,
+    TargetType: DBPR.TargetTypes.CHANNEL,
+    TargetId: 1,
+    TargetChannel: DBPR.TargetChannels.CHANNEL_A,
+    TargetProperty: null,
+    TargetRecord: 1,
+    ConfirmOnMsg: null,
+    ConfirmOffMsg: null,
+    PictureIdDay: 1,
+    PictureIdNight: 1,
+    Font: 'string',
+    Alignment: 1,
+    Dimension: null
+}
 
 describe('ChannelGroup', () => {
     describe('isLorR', () => {
@@ -643,7 +685,7 @@ describe('configureMainViewMeterTemplate', () => {
             channels: []
         });
 
-        control = new AutoR1Control();
+        control = new AutoR1Control(CONTROL);
     })
 
     it('should set JoinedId and TargetID by default', () => {
@@ -655,7 +697,7 @@ describe('configureMainViewMeterTemplate', () => {
 
         // Assert
         expect(control.JoinedId).toBe(joinedId);
-        expect(control.TargetId).toBe(channelGroup.groupId);
+        expect(control.TargetId).toBe(TargetId);
     });
 
     it('should update the DisplayName if control is a CUT button', () => {
@@ -724,7 +766,7 @@ describe('configureMainViewMeterTemplate', () => {
 
 
 describe('AutoR1Template', () => {
-    const control = new AutoR1Control();
+    const control = new AutoR1Control(CONTROL);
     const section: DBPR.Section = {
         Id: 1,
         Name: 'testsection',
@@ -791,10 +833,79 @@ describe('AutoR1Template', () => {
         };
 
         const controls = [
-            new AutoR1Control(),
-            new AutoR1Control(),
-            new AutoR1Control(),
-            new AutoR1Control(),
+            new AutoR1Control(CONTROL),
+            new AutoR1Control(CONTROL),
+            new AutoR1Control(CONTROL),
+            new AutoR1Control(CONTROL),
         ]
+    });
+});
+
+describe('AutoR1TemplateFile', () => {
+    let databaseObject: any;
+    let prepare: jest.Mock;
+    let templates: any[] | undefined;
+
+    beforeEach(() => {
+        jest.resetAllMocks();
+
+        (existsSync as jest.Mock).mockReturnValue(true);
+        prepare = jest.fn(() => {
+            return {
+                get: jest.fn(() => databaseObject),
+                all: jest.fn(() => databaseObject),
+                run: jest.fn()
+            }
+        });
+
+        (Database as any).mockImplementationOnce(() => {
+            return {
+                prepare: jest.fn().mockImplementation(() => {
+                    return {
+                        all: jest.fn().mockReturnValue(templates),
+                        get: jest.fn().mockReturnValue(templates)
+                    }
+                })
+            }
+        })
+    });
+
+
+    describe('constructor', () => {
+        it('should create a new AutoR1TemplateFile and not throw', () => {
+            templates = [{}, {}, {}];
+            expect(() => new AutoR1TemplateFile('/path')).not.toThrow();
+        });
+
+        it('it should load the discovered templates', () => {
+            templates = [{}, {}, {}];
+            const templateFile = new AutoR1TemplateFile('/path');
+            expect(templateFile.templates.length).toBeGreaterThan(0);
+            expect(templateFile.templates.length).toBe(templates.length);
+        })
+
+        it('it should throw if template is not found', () => {
+            templates = [{}];
+            const templateFile = new AutoR1TemplateFile('/path');
+            expect(() => templateFile.getTemplateByName('test')).toThrow();
+        })
+
+        it('it should load the provided section', () => {
+            const section: DBPR.Section = {
+                Id: 1,
+                Name: 'testsection',
+                ParentId: 2,
+                JoinedId: 3,
+                Description: 'description',
+            }
+
+            templates = [section];
+            const templateFile = new AutoR1TemplateFile('/path');
+            let template;
+            expect(() => template = templateFile.getTemplateByName('testsection')).not.toThrow();
+            expect(template.id).toBe(templates[0].Id);
+            expect(template.joinedId).toBe(templates[0].JoinedId);
+            expect(template.name).toBe(templates[0].Name);
+        })
     });
 });

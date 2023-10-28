@@ -314,34 +314,38 @@ describe('ProjectFile', () => {
 
 describe('TemplateFile', () => {
     let databaseObject: any;
-    let prepare: jest.Mock;
-    const GroupId = 1;
-    const Name = 'test';
-    const ViewId = 1;
+    let templates: { JoinedId: number; }[] | undefined;
 
     beforeEach(() => {
         jest.resetAllMocks();
 
         (existsSync as jest.Mock).mockReturnValue(true);
-        prepare = jest.fn(() => {
-            return {
-                get: jest.fn(() => databaseObject),
-                all: jest.fn(() => databaseObject),
-                run: jest.fn()
-            }
-        });
 
         (Database as any).mockImplementationOnce(() => {
             return {
-                prepare
+                prepare: jest.fn().mockImplementation(() => {
+                    return {
+                        all: jest.fn().mockReturnValue(templates),
+                        get: jest.fn().mockReturnValue(templates)
+                    }
+                })
             }
         })
     });
 
+
     describe('constructor', () => {
-        it('should throw if the file does not exist', () => {
-            (existsSync as jest.Mock).mockReturnValue(true);
-            databaseObject = undefined;
+        it('should log the number of templates found in the file', () => {
+            templates = [{ JoinedId: 1 }, { JoinedId: 2 }, { JoinedId: 3 }];
+            const logSpy = jest.spyOn(console, 'log').mockImplementation();
+            new TemplateFile('test.db')
+            expect(logSpy).toHaveBeenCalledWith('Found 3 templates in file.');
+            logSpy.mockRestore();
+        });
+
+        it('should throw an error if no templates are found in the file', () => {
+            templates = undefined;
+            jest.spyOn(console, 'log').mockImplementation();
             expect(() => new TemplateFile('test.db')).toThrowError('Could not find any templates in file.');
         });
     });
@@ -349,6 +353,7 @@ describe('TemplateFile', () => {
     describe('getTemplateControlsByName', () => {
         it('should return an array of controls for a valid template name', () => {
             databaseObject = [{ ControlId: 1 }];
+            templates = [{ JoinedId: 1 }, { JoinedId: 2 }, { JoinedId: 3 }];
             const templateFile = new TemplateFile('path/to/template.dbpr');
             const controls = templateFile.getTemplateControlsByName('MyTemplate');
             expect(Array.isArray(controls)).toBe(true);
@@ -357,8 +362,10 @@ describe('TemplateFile', () => {
 
         it('should throw an error for an invalid template name', () => {
             databaseObject = [{ ControlId: 1 }];
+            templates = [{ JoinedId: 1 }, { JoinedId: 2 }, { JoinedId: 3 }];
             const templateFile = new TemplateFile('path/to/template.dbpr');
             databaseObject = undefined;
+            templates = undefined;
             expect(() => templateFile.getTemplateControlsByName('InvalidTemplate')).toThrowError('Template InvalidTemplate not found.');
         });
     });
