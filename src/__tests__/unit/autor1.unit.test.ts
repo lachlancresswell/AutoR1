@@ -1021,6 +1021,47 @@ describe('AutoR1ProjectFile', () => {
                             channels: [
                                 { Name: 'Channel 3' },
                             ],
+                            removeFromMute: true,
+                        },
+                        {
+                            channels: [
+                                { Name: 'Channel 4' },
+                            ],
+                            removeFromMute: false,
+                        },
+                    ],
+                },
+            ];
+
+            // Act
+            prepare.mockClear();
+            projectFile.createMainMuteGroup();
+
+            // Assert
+            // 3 times for group creation, once for each channel
+            expect(prepare).toHaveBeenCalledTimes(6);
+        });
+    });
+
+    describe('createMainFallbackGroup', () => {
+        it('should create a main fallback group with the correct channels', () => {
+            // Arrange
+            databaseObject = [];
+            const projectFile: any = new AutoR1ProjectFile('/path');
+
+            projectFile.sourceGroups = [
+                {
+                    channelGroups: [
+                        {
+                            channels: [
+                                { Name: 'Channel 1' },
+                                { Name: 'Channel 2' },
+                            ],
+                        },
+                        {
+                            channels: [
+                                { Name: 'Channel 3' },
+                            ],
                             removeFromFallback: true,
                         },
                         {
@@ -1035,7 +1076,7 @@ describe('AutoR1ProjectFile', () => {
 
             // Act
             prepare.mockClear();
-            projectFile.createMainMuteGroup();
+            projectFile.createMainFallbackGroup();
 
             // Assert
             // 3 times for group creation, once for each channel
