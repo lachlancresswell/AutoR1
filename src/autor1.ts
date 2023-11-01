@@ -18,8 +18,8 @@ export const NAV_BUTTON_SPACING = 20;
 
 export const MAIN_GROUP_ID = 1;
 
-const FALLBACK_GROUP_TITLE = 'MAIN FALLBACK';
-const MUTE_GROUP_TITLE = 'MAIN MUTE';
+export const FALLBACK_GROUP_TITLE = 'MAIN FALLBACK';
+export const MUTE_GROUP_TITLE = 'MAIN MUTE';
 
 type ChannelGroupTypes = 'TYPE_SUBS_C' | 'TYPE_SUBS_R' | 'TYPE_SUBS_L' | 'TYPE_SUBS' | 'TYPE_TOPS_L' | 'TYPE_TOPS_R' | 'TYPE_TOPS' | 'TYPE_POINT_TOPS' | 'TYPE_POINT_SUBS' | 'TYPE_ADDITIONAL_AMPLIFIER';
 
@@ -683,11 +683,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         this.sourceGroups.forEach((srcGrp) => {
             srcGrp.channelGroups.forEach((chGrp) => {
-                chGrp.channels.forEach((ch) => {
-                    if (!chGrp.removeFromMute) {
+                if (!chGrp.removeFromMute) {
+                    chGrp.channels.forEach((ch) => {
                         insertStmt(ch);
-                    }
-                });
+                    });
+                }
             });
         });
     };
@@ -709,11 +709,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         this.sourceGroups.forEach((srcGrp) => {
             srcGrp.channelGroups.forEach((chGrp) => {
-                chGrp.channels.forEach((ch) => {
-                    if (!chGrp.removeFromFallback) {
+                if (!chGrp.removeFromFallback) {
+                    chGrp.channels.forEach((ch) => {
                         insertStmt(ch);
-                    }
-                });
+                    });
+                }
             });
         });
     };
@@ -1258,6 +1258,17 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             mainMainTemplateOptions
         )
         posX += templateFile.getTemplateWidthHeight("Main Main").width + (METER_SPACING_X / 2);
+
+        /**
+         * Configure the main mute switch
+         */
+        const muteGroup = this.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
+        if (muteGroup) {
+            const mainMute = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND Type = ${dbpr.ControlTypes.SWITCH} AND DisplayName = ?`).get('Mute') as dbpr.Control;
+            this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${mainMute.ControlId}`).run();
+            mainMute.TargetId = muteGroup.GroupId;
+            this.insertControl(mainMute);
+        }
 
         const apGroupId = (() => {
             try {

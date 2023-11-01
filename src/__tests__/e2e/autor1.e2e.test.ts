@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { AutoR1ProjectFile, AutoR1TemplateFile, MAIN_WINDOW_TITLE, METER_SPACING_X, METER_WINDOW_TITLE } from '../../autor1';
+import { AutoR1ProjectFile, AutoR1TemplateFile, FALLBACK_GROUP_TITLE, MAIN_WINDOW_TITLE, METER_SPACING_X, METER_WINDOW_TITLE, MUTE_GROUP_TITLE } from '../../autor1';
 import * as fs from 'fs';
 import * as dbpr from '../../dbpr'
 
@@ -36,6 +36,63 @@ afterEach(() => {
     //fs.unlinkSync(PROJECT_INIT_AP);
     //fs.unlinkSync(PROJECT_SUB_ARRAY);
     //fs.unlinkSync(TEMPLATES);
+});
+
+describe('createMainMuteGroup', () => {
+    let projectFile: AutoR1ProjectFile;
+    let templateFile: AutoR1TemplateFile;
+
+    afterEach(() => {
+        projectFile.close();
+    })
+
+    beforeEach(() => {
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP);
+        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        const parentId = projectFile.createGrp('Auto R1');
+        projectFile.createSubLRCGroups(parentId);
+        projectFile.getSrcGrpInfo();
+        projectFile.createMeterView(templateFile);
+    });
+
+    it('mute group should only exist after calling method', () => {
+        const muteGroup = projectFile.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
+
+        expect(muteGroup).toBeFalsy();
+    })
+
+    it('should create main mute group', () => {
+        projectFile.createMainMuteGroup();
+        const muteGroup = projectFile.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
+
+        expect(muteGroup).toBeTruthy();
+    })
+
+    it('should skip certain channel groups when creating main mute group', () => {
+        projectFile.sourceGroups[0].channelGroups[0].removeFromMute = true;
+        projectFile.createMainMuteGroup();
+        const muteGroup = projectFile.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
+
+        const channelsInGroup = projectFile.db.prepare(`SELECT * FROM Groups WHERE ParentId = ${muteGroup?.GroupId}`).all();
+
+        expect(muteGroup).toBeTruthy();
+        expect(channelsInGroup.length).toBe(159)
+    })
+
+    it('should assign button on the main page to the mute group', () => {
+        // Remove the primary channel group along with the sub group
+        projectFile.sourceGroups[0].channelGroups[0].removeFromMute = true;
+        projectFile.sourceGroups[0].channelGroups[1].removeFromMute = true;
+
+        projectFile.createMainMuteGroup();
+        projectFile.createMainView(templateFile);
+
+        const muteGroup = projectFile.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
+        const channelsInGroup = projectFile.db.prepare(`SELECT * FROM Groups WHERE ParentId = ${muteGroup?.GroupId}`).all();
+
+        expect(muteGroup).toBeTruthy();
+        expect(channelsInGroup.length).toBe(143)
+    })
 });
 
 
