@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { ChannelGroup, SourceGroup, AutoR1Control, AutoR1Template, AutoR1TemplateFile } from '../../autor1';
+import { ChannelGroup, SourceGroup, AutoR1Control, AutoR1Template, AutoR1TemplateFile, AutoR1ProjectFile, AutoR1SourceGroup } from '../../autor1';
 import * as DBPR from '../../dbpr';
 import { existsSync } from 'fs';
 import * as Database from 'better-sqlite3';
@@ -914,6 +914,135 @@ describe('configureMainViewMeterTemplate', () => {
         expect(control.TargetId).not.toBe(muteTargetId);
     });
 });
+
+describe('AutoR1ProjectFile', () => {
+    let databaseObject: any;
+    let prepare: jest.Mock;
+
+    beforeEach(() => {
+        jest.resetAllMocks();
+
+        (existsSync as jest.Mock).mockReturnValue(true);
+        prepare = jest.fn(() => {
+            return {
+                get: jest.fn(() => databaseObject),
+                all: jest.fn(() => databaseObject),
+                run: jest.fn()
+            }
+        });
+
+        (Database as any).mockImplementationOnce(() => {
+            return {
+                prepare,
+                exec: jest.fn()
+            }
+        })
+    });
+
+    describe('constructor', () => {
+        it('should throw if project file is not initialised', () => {
+            expect(() => new AutoR1ProjectFile('/path')).toThrow();
+        });
+
+        it('should not throw if project file is initialised', () => {
+            databaseObject = { GROUP_ID: 1 };
+            expect(() => new AutoR1ProjectFile('/path')).not.toThrow();
+        });
+    });
+
+    describe('getSrcGrpInfo', () => {
+        it('should throw if source group info is not found', () => {
+            databaseObject = [];
+            const projectFile = new AutoR1ProjectFile('/path');
+            expect(() => projectFile.getSrcGrpInfo()).toThrow();
+        })
+
+        it('should get source group info', () => {
+            const row: AutoR1SourceGroup = {
+                SourceGroupId: 1,
+                Type: DBPR.SourceGroupTypes.ADDITIONAL_AMPLIFIER,
+                Name: 'Name',
+                OrderIndex: 1,
+                RemarkableChangeDate: 1,
+                NextSourceGroupId: 1,
+                ArrayProcessingEnable: DBPR.ArrayProcessingFlag.DISABLED,
+                ArraySightId: 1,
+                LinkMode: 1,
+                Symmetric: DBPR.SymmetricFlag.DISABLED,
+                Mounting: DBPR.MountingFlag.FLOWN,
+                RelativeDelay: null,
+                ArraySightIdR: 1,
+                MainGroupId: 1,
+                MainGroupName: 'string',
+
+                SubGroupId: 1,
+                SubGroupName: 'string',
+                SubCGroupId: 1,
+                SubCGroupName: 'string',
+                SubLeftGroupId: 1,
+                SubLeftGroupName: 'string',
+                SubRightGroupId: 1,
+                SubRightGroupName: 'string',
+                System: 'string',
+                TopGroupId: 1,
+                TopGroupName: 'string',
+                TopLeftGroupId: 1,
+                TopLeftGroupName: 'string',
+                TopRightGroupId: 1,
+                TopRightGroupName: 'string',
+                ViewId: 1,
+                xover: null,
+            }
+            databaseObject = [row];
+
+            const projectFile = new AutoR1ProjectFile('/path');
+
+            expect(() => projectFile.getSrcGrpInfo()).not.toThrow();
+            expect(projectFile.sourceGroups.length).toBeGreaterThan(0);
+        })
+    });
+
+    describe('createMainMuteGroup', () => {
+        it('should create a main mute group with the correct channels', () => {
+            // Arrange
+            databaseObject = [];
+            const projectFile: any = new AutoR1ProjectFile('/path');
+
+            projectFile.sourceGroups = [
+                {
+                    channelGroups: [
+                        {
+                            channels: [
+                                { Name: 'Channel 1' },
+                                { Name: 'Channel 2' },
+                            ],
+                        },
+                        {
+                            channels: [
+                                { Name: 'Channel 3' },
+                            ],
+                            removeFromFallback: true,
+                        },
+                        {
+                            channels: [
+                                { Name: 'Channel 4' },
+                            ],
+                            removeFromFallback: false,
+                        },
+                    ],
+                },
+            ];
+
+            // Act
+            prepare.mockClear();
+            projectFile.createMainMuteGroup();
+
+            // Assert
+            // 3 times for group creation, once for each channel
+            expect(prepare).toHaveBeenCalledTimes(6);
+        });
+    });
+})
 
 
 describe('AutoR1Template', () => {

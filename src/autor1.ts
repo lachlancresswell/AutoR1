@@ -18,6 +18,8 @@ export const NAV_BUTTON_SPACING = 20;
 
 export const MAIN_GROUP_ID = 1;
 
+const FALLBACK_GROUP_TITLE = 'MAIN FALLBACK';
+
 type ChannelGroupTypes = 'TYPE_SUBS_C' | 'TYPE_SUBS_R' | 'TYPE_SUBS_L' | 'TYPE_SUBS' | 'TYPE_TOPS_L' | 'TYPE_TOPS_R' | 'TYPE_TOPS' | 'TYPE_POINT_TOPS' | 'TYPE_POINT_SUBS' | 'TYPE_ADDITIONAL_AMPLIFIER';
 
 interface TemplateOptions {
@@ -55,8 +57,8 @@ export class ChannelGroup implements ChannelGroupInterface {
     leftGroup?: ChannelGroup;
     rightGroup?: ChannelGroup;
     centreGroup?: ChannelGroup;
-    removeFromMute?: boolean;
-    removeFromFallback?: boolean;
+    removeFromMute = false;
+    removeFromFallback = false;
 
     constructor(options: ChannelGroupInterface) {
         this.groupId = options.groupId;
@@ -564,6 +566,10 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         let rtn = stmt.all() as AutoR1SourceGroup[];
 
+        if (!rtn || !rtn.length) {
+            throw ('Could not find any source groups');
+        }
+
         for (let row of rtn) {
             this.sourceGroups.push(new SourceGroup(row));
         }
@@ -659,9 +665,31 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
     }
 
-    // TODO: Create AutoR1 main group which can have sources excluded
-    public createMainMuteGroup() {
-    }
+    /**
+     * Creates a new group and inserts all channels except those with the removeFromFallback flag set
+     * @param parentGroupId Group id to create the group under
+     * 
+     * @example
+     * const p = new ProjectFile(PROJECT_INIT)
+     * p.createMainGroup()
+     */
+    public createMainMuteGroup(parentGroupId = MAIN_GROUP_ID): void {
+        const mainGroup = this.createGrp(FALLBACK_GROUP_TITLE, parentGroupId);
+
+        const insertStmt = (ch: Channel) => this.db.prepare(
+            'INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) SELECT ?, ?, ?, ?, 1, 0'
+        ).run(ch.Name, mainGroup, ch.TargetId, ch.TargetChannel);
+
+        this.sourceGroups.forEach((srcGrp) => {
+            srcGrp.channelGroups.forEach((chGrp) => {
+                chGrp.channels.forEach((ch) => {
+                    if (!chGrp.removeFromFallback) {
+                        insertStmt(ch);
+                    }
+                });
+            });
+        });
+    };
 
     /**
     * Cleans the R1 project by deleting all custom views, their controls, and any custom groups.
