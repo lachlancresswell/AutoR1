@@ -719,6 +719,46 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     };
 
     /**
+     * Get the ID of the mute group
+     * @returns GroupId of mute group
+     * @throws Will throw an error if the mute group cannot be found.
+     * 
+     * @example
+     * const p = new ProjectFile('path/to/project.dbpr');
+     * const muteGroupId = p.getMainMuteGroupID();
+     * console.log(muteGroupId);
+     * // => 1
+     */
+    public getMuteGroupID(): number {
+        const stmt = this.db.prepare("SELECT GroupId FROM Groups WHERE Name = ?");
+        const rtn = stmt.get(MUTE_GROUP_TITLE) as { GroupId: number };
+        if (!rtn) {
+            throw new Error('Cannot find Mute group');
+        }
+        return rtn.GroupId;
+    }
+
+    /**
+     * Get the ID of the fallback group
+     * @returns GroupId of fallback group
+     * @throws Will throw an error if the fallback group cannot be found.
+     * 
+     * @example
+     * const p = new ProjectFile('path/to/project.dbpr');
+     * const fallbackGroupId = p.getMainFallbackGroupID();
+     * console.log(fallbackGroupId);
+     * // => 1
+     */
+    public getFallbackGroupID(): number {
+        const stmt = this.db.prepare("SELECT GroupId FROM Groups WHERE Name = ?");
+        const rtn = stmt.get(FALLBACK_GROUP_TITLE) as { GroupId: number };
+        if (!rtn) {
+            throw new Error('Cannot find Fallback group');
+        }
+        return rtn.GroupId;
+    }
+
+    /**
     * Cleans the R1 project by deleting all custom views, their controls, and any custom groups.
     * @param proj R1 project file
     * @param parentGroupId Group id of the parent custom group
