@@ -1223,6 +1223,10 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     }
 
     private createMainViewOverview(templateFile: AutoR1TemplateFile, posX: number, posY: number, mainViewId: number) {
+
+        const mainOverviewTemplate = templateFile.getTemplateWidthHeight("Main Overview");
+        const mainFallbackTemplate = templateFile.getTemplateWidthHeight("Main Fallback");
+
         const meterViewId = this.getMeterView().ViewId;
 
         const navButtonTemplateOptions: TemplateOptions = {
@@ -1251,13 +1255,30 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
 
         this.insertTemplate(
-            templateFile.getTemplateByName('Main Main'),
+            templateFile.getTemplateByName('Main Overview'),
             mainViewId,
             posX,
             posY,
             mainMainTemplateOptions
         )
-        posX += templateFile.getTemplateWidthHeight("Main Main").width + (METER_SPACING_X / 2);
+
+        this.insertTemplate(
+            templateFile.getTemplateByName('Main Fallback'),
+            mainViewId,
+            posX,
+            posY + mainOverviewTemplate.height + 10,
+            mainMainTemplateOptions
+        )
+
+        this.insertTemplate(
+            templateFile.getTemplateByName('Main DS10'),
+            mainViewId,
+            posX + mainFallbackTemplate.width + 10,
+            posY + mainOverviewTemplate.height + 10,
+            mainMainTemplateOptions
+        )
+
+        posX += mainOverviewTemplate.width + (METER_SPACING_X / 2);
 
         /**
          * Configure the main mute switch
@@ -1435,7 +1456,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      */
     public createMainView(templateFile: AutoR1TemplateFile) {
         // Get width + height of templates used
-        const { width: mainTempWidth, height: mainTempHeight } = templateFile.getTemplateWidthHeight('Main Main');
+        const { width: mainTempWidth, height: mainTempHeight } = templateFile.getTemplateWidthHeight('Main Overview');
+        const { width: mainFallbackWidth, height: mainFallbackHeight } = templateFile.getTemplateWidthHeight('Main Fallback');
         const { width: _mainTitleTempWidth, height: mainTitleTempHeight } = templateFile.getTemplateWidthHeight('Main Title');
         const { width: meterTempWidth, height: meterTempHeight } = templateFile.getTemplateWidthHeight('Group LR AP CPL2');
         const { width: arraySightTempWidth, height: arraySightTempHeight } = templateFile.getTemplateWidthHeight('Main ArraySight Frame');
@@ -1449,7 +1471,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             + METER_TEMP_BUFFER
         );
 
-        const VRes = mainTitleTempHeight + Math.max(meterTempHeight, mainTempHeight) + 60 + posY;
+        const VRes = mainTitleTempHeight + Math.max(meterTempHeight, mainTempHeight + mainFallbackHeight) + 60 + posY;
         this.db.prepare(
             `INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);`
         ).run(1000, MAIN_WINDOW_TITLE, null, 4, null, -1, HRes, VRes, 100, null, null, null, null);
