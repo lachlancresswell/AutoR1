@@ -83,24 +83,34 @@ describe('Mute Group', () => {
     })
 
     it('should assign button on the main page to the mute group', () => {
+        // Arrange
         // Remove the primary channel group along with the sub group
+        // Allows project to be openned in R1 and checked. First meter group should not mute.
         projectFile.sourceGroups[0].channelGroups[0].removeFromMute = true;
         projectFile.sourceGroups[0].channelGroups[1].removeFromMute = true;
 
+        // Act
         projectFile.createMainMuteGroup();
         projectFile.createMainView(templateFile);
 
         const muteGroup = projectFile.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
-        const channelsInGroup = projectFile.db.prepare(`SELECT * FROM Groups WHERE ParentId = ${muteGroup?.GroupId}`).all();
 
+        const muteButton = projectFile.getAllControls().find((control) => control.DisplayName === 'Mute'
+            && control.Type === dbpr.ControlTypes.SWITCH
+            && control.ViewId === (projectFile as any).getMainView().ViewId
+        );
+
+        // Assert
         expect(muteGroup).toBeTruthy();
-        expect(channelsInGroup.length).toBe(143)
+        expect(muteButton).toBeTruthy();
+        expect(muteButton?.TargetId).toBe(muteGroup?.GroupId);
     })
 });
 
 describe('Fallback Group', () => {
     let projectFile: AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
+    let parentId: number;
 
     afterEach(() => {
         projectFile.close();
@@ -109,7 +119,7 @@ describe('Fallback Group', () => {
     beforeEach(() => {
         projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP);
         templateFile = new AutoR1TemplateFile(TEMPLATES);
-        const parentId = projectFile.createGrp('Auto R1');
+        parentId = projectFile.createGrp('Auto R1');
         projectFile.createSubLRCGroups(parentId);
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
@@ -139,19 +149,79 @@ describe('Fallback Group', () => {
         expect(channelsInGroup.length).toBe(159)
     })
 
-    it('should assign button on the main page to the fallback group', () => {
+    it('should assign template on the main page to the fallback group', () => {
+        // Arrange
         // Remove the primary channel group along with the sub group
+        // Allows project to be openned in R1 and checked. First group should not fallover.
         projectFile.sourceGroups[0].channelGroups[0].removeFromFallback = true;
         projectFile.sourceGroups[0].channelGroups[1].removeFromFallback = true;
 
+        // Act
         projectFile.createMainFallbackGroup();
         projectFile.createMainView(templateFile);
 
         const fallbackGroup = projectFile.getAllGroups().find((group) => group.Name === FALLBACK_GROUP_TITLE);
         const channelsInGroup = projectFile.db.prepare(`SELECT * FROM Groups WHERE ParentId = ${fallbackGroup?.GroupId}`).all();
 
+        const allControls = projectFile.getControlsByViewId((projectFile as any).getMainView().ViewId);
+
+        // Return all unique JoinedIds in ascending order
+        const joinedIds = allControls.reduce((prev, cur) => {
+            if (prev.includes(cur.JoinedId)) return prev;
+            return [...prev, cur.JoinedId];
+        }, [] as number[]);
+
+        // Fallback template is the fourth template entered
+        const fallbackTemplateJoinedId = joinedIds[3];
+        const fallbackTemplate = projectFile.getControlsByJoinedId(fallbackTemplateJoinedId);
+
+        // Assert
         expect(fallbackGroup).toBeTruthy();
         expect(channelsInGroup.length).toBe(143)
+        expect(fallbackTemplate.length).toBeTruthy();
+        fallbackTemplate.forEach((control) => {
+            expect(control.TargetId).toBe(fallbackGroup?.GroupId);
+        });
+    })
+
+    it('should assign LED on the main page to the fallback group', () => {
+        // Act
+        projectFile.createMainFallbackGroup();
+        projectFile.createMainView(templateFile);
+
+        const fallbackGroup = projectFile.getAllGroups().find((group) => group.Name === FALLBACK_GROUP_TITLE);
+
+        const fallbackButton = projectFile.getAllControls().find((control) => control.DisplayName === 'Fallback is active'
+            && control.Type === dbpr.ControlTypes.LED
+            && control.ViewId === (projectFile as any).getMainView().ViewId
+        );
+
+        // Assert
+        expect(fallbackGroup).toBeTruthy();
+        expect(fallbackButton).toBeTruthy();
+        expect(fallbackButton?.TargetId).toBe(fallbackGroup?.GroupId);
+    })
+
+    it('should create the fallback group under the top most R1 group by default', () => {
+        // Act
+        projectFile.createMainFallbackGroup();
+
+        const fallbackGroup = projectFile.getAllGroups().find((group) => group.Name === FALLBACK_GROUP_TITLE);
+
+        // Assert
+        expect(fallbackGroup).toBeTruthy();
+        expect(fallbackGroup?.ParentId).toBe(1);
+    })
+
+    it('should create the fallback group under the AutoR1 group when specified', () => {
+        // Act
+        projectFile.createMainFallbackGroup(parentId);
+
+        const fallbackGroup = projectFile.getAllGroups().find((group) => group.Name === FALLBACK_GROUP_TITLE);
+
+        // Assert
+        expect(fallbackGroup).toBeTruthy();
+        expect(fallbackGroup?.ParentId).toBe(parentId);
     })
 });
 
@@ -415,6 +485,7 @@ describe('Views and Controls', () => {
             });
         });
 
+        // TODO: Cannot be run simultaneously with all other tests for an unknown reason
         it('should correctly skip CPL controls for sources which it is not available for', () => {
             const overviewView = projectFile.getAllViews().find(view => view.Name === 'Overview')
             const regularCplSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId != ${mainViewId} AND ViewId != ${overviewView?.ViewId} AND DisplayName = 'CPL' AND Type = ${dbpr.ControlTypes.DIGITAL}`).all() as dbpr.Control[];

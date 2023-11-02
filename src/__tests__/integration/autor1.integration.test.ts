@@ -69,6 +69,72 @@ describe('findControlsByViewId', () => {
     });
 });
 
+describe('getMuteGroupID', () => {
+    let projectFile: AutoR1ProjectFile;
+
+    beforeEach(() => {
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
+        projectFile.getSrcGrpInfo();
+    });
+
+    it('should throw if mute group is not found', () => {
+        // Assert
+        expect(() => projectFile.getMuteGroupID()).toThrow();
+    });
+
+    it('should not throw if mute group is found', () => {
+        // Arrange
+        projectFile.createMainMuteGroup();
+
+        // Assert
+        expect(() => projectFile.getMuteGroupID()).not.toThrow();
+    });
+
+    it('should return mute group ID', () => {
+        // Arrange
+        projectFile.createMainMuteGroup();
+
+        // Act
+        const muteGroupId = projectFile.getMuteGroupID();
+
+        // Assert
+        expect(muteGroupId).toBeTruthy();
+    });
+});
+
+describe('getFallbackGroupID', () => {
+    let projectFile: AutoR1ProjectFile;
+
+    beforeEach(() => {
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
+        projectFile.getSrcGrpInfo();
+    });
+
+    it('should throw if fallback group is not found', () => {
+        // Assert
+        expect(() => projectFile.getFallbackGroupID()).toThrow();
+    });
+
+    it('should not throw if fallback group is found', () => {
+        // Arrange
+        projectFile.createMainFallbackGroup();
+
+        // Assert
+        expect(() => projectFile.getFallbackGroupID()).not.toThrow();
+    });
+
+    it('should return fallback group ID', () => {
+        // Arrange
+        projectFile.createMainFallbackGroup();
+
+        // Act
+        const fallbackGroupId = projectFile.getFallbackGroupID();
+
+        // Assert
+        expect(fallbackGroupId).toBeTruthy();
+    });
+});
+
 describe('getApStatus', () => {
     let projectNoAP: AutoR1ProjectFile;
     let projectAP: AutoR1ProjectFile;

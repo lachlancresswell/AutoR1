@@ -917,15 +917,19 @@ describe('configureMainViewMeterTemplate', () => {
 
 describe('AutoR1ProjectFile', () => {
     let databaseObject: any;
+    let getObject: any;
     let prepare: jest.Mock;
 
     beforeEach(() => {
         jest.resetAllMocks();
 
+        databaseObject = [];
+        getObject = [];
+
         (existsSync as jest.Mock).mockReturnValue(true);
         prepare = jest.fn(() => {
             return {
-                get: jest.fn(() => databaseObject),
+                get: jest.fn(() => getObject),
                 all: jest.fn(() => databaseObject),
                 run: jest.fn()
             }
@@ -941,6 +945,7 @@ describe('AutoR1ProjectFile', () => {
 
     describe('constructor', () => {
         it('should throw if project file is not initialised', () => {
+            getObject = undefined;
             expect(() => new AutoR1ProjectFile('/path')).toThrow();
         });
 
@@ -952,7 +957,7 @@ describe('AutoR1ProjectFile', () => {
 
     describe('getSrcGrpInfo', () => {
         it('should throw if source group info is not found', () => {
-            databaseObject = [];
+
             const projectFile = new AutoR1ProjectFile('/path');
             expect(() => projectFile.getSrcGrpInfo()).toThrow();
         })
@@ -1005,7 +1010,7 @@ describe('AutoR1ProjectFile', () => {
     describe('createMainMuteGroup', () => {
         it('should create a main mute group with the correct channels', () => {
             // Arrange
-            databaseObject = [];
+
             const projectFile: any = new AutoR1ProjectFile('/path');
 
             projectFile.sourceGroups = [
@@ -1046,7 +1051,6 @@ describe('AutoR1ProjectFile', () => {
     describe('createMainFallbackGroup', () => {
         it('should create a main fallback group with the correct channels', () => {
             // Arrange
-            databaseObject = [];
             const projectFile: any = new AutoR1ProjectFile('/path');
 
             projectFile.sourceGroups = [
@@ -1083,6 +1087,38 @@ describe('AutoR1ProjectFile', () => {
             expect(prepare).toHaveBeenCalledTimes(6);
         });
     });
+
+    describe('getFallbackGroupID', () => {
+        it('should throw if fallback group is not found', () => {
+            // Arrange
+            const projectFile: any = new AutoR1ProjectFile('/path');
+            getObject = undefined;
+
+            // Assert
+            expect(() => projectFile.getFallbackGroupID()).toThrow()
+        });
+
+        it('should not throw if fallback group is found', () => {
+            // Arrange
+            const projectFile: any = new AutoR1ProjectFile('/path');
+            getObject = { GroupId: 1 };
+
+            // Assert
+            expect(() => projectFile.getFallbackGroupID()).not.toThrow()
+        });
+
+        it('should return the fallback group id', () => {
+            // Arrange
+            const projectFile: any = new AutoR1ProjectFile('/path');
+            getObject = { GroupId: 1 };
+
+            // Act
+            const groupId = projectFile.getFallbackGroupID()
+
+            // Assert
+            expect(groupId).toBe(1)
+        });
+    })
 })
 
 
