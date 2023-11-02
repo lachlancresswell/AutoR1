@@ -1302,12 +1302,20 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             mainMainTemplateOptions
         )
 
+        const fallbackGroupID = (() => {
+            try {
+                return this.getFallbackGroupID()
+            } catch {
+                return undefined;
+            }
+        })()
+
         this.insertTemplate(
             templateFile.getTemplateByName('Main Fallback'),
             mainViewId,
             posX,
             posY + mainOverviewTemplate.height + 10,
-            mainMainTemplateOptions
+            fallbackGroupID ? { TargetId: this.getFallbackGroupID() } : mainMainTemplateOptions
         )
 
         this.insertTemplate(
@@ -1329,6 +1337,17 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${mainMute.ControlId}`).run();
             mainMute.TargetId = muteGroup.GroupId;
             this.insertControl(mainMute);
+        }
+
+        /**
+         * Configure the fallback indicator
+         */
+        const fallbackGroup = this.getAllGroups().find((group) => group.Name === FALLBACK_GROUP_TITLE);
+        if (fallbackGroup) {
+            const mainFallback = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ? AND Type = ? AND TargetProperty = ?`).get(mainViewId, dbpr.ControlTypes.LED, dbpr.TargetPropertyType.STATUS_INPUT_FALLBACK_ACTIVE) as dbpr.Control;
+            this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${mainFallback.ControlId}`).run();
+            mainFallback.TargetId = fallbackGroup.GroupId;
+            this.insertControl(mainFallback);
         }
 
         const apGroupId = (() => {
