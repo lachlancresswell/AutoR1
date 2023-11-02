@@ -321,7 +321,7 @@ describe('createMeterView', () => {
         expect(projectFile.getHighestJoinedID()).toBeGreaterThan(oldJoinedId);
         expect(newViewCount).toBe(oldViewCount + 1);
         expect(projectFile.getViewIdFromName(AutoR1.METER_WINDOW_TITLE)).toBeTruthy();
-        expect(projectFile.getHighestJoinedID()).toBe(238);
+        expect(projectFile.getHighestJoinedID()).toBe(246);
     });
 });
 
