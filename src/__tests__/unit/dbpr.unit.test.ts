@@ -351,14 +351,14 @@ describe('ProjectFile', () => {
         it('should return the master group id', () => {
             databaseObject = { ViewId };
             const projectFile = new ProjectFile('test.db');
-            expect(projectFile.getAllViews()).toBe(databaseObject);
+            expect(projectFile.getAllRemoteViews()).toBe(databaseObject);
         });
 
         it('should throw if master group is not found', () => {
             databaseObject = { test: 'test' };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
-            expect(() => projectFile.getAllViews()).toThrow(`Could not find any views`);
+            expect(() => projectFile.getAllRemoteViews()).toThrow(`Could not find any views`);
         });
     });
 

@@ -309,12 +309,12 @@ describe('createMeterView', () => {
 
     it('should create the meter view', () => {
         const oldJoinedId = projectFile.getHighestJoinedID();
-        const oldViewCount = projectFile.getAllViews().length;
+        const oldViewCount = projectFile.getAllRemoteViews().length;
         expect(projectFile.getHighestJoinedID()).toBe(135);
 
         projectFile.createMeterView(templateFile);
 
-        const newViewCount = projectFile.getAllViews().length;
+        const newViewCount = projectFile.getAllRemoteViews().length;
 
         const nJid = projectFile.getHighestJoinedID()
 
@@ -336,7 +336,7 @@ describe('clean', () => {
     });
 
     it('should remove all generated views and controls', () => {
-        const oldViewCount = projectFile.getAllViews().length;
+        const oldViewCount = projectFile.getAllRemoteViews().length;
         const oldGroupCount = projectFile.getAllGroups().length;
         const oldControlCount = projectFile.getAllControls().length;
 
@@ -345,7 +345,7 @@ describe('clean', () => {
         const groupId = projectFile.createGroup({ Name: 'TEST', ParentId: 1 });
         projectFile.createSubLRCGroups(groupId);
 
-        let newViewCount = projectFile.getAllViews().length;
+        let newViewCount = projectFile.getAllRemoteViews().length;
         let newGroupCount = projectFile.getAllGroups().length;
         let newControlCount = projectFile.getAllControls().length;
 
@@ -355,7 +355,7 @@ describe('clean', () => {
 
         projectFile.clean(groupId);
 
-        newViewCount = projectFile.getAllViews().length;
+        newViewCount = projectFile.getAllRemoteViews().length;
         newGroupCount = projectFile.getAllGroups().length;
         newControlCount = projectFile.getAllControls().length;
 
@@ -404,7 +404,7 @@ describe('createMainView', () => {
     it('creates the main view', () => {
         projectFile.createMeterView(templateFile);
         projectFile.createMainView(templateFile);
-        expect(projectFile.getAllViews().filter(g => g.Name === AutoR1.MAIN_WINDOW_TITLE).length).toBe(1)
+        expect(projectFile.getAllRemoteViews().filter(g => g.Name === AutoR1.MAIN_WINDOW_TITLE).length).toBe(1)
     })
 
     it('inserts the Main Title template', () => {

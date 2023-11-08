@@ -776,7 +776,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const mainViewId = this.getMainView().ViewId;
         const meterViewId = this.getMeterView().ViewId;
 
-        const views = this.getAllViews();
+        const views = this.getAllRemoteViews();
         for (const vId of views.map(v => v.ViewId)) {
             if (vId !== mainViewId && vId !== meterViewId) {
 

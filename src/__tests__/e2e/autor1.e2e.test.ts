@@ -408,7 +408,7 @@ describe('Views and Controls', () => {
          * Addresses bug where relative delay controls were not being set correctly
          */
         it('should correctly set relative delay controls', () => {
-            const overviewView = projectFile.getAllViews().find(view => view.Name === 'Overview')
+            const overviewView = projectFile.getAllRemoteViews().find(view => view.Name === 'Overview')
 
             const regularRelDelayControls = projectFile.db.prepare(`
             SELECT * FROM Controls WHERE ViewId != ${mainViewId} AND ViewId != ${overviewView?.ViewId} AND DisplayName = ? AND TargetProperty = ?`).all('rel. Delay', dbpr.TargetPropertyDigitalChannel.CHANNEL_STATUS_MS_DELAY) as dbpr.Control[];
@@ -487,7 +487,7 @@ describe('Views and Controls', () => {
 
         // TODO: Cannot be run simultaneously with all other tests for an unknown reason
         it('should correctly skip CPL controls for sources which it is not available for', () => {
-            const overviewView = projectFile.getAllViews().find(view => view.Name === 'Overview')
+            const overviewView = projectFile.getAllRemoteViews().find(view => view.Name === 'Overview')
             const regularCplSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId != ${mainViewId} AND ViewId != ${overviewView?.ViewId} AND DisplayName = 'CPL' AND Type = ${dbpr.ControlTypes.DIGITAL}`).all() as dbpr.Control[];
 
             const mainViewCplSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'CPL' AND Type = ${dbpr.ControlTypes.DIGITAL}`).all() as dbpr.Control[];

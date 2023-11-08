@@ -886,8 +886,8 @@ export class ProjectFile extends SqlDbFile {
      * console.log(views);
      * // => [{ ViewId: 1, Type: 0, Name: 'Overview', Flags: 0, HomeViewIndex: 0, NaviBarIndex: 0, HRes: 1920, VRes: 1080, ZoomLevel: 1 }]
      */
-    public getAllViews() {
-        const query = `SELECT * FROM Views`;
+    public getAllRemoteViews() {
+        const query = `SELECT * FROM Views WHERE Type = 1000`;
         const stmt = this.db.prepare(query);
         const rtn = stmt.all() as View[];
         if (!rtn) {
