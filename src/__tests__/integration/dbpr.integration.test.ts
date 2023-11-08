@@ -1,5 +1,4 @@
-import { AutoR1ProjectFile, AutoR1TemplateFile, AutoR1Control, AutoR1Template } from '../../autor1';
-import { Control } from '../../dbpr'
+import { ActionTypes, Control, ProjectFile, TargetChannels, TargetPropertyType, TargetTypes, TemplateFile } from '../../dbpr'
 import * as fs from 'fs';
 
 const PROJECT_NO_INIT_START = './src/__tests__/Projects/test_no_init.dbpr';
@@ -34,235 +33,257 @@ afterEach(() => {
     fs.unlinkSync(TEMPLATES);
 });
 
-describe('Methods', () => {
-    let p: AutoR1ProjectFile;
-    beforeEach(() => {
-        p = new AutoR1ProjectFile(PROJECT_INIT);
-    });
+let p: ProjectFile;
+beforeEach(() => {
+    p = new ProjectFile(PROJECT_INIT);
+});
 
+describe('Constructor', () => {
     it('Constructor throws with non-existing proejct', () => {
-        expect(() => new AutoR1ProjectFile(PROJECT_NO_EXIST)).toThrow('File does not exist');
+        expect(() => new ProjectFile(PROJECT_NO_EXIST)).toThrow('File does not exist');
     });
 
     it('Constructor throws with unintialised proejct', () => {
-        jest.resetAllMocks()
-        expect(() => new AutoR1ProjectFile(PROJECT_NO_INIT)).toThrow('Project file is not initialised');
+        expect(() => new ProjectFile(PROJECT_NO_INIT)).toThrow('Project file is not initialised');
     });
+});
 
-    it('Next joinedId is determined', () => {
-        expect(p!['jId']).not.toBe(-1);
-    });
-
-    it('Finds number of groups in project', () => {
-        expect(p.getAllGroups().length).toBe(283);
-    });
-
-    it('Finds name of a source group from a group ID', () => {
-        const p = new AutoR1ProjectFile(PROJECT_INIT)
-        expect(p.getSourceGroupNameFromID(1)).toBe('Unused channels');
-    });
-
-    it('Finds ID of a source group from a source group name', () => {
-        const p = new AutoR1ProjectFile(PROJECT_INIT)
-        expect(p.getSourceGroupIDFromName('Unused channels')).toBe(1);
-    });
-
-    it('Finds the highest group ID', () => {
-        expect(p.getHighestGroupID()).toBe(283);
-    });
-
+describe('getGroupIdFromName', () => {
     it('Finds a groups ID from its name', () => {
         expect(p.getGroupIdFromName('Master')).toBe(2);
     });
+});
 
+describe('getViewIdFromName', () => {
     it('Finds the ID of a view group from its name', () => {
         expect(p.getViewIdFromName('Overview')).toBe(1000);
     });
+});
 
+describe('getAllGroups', () => {
+    it('Finds number of groups in project', () => {
+        expect(p.getAllGroups().length).toBe(283);
+    });
+});
+
+describe('createGroup', () => {
     it('Creates a new group', () => {
-        const newId = p.createGrp('test');
+        const newId = p.createGroup({ Name: 'test' });
         expect(p.getGroupIdFromName('test')).toBe(newId);
     });
+});
 
+describe('addChannelToGroup', () => {
+    it('Adds a channel to a group', () => {
+        const newGroup = {
+            Name: 'test',
+            ParentId: 1,
+            TargetId: 2,
+            TargetChannel: 3
+        };
+        p.addChannelToGroup(newGroup);
+
+        const insertedGroup = p.getAllGroups().find(g => g.Name === newGroup.Name);
+        expect(insertedGroup).toBeTruthy();
+        expect(insertedGroup?.Name).toEqual(newGroup.Name);
+        expect(insertedGroup?.ParentId).toEqual(newGroup.ParentId);
+        expect(insertedGroup?.TargetId).toEqual(newGroup.TargetId);
+        expect(insertedGroup?.TargetChannel).toEqual(newGroup.TargetChannel);
+    });
+});
+
+describe('deleteGroup', () => {
     it('Removes a group', () => {
-        const newId = p.createGrp('test');
+        const newId = p.createGroup({ Name: 'test' });
         expect(p.getGroupIdFromName('test')).toBe(newId);
         p.deleteGroup(newId);
         expect(() => p.getGroupIdFromName('test')).toThrow('Could not find group');
     });
+});
 
-    it('Discovers all source groups, channel groups and related info from a project', () => {
-        p.getSrcGrpInfo()
-        expect(p.sourceGroups.length).toBe(11);
-        expect(p.sourceGroups[0].channelGroups.length).toBe(3); // Array two way tops
-        expect(p.sourceGroups[1].channelGroups.length).toBe(3); // Array single channel tops
-        expect(p.sourceGroups[2].channelGroups.length).toBe(3); // Array two way subs
-        expect(p.sourceGroups[3].channelGroups.length).toBe(3); // Array single channel subs
-        expect(p.sourceGroups[4].channelGroups.length).toBe(6); // Array flown mixed sub top
-        expect(p.sourceGroups[5].channelGroups.length).toBe(1); // Array mono
-        expect(p.sourceGroups[6].channelGroups.length).toBe(2); // Array ground stack mono
-        expect(p.sourceGroups[7].channelGroups.length).toBe(1); // Point source
-        expect(p.sourceGroups[8].channelGroups.length).toBe(1); // Point source sub
-        expect(p.sourceGroups[9].channelGroups.length).toBe(2); // Point source mixed
-        expect(p.sourceGroups[10].channelGroups.length).toBe(1); // SUB array LCR
+describe('getSourceGroupNameFromID', () => {
+    it('Throws when SourceGroup cannot be found', () => {
+        const p = new ProjectFile(PROJECT_INIT)
+        expect(() => p.getSourceGroupNameFromID(10000)).toThrow();
+    });
 
+    it('Doesnt throw when SourceGroup is found', () => {
+        const p = new ProjectFile(PROJECT_INIT)
+        expect(() => p.getSourceGroupNameFromID(1)).not.toThrow();
+    });
+
+    it('Finds name of a source group from a group ID', () => {
+        const p = new ProjectFile(PROJECT_INIT)
+        expect(p.getSourceGroupNameFromID(1)).toBe('Unused channels');
     });
 });
 
-describe('Variables', () => {
-    it('JoinedId is set on initial project load', () => {
-        let p: AutoR1ProjectFile;
-        expect(() => p = new AutoR1ProjectFile(PROJECT_INIT)).not.toThrow();
-        expect(p!['jId']).not.toBe(-1);
+describe('getControlsByViewId', () => {
+    it('Throws when View cannot be found', () => {
+        expect(() => p.getControlsByViewId(1)).toThrow();
+    });
+
+    it('Doesnt throw when View is found', () => {
+        expect(() => p.getControlsByViewId(1000)).not.toThrow();
+    });
+
+    it('Finds controls by view ID', () => {
+        const controls = p.getControlsByViewId(1000);
+        expect(controls.length).toBeGreaterThan(0);
     });
 });
 
-describe('insertTemplate', () => {
-    let projectFile: AutoR1ProjectFile;
-    let templateFile: AutoR1TemplateFile;
-    let template: AutoR1Template;
-    let prevJoinedId: number;
-    let JoinedId: number;
-    let insertedControls: Control[];
-    let insertedControl: Control;
+describe('getControlsByJoinedId', () => {
+    it('Throws when JoinedId cannot be found', () => {
+        expect(() => p.getControlsByJoinedId(10000)).toThrow();
+    });
 
-    const posX = 100;
-    const posY = 200;
-    const TargetId = 123;
-    const TargetChannel = 1;
-    const Width = 100;
-    const Height = 50;
-    const ViewId = 1000;
-    const DisplayName = 'My Display Name';
+    it('Doesnt throw when JoinedId is found', () => {
+        expect(() => p.getControlsByJoinedId(1)).not.toThrow();
+    });
+
+    it('Finds controls by JoinedId', () => {
+        const controls = p.getControlsByJoinedId(1);
+        expect(controls.length).toBeGreaterThan(0);
+    });
+});
+
+describe('getSourceGroupIDFromName', () => {
+    it('Throws when SourceGroup cannot be found', () => {
+        const p = new ProjectFile(PROJECT_INIT)
+        expect(() => p.getSourceGroupIDFromName('test')).toThrow();
+    });
+
+    it('Doesnt throw when SourceGroup is found', () => {
+        const p = new ProjectFile(PROJECT_INIT)
+        expect(() => p.getSourceGroupIDFromName('Unused channels')).not.toThrow();
+    });
+
+    it('Finds ID of a source group from a source group name', () => {
+        const p = new ProjectFile(PROJECT_INIT)
+        expect(p.getSourceGroupIDFromName('Unused channels')).toBe(1);
+    });
+});
+
+describe('getHighestJoinedID', () => {
+    it('Finds the highest control ID', () => {
+        expect(p.getHighestJoinedID()).toBeGreaterThan(0);
+    });
+});
+
+describe('getHighestGroupID', () => {
+    it('Finds the highest group ID', () => {
+        expect(p.getHighestGroupID()).toBeGreaterThan(0);
+    });
+});
+
+describe('getAllRemoteViews', () => {
+    it('Finds all remote views', () => {
+        expect(p.getAllRemoteViews().length).toBeGreaterThan(0);
+    });
+});
+
+describe('getAllControls', () => {
+    it('Finds all controls', () => {
+        expect(p.getAllControls().length).toBeGreaterThan(0);
+    });
+});
+
+describe('getCanIdFromDeviceId', () => {
+    it('Finds the CAN ID from a device ID', () => {
+        expect(p.getCanIdFromDeviceId(1)).toBeTruthy();
+    })
+});
+
+describe('insertControl', () => {
+    let projectFile: ProjectFile;
+    let control: Control;
+    let loadedControl: Control;
+
+    const JoinedId = 7777;
 
     beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
-        template = templateFile.templates[1];
+        projectFile = new ProjectFile(PROJECT_INIT);
+        control = {
+            ControlId: 1,
+            Type: 2,
+            PosX: 3,
+            PosY: 4,
+            Width: 5,
+            Height: 6,
+            ViewId: 7,
+            DisplayName: 'DisplayName',
+            UniqueName: 'UniqueName',
+            JoinedId,
+            LimitMin: 9,
+            LimitMax: 10,
+            MainColor: 11,
+            SubColor: 12,
+            LabelColor: 13,
+            LabelFont: 14,
+            LabelAlignment: 15,
+            LineThickness: 16,
+            ThresholdValue: 17,
+            Flags: 18,
+            ActionType: ActionTypes.NAVIGATION,
+            TargetType: TargetTypes.VIEW,
+            TargetId: 19,
+            TargetChannel: TargetChannels.CHANNEL_A,
+            TargetProperty: TargetPropertyType.ARRAYPROCESSING_COMMENT,
+            TargetRecord: 20,
+            ConfirmOnMsg: 'ConfirmOnMsg',
+            ConfirmOffMsg: 'ConfirmOffMsg',
+            PictureIdDay: 21,
+            PictureIdNight: 22,
+            Font: 'Font',
+            Alignment: 23,
+            Dimension: new Uint8Array(1),
+        };
 
-        prevJoinedId = projectFile.getHighestJoinedID();
-        projectFile.insertTemplate(template, ViewId, posX, posY, { DisplayName, TargetId, TargetChannel, Width, Height });
-        JoinedId = projectFile.getHighestJoinedID();
+        projectFile.insertControl(control);
 
-        insertedControls = projectFile.getControlsByViewId(ViewId);
-        insertedControl = insertedControls.filter((c) => c.JoinedId === JoinedId)[0]
-
-    });
-
-    it('should cause the highest JoinedId to be incremented', () => {
-        expect(JoinedId).toBeGreaterThan(prevJoinedId);
-    })
-
-    it('should cause insert a new control into the Control table', () => {
-        expect(insertedControl).toBeDefined();
-    })
-
-    it('should correctly set the DisplayName of a new control', () => {
-        expect(insertedControl!.DisplayName).toBe(DisplayName);
-    })
-
-    it('should correctly set the TargetId of a new control', () => {
-        expect(insertedControl!.TargetId).toBe(TargetId);
-    })
-
-    it('should correctly set the TargetChannel of a new control', () => {
-        expect(insertedControls!.find((control) => control.TargetChannel === TargetChannel)).toBeTruthy();
-    })
-
-    it('should correctly set the Width of a new control', () => {
-        expect(insertedControl!.Width).toBe(Width);
-    })
-
-    it('should correctly set the Height of a new control', () => {
-        expect(insertedControl!.Height).toBe(Height);
-    })
-
-    it('should correctly set the Type of a new control', () => {
-        expect(insertedControl!.Type).toBe(template.controls![0].Type);
-    })
-
-    it('should correctly set the PosX of a new control', () => {
-        expect(insertedControl!.PosX).toBe(posX);
-    })
-
-    it('should correctly set the PosY of a new control', () => {
-        expect(insertedControl!.PosY).toBe(posY);
-    })
-
-    it('should correctly set the Width of a new control', () => {
-        expect(insertedControl!.Width).toBe(Width);
-    })
-
-    it('should correctly set the Height of a new control', () => {
-        expect(insertedControl!.Height).toBe(Height);
-    })
-
-    it('should correctly set the TargetId of a new control', () => {
-        expect(insertedControl!.TargetId).toBe(TargetId);
-    })
-});
-
-describe('getTemplateWidthHeight', () => {
-    let projectFile: AutoR1ProjectFile;
-    let templateFile: AutoR1TemplateFile;
-
-    beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
-    });
-
-    it('should return the size of the template', () => {
-        const size = templateFile.getTemplateWidthHeight('Meters Group');
-        expect(size.width).toBe(220);
-        expect(size.height).toBe(214);
-    });
-});
-
-describe('insertControls', () => {
-    let projectFile: AutoR1ProjectFile;
-    let control: AutoR1Control;
-
-    const joinedId = 7777;
-
-    beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
-        control = new AutoR1Control();
-        control.setJoinedId(joinedId);
+        loadedControl = projectFile.getControlsByJoinedId(JoinedId)[0]
     });
 
     it('should insert a control into the project file', () => {
-        projectFile.insertControl(control);
-
-        const loadedControl = projectFile.getControlsByJoinedId(joinedId)[0];
         expect(loadedControl).toBeTruthy();
     });
 
     it('should insert a control into the project file with the correct JoinedId', () => {
-        projectFile.insertControl(control);
-
-        const loadedControl = projectFile.getControlsByJoinedId(joinedId)[0]
-
-        expect(loadedControl.JoinedId).toBe(joinedId);
+        expect(loadedControl.JoinedId).toBe(JoinedId);
     })
 
     it('should insert a control into the project file with the correct Font', () => {
-        const font = 'myfont';
-        control.setFont(font);
-
-        projectFile.insertControl(control);
-
-        const loadedControl = projectFile.getControlsByJoinedId(joinedId)[0]
-        expect(loadedControl.Font).toBe(font);
+        expect(loadedControl.Font).toBe(control.Font);
     })
 
     it('should insert a control into the project file with the correct PosX', () => {
-        const PosX = 10;
-        control.setPosX(PosX);
-
-        projectFile.insertControl(control);
-
-        const loadedControl = projectFile.getControlsByJoinedId(joinedId)[0]
-        expect(loadedControl.PosX).toBe(PosX);
+        expect(loadedControl.PosX).toBe(control.PosX);
     })
 });
 
+describe('TemplateFile', () => {
+    describe('Constructor', () => {
+        it('Constructor throws with non-existing file', () => {
+            expect(() => new TemplateFile(PROJECT_NO_EXIST)).toThrow('File does not exist');
+        });
+
+        it('Constructor doesnt throw with existing file', () => {
+            expect(() => new TemplateFile(TEMPLATES)).not.toThrow();
+        });
+    });
+
+    describe('getTemplateControlsByName', () => {
+        it('Throws when template cannot be found', () => {
+            const templates = new TemplateFile(TEMPLATES);
+
+            expect(() => templates.getTemplateControlsByName('test')).toThrow();
+        });
+
+        it('Finds template controls from a given name', () => {
+            const templates = new TemplateFile(TEMPLATES);
+
+            expect(templates.getTemplateControlsByName('Main Title')).toBeTruthy();
+        });
+    });
+});
