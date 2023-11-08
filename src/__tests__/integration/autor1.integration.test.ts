@@ -1,8 +1,9 @@
 // NOTE: Casts to any are used to access private methods
 
-import { AutoR1ProjectFile, AutoR1TemplateFile } from '../../autor1';
+import { AutoR1ProjectFile, AutoR1Template, AutoR1TemplateFile } from '../../autor1';
 import * as fs from 'fs';
 import * as AutoR1 from '../../autor1'
+import { Control } from '../../dbpr';
 
 const PROJECT_NO_INIT_START = './src/__tests__/Projects/test_no_init.dbpr';
 const PROJECT_INIT_START = './src/__tests__/Projects/test_init.dbpr';
@@ -38,17 +39,31 @@ describe('getSrcGrpInfo', () => {
 
     beforeEach(() => {
         projectFile = new AutoR1ProjectFile(PROJECT_INIT);
+        projectFile.getSrcGrpInfo();
     });
 
     it('should return the correct number of source groups', () => {
-        projectFile.getSrcGrpInfo();
         expect(projectFile.sourceGroups.length).toBe(11);
     });
 
     it('should return the correct number of channels for a source group', () => {
-        projectFile.getSrcGrpInfo();
         expect(projectFile.sourceGroups[1].channelGroups.length).toBe(3);
     })
+
+    it('Discovers all source groups, channel groups and related info from a project', () => {
+        expect(projectFile.sourceGroups.length).toBe(11);
+        expect(projectFile.sourceGroups[0].channelGroups.length).toBe(3); // Array two way tops
+        expect(projectFile.sourceGroups[1].channelGroups.length).toBe(3); // Array single channel tops
+        expect(projectFile.sourceGroups[2].channelGroups.length).toBe(3); // Array two way subs
+        expect(projectFile.sourceGroups[3].channelGroups.length).toBe(3); // Array single channel subs
+        expect(projectFile.sourceGroups[4].channelGroups.length).toBe(6); // Array flown mixed sub top
+        expect(projectFile.sourceGroups[5].channelGroups.length).toBe(1); // Array mono
+        expect(projectFile.sourceGroups[6].channelGroups.length).toBe(2); // Array ground stack mono
+        expect(projectFile.sourceGroups[7].channelGroups.length).toBe(1); // Point source
+        expect(projectFile.sourceGroups[8].channelGroups.length).toBe(1); // Point source sub
+        expect(projectFile.sourceGroups[9].channelGroups.length).toBe(2); // Point source mixed
+        expect(projectFile.sourceGroups[10].channelGroups.length).toBe(1); // SUB array LCR
+    });
 });
 
 describe('findControlsByViewId', () => {
@@ -385,7 +400,7 @@ describe('configureApChannels', () => {
     it('should populate the apGroupID var when AP group is made', () => {
         projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
         projectFile.getSrcGrpInfo();
-        expect(() => projectFile.getAPGroup()).toThrow()
+        expect(projectFile.getAPGroup()).toBeFalsy();
         projectFile.createAPGroup();
         expect(projectFile.getAPGroup()).toBeTruthy()
     });
@@ -426,6 +441,92 @@ describe('createMainView', () => {
         controls.forEach((c) => expect(c.ViewId).toBeTruthy());
     })
 })
+
+describe('insertTemplate', () => {
+    let projectFile: AutoR1ProjectFile;
+    let templateFile: AutoR1TemplateFile;
+    let template: AutoR1Template;
+    let prevJoinedId: number;
+    let JoinedId: number;
+    let insertedControls: Control[];
+    let insertedControl: Control;
+
+    const posX = 100;
+    const posY = 200;
+    const TargetId = 123;
+    const TargetChannel = 1;
+    const Width = 100;
+    const Height = 50;
+    const ViewId = 1000;
+    const DisplayName = 'My Display Name';
+
+    beforeEach(() => {
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
+        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        projectFile.getSrcGrpInfo();
+        template = templateFile.templates[1];
+
+        prevJoinedId = projectFile.getHighestJoinedID();
+        projectFile.insertTemplate(template, ViewId, posX, posY, { DisplayName, TargetId, TargetChannel, Width, Height });
+        JoinedId = projectFile.getHighestJoinedID();
+
+        insertedControls = projectFile.getControlsByViewId(ViewId);
+        insertedControl = insertedControls.filter((c) => c.JoinedId === JoinedId)[0]
+
+    });
+
+    it('should cause the highest JoinedId to be incremented', () => {
+        expect(JoinedId).toBeGreaterThan(prevJoinedId);
+    })
+
+    it('should cause insert a new control into the Control table', () => {
+        expect(insertedControl).toBeDefined();
+    })
+
+    it('should correctly set the DisplayName of a new control', () => {
+        expect(insertedControl!.DisplayName).toBe(DisplayName);
+    })
+
+    it('should correctly set the TargetId of a new control', () => {
+        expect(insertedControl!.TargetId).toBe(TargetId);
+    })
+
+    it('should correctly set the TargetChannel of a new control', () => {
+        expect(insertedControls!.find((control) => control.TargetChannel === TargetChannel)).toBeTruthy();
+    })
+
+    it('should correctly set the Width of a new control', () => {
+        expect(insertedControl!.Width).toBe(Width);
+    })
+
+    it('should correctly set the Height of a new control', () => {
+        expect(insertedControl!.Height).toBe(Height);
+    })
+
+    it('should correctly set the Type of a new control', () => {
+        expect(insertedControl!.Type).toBe(template.controls![0].Type);
+    })
+
+    it('should correctly set the PosX of a new control', () => {
+        expect(insertedControl!.PosX).toBe(posX);
+    })
+
+    it('should correctly set the PosY of a new control', () => {
+        expect(insertedControl!.PosY).toBe(posY);
+    })
+
+    it('should correctly set the Width of a new control', () => {
+        expect(insertedControl!.Width).toBe(Width);
+    })
+
+    it('should correctly set the Height of a new control', () => {
+        expect(insertedControl!.Height).toBe(Height);
+    })
+
+    it('should correctly set the TargetId of a new control', () => {
+        expect(insertedControl!.TargetId).toBe(TargetId);
+    })
+});
 
 describe('createMainViewOverview', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
