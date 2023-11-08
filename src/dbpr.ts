@@ -616,6 +616,42 @@ export class ProjectFile extends SqlDbFile {
     }
 
     /**
+     * Adds a channel to a group
+     * @param Name The name of the channel
+     * @param ParentId The GroupId of the parent group. Defaults to 1 (the Main group).
+     * @param TargetId The target ID of the new group. Defaults to 0.
+     * @param TargetChannel The target channel of the new group. Defaults to -1.
+     * @param Flags The flags of the new group. Defaults to 0.
+     * @returns The GroupId of the newly inserted channel.
+     * @throws Will throw an error if the parent group does not exist.
+     * 
+     * @example
+     * const p = new ProjectFile('path/to/project.dbpr');
+     * const groupId = p.addChannelToGroup({
+     * Name: 'My Channel', 
+     * ParentId: 2,
+     * TargetId: 0,
+     * TargetChannel: -1
+     * });
+     * console.log(groupId);
+     * // => 284
+     */
+    public addChannelToGroup(groupObj: {
+        Name: string,
+        ParentId: number,
+        TargetId: number,
+        TargetChannel: TargetChannels,
+        Flags?: number,
+    }): number {
+        const defaults = {
+            Type: R1GroupsType.DEVICE,
+            Flags: 0,
+        }
+
+        return this.createGroup({ ...groupObj, ...defaults });
+    }
+
+    /**
      * Recursively delete a group and all its children
      * @param groupID GroupId
      * @throws Will throw an error if the group cannot be found.

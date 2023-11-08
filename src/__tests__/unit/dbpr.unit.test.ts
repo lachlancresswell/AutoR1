@@ -157,6 +157,71 @@ describe('ProjectFile', () => {
         });
     });
 
+    describe('addChannelToGroup', () => {
+        it('should call to database for channel insertion', () => {
+            // Arrange
+            databaseObject = [];
+            const projectFile = new ProjectFile('test.db');
+            const groupObj = {
+                Name: 'test',
+                ParentId: 1,
+                TargetId: 1,
+                TargetChannel: TargetChannels.CHANNEL_A,
+            };
+            prepare.mockClear();
+
+            // Act
+            projectFile.addChannelToGroup(groupObj);
+
+            // Assert
+            expect(prepare).toHaveBeenCalledTimes(3);
+        });
+
+        it('should insert channel with passed parameters', () => {
+            // Arrange
+            databaseObject = [];
+            const projectFile = new ProjectFile('test.db');
+            const groupObj = {
+                Name: 'test',
+                ParentId: 1,
+                TargetId: 2,
+                TargetChannel: TargetChannels.CHANNEL_A,
+            };
+            run.mockClear();
+
+            // Act
+            projectFile.addChannelToGroup(groupObj);
+
+            // Assert
+            expect(run).toHaveBeenNthCalledWith(1, groupObj.Name, groupObj.ParentId, groupObj.TargetId, groupObj.TargetChannel, R1GroupsType.DEVICE, 0);
+        });
+
+        it('should set default values for optional parameters', () => {
+            // Arrange
+            databaseObject = [];
+            const projectFile = new ProjectFile('test.db');
+            const groupObj = {
+                Name: 'test',
+                ParentId: 1,
+                TargetId: 2,
+                TargetChannel: TargetChannels.CHANNEL_A,
+            };
+            run.mockClear();
+
+            // Act
+            projectFile.addChannelToGroup(groupObj);
+
+            // Assert
+            expect(run).toHaveBeenNthCalledWith(1,
+                groupObj.Name,
+                groupObj.ParentId,
+                groupObj.TargetId,
+                groupObj.TargetChannel,
+                R1GroupsType.DEVICE,
+                0);
+        });
+    });
+
 
     describe('getMasterGroupID', () => {
         it('should return the master group id', () => {
