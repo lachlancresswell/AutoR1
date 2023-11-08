@@ -428,8 +428,8 @@ class TemporaryTemplate {
     private _isLR = false;
     private _isAP = false;
     private _isCPL2 = false;
-    private _name: string;
-    private _controls: AutoR1Control[];
+    private _name?: string;
+    private _controls?: AutoR1Control[];
 
     setLR = (isLR: boolean) => this._isLR = isLR;
     setAP = (isAP: boolean) => this._isAP = isAP;
@@ -449,6 +449,9 @@ class TemporaryTemplate {
     get controls() { return this._controls; }
 
     public load(templateFile: AutoR1TemplateFile) {
+        if (!this.name) {
+            throw ('Template name not set');
+        }
         this._controls = templateFile.getTemplateControlsFromName(this.name);
     }
 }
