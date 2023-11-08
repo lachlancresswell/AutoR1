@@ -615,7 +615,7 @@ export class ProjectFile extends SqlDbFile {
         const rtn = this.db.prepare('SELECT * FROM Groups ORDER BY GroupId DESC LIMIT 1;').get() as Group;
 
         // Get parent name for logging
-        const parentGroup = this.db.prepare('SELECT * FROM Groups WHERE GroupId = ?').get() as Group
+        const parentGroup = this.db.prepare('SELECT * FROM Groups WHERE GroupId = ?').get(rtn.GroupId) as Group
         console.info(`Inserted ${Name} under ${parentGroup.Name}`);
 
         return rtn.GroupId;
