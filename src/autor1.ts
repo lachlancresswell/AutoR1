@@ -393,32 +393,107 @@ export class SourceGroup implements dbpr.SourceGroup {
         }
     }
 
+    /**
+     * Determines if the source group is a stereo group
+     * @returns boolean
+     * 
+     * @example
+     * const p = new ProjectFile(PROJECT_INIT)
+     * p.getSrcGrpInfo()
+     * const srcGrp = p.sourceGroups[0]
+     * srcGrp.isStereo()
+     * // => true
+     */
     public isStereo() {
         return this.channelGroups.length >= 3;
     }
 
+    /**
+     * Determines if the source group has array processing enabled
+     * @returns boolean
+     * 
+     * @example
+     * const p = new ProjectFile(PROJECT_INIT)
+     * p.getSrcGrpInfo()
+     * const srcGrp = p.sourceGroups[0]
+     * srcGrp.hasArrayProcessingEnabled()
+     * // => true
+     */
     public hasArrayProcessingEnabled() {
         return !!this.ArrayProcessingEnable;
     }
 
+    /**
+     * Determines if the source group has a CPLv2 filter available
+     * @returns boolean
+     * 
+     * @example
+     * const p = new ProjectFile(PROJECT_INIT)
+     * p.getSrcGrpInfo()
+     * const srcGrp = p.sourceGroups[0]
+     * srcGrp.hasCPLv2()
+     * // => true
+     */
     public hasCPLv2() {
         return this.System === 'GSL' || this.System === 'KSL' || this.System === 'XSL';
     }
 
-    //TODO
+    /**
+     * Determines if the source group has any SUBs associated
+     * @returns boolean
+     * 
+     * @example
+     * const p = new ProjectFile(PROJECT_INIT)
+     * p.getSrcGrpInfo()
+     * const srcGrp = p.sourceGroups[0]
+     * srcGrp.hasSUBs()
+     * // => true
+     */
     public hasSUBs() {
         return !!this.channelGroups.find((chGrp) => chGrp.isSUBs());
     }
 
-    //TODO
+    /**
+     * Determines if the source group has any TOPs associated
+     * @returns boolean
+     * 
+     * @example
+     * const p = new ProjectFile(PROJECT_INIT)
+     * p.getSrcGrpInfo()
+     * const srcGrp = p.sourceGroups[0]
+     * srcGrp.hasTOPs()
+     * // => true
+     */
     public hasTOPs() {
         return !!this.channelGroups.find((chGrp) => chGrp.isTOPs());
     }
 
+    /**
+     * Determines if load match controls are available for this source group
+     * @returns boolean
+     * 
+     * @example
+     * const p = new ProjectFile(PROJECT_INIT)
+     * p.getSrcGrpInfo()
+     * const srcGrp = p.sourceGroups[0]
+     * srcGrp.hasLoadMatch()
+     * // => true
+     */
     public hasLoadMatch() {
         return this.Type !== dbpr.SourceGroupTypes.ADDITIONAL_AMPLIFIER && this.Type !== dbpr.SourceGroupTypes.UNUSED_CHANNELS;
     }
 
+    /**
+     * Determines if an EQ view will have been created for this source group
+     * @returns boolean
+     * 
+     * @example
+     * const p = new ProjectFile(PROJECT_INIT)
+     * p.getSrcGrpInfo()
+     * const srcGrp = p.sourceGroups[0]
+     * srcGrp.hasEQView()
+     * // => true
+     */
     public hasEQView() {
         return this.Type !== dbpr.SourceGroupTypes.ADDITIONAL_AMPLIFIER && this.Type !== dbpr.SourceGroupTypes.UNUSED_CHANNELS;
     }
