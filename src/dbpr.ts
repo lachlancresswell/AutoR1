@@ -123,6 +123,12 @@ export enum TargetTypes {
     SCENE_TRANSPORT = 7,
 }
 
+export enum ActionTypes {
+    NONE = 0,
+    INTERACTION = 1,
+    NAVIGATION = 2,
+}
+
 export enum TargetPropertyType {
     ARRAYPROCESSING_NAME = "ArrayProcessing_Name",
     ARRAYPROCESSING_COMMENT = "ArrayProcessing_Comment",
@@ -420,7 +426,7 @@ export interface Control {
     LineThickness: number;
     ThresholdValue: number;
     Flags: number;
-    ActionType: number;
+    ActionType: ActionTypes;
     TargetType: TargetTypes;
     TargetId: number;
     TargetChannel: TargetChannels;
