@@ -108,7 +108,7 @@ describe('ProjectFile', () => {
                 Name: 'test',
                 ParentId: 1,
                 TargetId: 1,
-                TargetChannel: 1,
+                TargetChannel: TargetChannels.CHANNEL_A,
                 Type: 1,
                 Flags: 1
             };
@@ -129,7 +129,7 @@ describe('ProjectFile', () => {
                 Name: 'test',
                 ParentId: 1,
                 TargetId: 2,
-                TargetChannel: 3,
+                TargetChannel: TargetChannels.CHANNEL_A,
                 Type: 4,
                 Flags: 5
             };
