@@ -1,4 +1,4 @@
-import { SqlDbFile, ProjectFile, TemplateFile, Control, TargetPropertyType } from '../../dbpr';
+import { SqlDbFile, ProjectFile, TemplateFile, Control, TargetPropertyType, MASTER_GROUP_ID, TargetChannels, R1GroupsType } from '../../dbpr';
 import { existsSync } from 'fs';
 import * as Database from 'better-sqlite3';
 
@@ -38,6 +38,7 @@ describe('SqlDbFile', () => {
 describe('ProjectFile', () => {
     let databaseObject: any;
     let prepare: jest.Mock;
+    let run: jest.Mock;
     const GroupId = 1;
     const Name = 'test';
     const ViewId = 1;
@@ -46,11 +47,12 @@ describe('ProjectFile', () => {
         jest.resetAllMocks();
 
         (existsSync as jest.Mock).mockReturnValue(true);
+        run = jest.fn();
         prepare = jest.fn(() => {
             return {
                 get: jest.fn(() => databaseObject),
                 all: jest.fn(() => databaseObject),
-                run: jest.fn()
+                run
             }
         });
 
@@ -94,6 +96,64 @@ describe('ProjectFile', () => {
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
             expect(() => projectFile.deleteGroup(GroupId)).toThrow(`Could not find any groups with ParentID `);
+        });
+    });
+
+    describe('createGroup', () => {
+        it('should call to database for group creation', () => {
+            // Arrange
+            databaseObject = [];
+            const projectFile = new ProjectFile('test.db');
+            const groupObj = {
+                Name: 'test',
+                ParentId: 1,
+                TargetId: 1,
+                TargetChannel: 1,
+                Type: 1,
+                Flags: 1
+            };
+            prepare.mockClear();
+
+            // Act
+            projectFile.createGroup(groupObj);
+
+            // Assert
+            expect(prepare).toHaveBeenCalledTimes(3);
+        });
+
+        it('should create group with passed parameters', () => {
+            // Arrange
+            databaseObject = [];
+            const projectFile = new ProjectFile('test.db');
+            const groupObj = {
+                Name: 'test',
+                ParentId: 1,
+                TargetId: 2,
+                TargetChannel: 3,
+                Type: 4,
+                Flags: 5
+            };
+            run.mockClear();
+
+            // Act
+            projectFile.createGroup(groupObj);
+
+            // Assert
+            expect(run).toHaveBeenNthCalledWith(1, groupObj.Name, groupObj.ParentId, groupObj.TargetId, groupObj.TargetChannel, groupObj.Type, groupObj.Flags);
+        });
+
+        it('should set default values for optional parameters', () => {
+            // Arrange
+            databaseObject = [];
+            const projectFile = new ProjectFile('test.db');
+            const groupObj = { Name: 'test' };
+            run.mockClear();
+
+            // Act
+            projectFile.createGroup(groupObj);
+
+            // Assert
+            expect(run).toHaveBeenNthCalledWith(1, groupObj.Name, MASTER_GROUP_ID, 0, TargetChannels.NONE, R1GroupsType.GROUP, 0);
         });
     });
 

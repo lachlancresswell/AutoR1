@@ -1,8 +1,12 @@
 import { existsSync } from 'fs';
 import * as Database from 'better-sqlite3';
+
+export type Crossover = '100hz' | 'Infra' | 'CUT';
+
 export const ARRAYCALC_SNAPSHOT = 1;  // Snapshot ID
 export const INPUT_TYPES = ["A1", "A2", "A3", "A4", "D1", "D2", "D3", "D4"];
-export type Crossover = '100hz' | 'Infra' | 'CUT';
+
+export const MASTER_GROUP_ID = 1;
 
 export enum SourceGroupTypes {
     ARRAY = 1,
@@ -550,6 +554,62 @@ export class ProjectFile extends SqlDbFile {
         } catch (err) {
             throw (new Error("Project file is not initialised"));
         }
+    }
+
+    /**
+     * Creates a new group with the given title and properties, and returns its GroupId.
+     * @param title The name of the new group.
+     * @param parentId The GroupId of the parent group. Defaults to 1 (the Main group).
+     * @param targetId The target ID of the new group. Defaults to 0.
+     * @param targetChannel The target channel of the new group. Defaults to -1.
+     * @param type The type of the new group. Defaults to 0.
+     * @param flags The flags of the new group. Defaults to 0.
+     * @returns The GroupId of the newly created group.
+     * @throws Will throw an error if the parent group does not exist.
+     * 
+     * @example
+     * const p = new ProjectFile('path/to/project.dbpr');
+     * const groupId = p.createGrp('New Group', 2, 0, -1, 0, 0);
+     * console.log(groupId);
+     * // => 284
+     */
+    public createGroup(groupObj: {
+        Name: string,
+        ParentId?: number,
+        TargetId?: number,
+        TargetChannel?: TargetChannels,
+        Type?: R1GroupsType,
+        Flags?: number,
+    }): number {
+        const defaults = {
+            ParentId: MASTER_GROUP_ID,
+            TargetId: 0,
+            TargetChannel: TargetChannels.NONE,
+            Type: R1GroupsType.GROUP,
+            Flags: 0,
+        }
+
+        const {
+            Name,
+            ParentId,
+            TargetId,
+            TargetChannel,
+            Type,
+            Flags,
+        } = { ...defaults, ...groupObj };
+
+        this.db.prepare(
+            `INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)
+             SELECT ?, ?, ?, ?, ?, ?`
+        ).run(Name, ParentId, TargetId, TargetChannel, Type, Flags);
+
+        const rtn = this.db.prepare('SELECT * FROM Groups ORDER BY GroupId DESC LIMIT 1;').get() as Group;
+
+        // Get parent name for logging
+        const parentGroup = this.db.prepare('SELECT * FROM Groups WHERE GroupId = ?').get() as Group
+        console.info(`Inserted ${Name} under ${parentGroup.Name}`);
+
+        return rtn.GroupId;
     }
 
     /**
