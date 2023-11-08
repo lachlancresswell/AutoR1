@@ -464,54 +464,6 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         super(f);
     }
 
-    /**
-     * Creates a new group with the given title and properties, and returns its GroupId.
-     * @param title The name of the new group.
-     * @param parentId The GroupId of the parent group. Defaults to 1 (the Main group).
-     * @param targetId The target ID of the new group. Defaults to 0.
-     * @param targetChannel The target channel of the new group. Defaults to -1.
-     * @param type The type of the new group. Defaults to 0.
-     * @param flags The flags of the new group. Defaults to 0.
-     * @returns The GroupId of the newly created group.
-     * @throws Will throw an error if the parent group does not exist.
-     * 
-     * @example
-     * const p = new ProjectFile('path/to/project.dbpr');
-     * const groupId = p.createGrp('New Group', 2, 0, -1, 0, 0);
-     * console.log(groupId);
-     * // => 284
-     */
-    public createGrp(title: string, parentId = 1, targetId = 0, targetChannel = -1, type = 0, flags = 0): number {
-        if (parentId < 1) {
-            throw new Error(`Parent with GroupID ${parentId} does not exist`);
-        }
-
-        let stmt = this.db.prepare(
-            `INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)
-             SELECT ?, ?, ?, ?, ?, ?`
-        );
-        stmt.run(title, parentId, targetId, targetChannel, type, flags);
-
-        stmt = this.db.prepare('SELECT * FROM Groups ORDER BY GroupId DESC LIMIT 1;');
-        const groupId = stmt.get() as {
-            Flags: number,
-            GroupId: number,
-            Name: string,
-            ParentId: number,
-            TargetChannel: number,
-            TargetId: number,
-            Type: number,
-        };
-
-        // Get parent name for logging
-        stmt = this.db.prepare('SELECT Name FROM Groups WHERE GroupId = ?');
-        const pName = (stmt.get(parentId) as { Name: string }).Name;
-        console.info(`Inserted ${title} under ${pName}`);
-
-        return groupId.GroupId;
-    }
-
-
     public getSrcGrpInfo = () => {
         this.db.exec(`PRAGMA case_sensitive_like=ON;`);
 
@@ -678,8 +630,12 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * const p = new ProjectFile(PROJECT_INIT)
      * p.createMainGroup()
      */
-    public createMainMuteGroup(parentGroupId = MAIN_GROUP_ID): void {
-        const mainGroup = this.createGrp(MUTE_GROUP_TITLE, parentGroupId);
+    public createMainMuteGroup(ParentId = MAIN_GROUP_ID): void {
+        const group = {
+            Name: MUTE_GROUP_TITLE,
+            ParentId
+        }
+        const mainGroup = this.createGroup(group);
 
         const insertStmt = (ch: Channel) => this.db.prepare(
             'INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) SELECT ?, ?, ?, ?, 1, 0'
@@ -705,7 +661,10 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * p.createMainGroup()
      */
     public createMainFallbackGroup(parentGroupId = MAIN_GROUP_ID): void {
-        const mainGroup = this.createGrp(FALLBACK_GROUP_TITLE, parentGroupId);
+        const mainGroup = this.createGroup({
+            Name: FALLBACK_GROUP_TITLE,
+            ParentId: parentGroupId
+        });
 
         const insertStmt = (ch: Channel) => this.db.prepare(
             'INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) SELECT ?, ?, ?, ?, 1, 0'
@@ -903,7 +862,10 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             throw (new Error("No AP channel groups found."))
         }
 
-        this.createGrp(AP_GROUP_TITLE, parentGroupId);
+        this.createGroup({
+            Name: AP_GROUP_TITLE,
+            ParentId: parentGroupId
+        });
         const apGroupId = this.getHighestGroupID();
 
         const insertStmt = (ch: Channel) => this.db.prepare(
@@ -1019,20 +981,32 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
 
         const subArrayGroupName = subArrayGroup.Name;
-        this.createGrp(subArrayGroupName, parentGroupId);
+        this.createGroup({
+            Name: subArrayGroupName,
+            ParentId: parentGroupId
+        });
         let subGroupParentID = this.getHighestGroupID();
 
-        this.createGrp(`${subArrayGroupName} SUBs`, subGroupParentID);
+        this.createGroup({
+            Name: `${subArrayGroupName} SUBs`,
+            ParentId: subGroupParentID
+        });
         subGroupParentID = this.getHighestGroupID();
 
         let suffix = [" SUBs L", " SUBs R", " SUBs C"];
         let subArrayGroups = this.getSubArrayGroups();
         for (const [idx, subArrayGroup] of subArrayGroups.entries()) {
-            this.createGrp(`${subArrayGroupName}${suffix[idx]}`, subGroupParentID);
+            this.createGroup({
+                Name: `${subArrayGroupName}${suffix[idx]}`, ParentId: subGroupParentID
+            });
             let pId = this.getHighestGroupID();
 
             for (const subDevices of subArrayGroup) {
-                this.createGrp(subDevices.Name, pId, subDevices.TargetId, subDevices.TargetChannel, 1, 0);
+                this.addChannelToGroup({
+                    Name: subDevices.Name,
+                    ParentId: pId,
+                    TargetId: subDevices.TargetId, TargetChannel: subDevices.TargetChannel,
+                });
             }
         }
     }
@@ -1057,9 +1031,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             for (const chGrp of srcGrp.channelGroups) {
                 if (chGrp.type == 'TYPE_SUBS_C') {
                     for (const channel of chGrp.channels) {
-                        this.createGrp(
-                            channel.Name, pId, channel.TargetId, channel.TargetChannel, 1, 0
-                        );
+                        this.addChannelToGroup({
+                            Name: channel.Name,
+                            ParentId: pId,
+                            TargetId: channel.TargetId, TargetChannel: channel.TargetChannel,
+                        });
                         success = true;
                     }
                 }
