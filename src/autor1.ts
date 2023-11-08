@@ -596,27 +596,27 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 && (control.DisplayName
                     && control.DisplayName !== "Fallback"
                     && control.DisplayName !== "Regular" && DisplayName)) {
-                control.setDisplayName(DisplayName);
+                control.DisplayName = DisplayName;
             }
 
             // Set TargetChannel if required
             if (Object.values({ ...dbpr.TargetPropertyTypeChannel, ...dbpr.TargetPropertyDisplayChannel, ...dbpr.TargetPropertyLedChannel, ...dbpr.TargetPropertyMeterChannel, ...dbpr.TargetPropertySwitchChannel, ...dbpr.TargetPropertyDigitalChannel, ...dbpr.TargetPropertyDisplayChannel }).includes(control.TargetProperty as dbpr.TargetPropertyType) && TargetChannel) {
-                control.setTargetChannel(TargetChannel);
+                control.TargetChannel = TargetChannel;
 
                 // Convert the digital input to a read-only display control for delay setting on a flown array
                 if (control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY
                     && options?.sourceGroupType === dbpr.SourceGroupTypes.ARRAY) {
-                    control.setType(dbpr.ControlTypes.DISPLAY);
+                    control.Type = dbpr.ControlTypes.DISPLAY;
                 }
             }
 
-            control.setPosX(control.PosX + posX);
-            control.setPosY(control.PosY + posY);
-            control.setWidth(Width || control.Width);
-            control.setHeight(Height || control.Height);
-            control.setJoinedId(joinedId);
-            control.setTargetId(TargetId || control.TargetId)
-            control.setViewId(ViewId);
+            control.PosX = control.PosX + posX;
+            control.PosY = control.PosY + posY;
+            control.Width = Width || control.Width;
+            control.Height = Height || control.Height;
+            control.JoinedId = joinedId;
+            control.TargetId = TargetId || control.TargetId;
+            control.ViewId = ViewId;
 
             this.insertControl(control)
         }
@@ -1379,6 +1379,10 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         template.setCPL2(sourceGroup.hasCPLv2());
         template.load(templateFile);
 
+        if (!template.controls) {
+            throw new Error(`Template ${template.name} does not have any controls.`);
+        }
+
         const controls: AutoR1Control[] = [];
 
         let meterChannelIndex = 0;
@@ -1529,395 +1533,89 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     }
 }
 
-interface ControlBuilder {
-    _ActionType: number;
-    _Alignment: number;
-    _ConfirmOffMsg: string | null;
-    _ConfirmOnMsg: string | null;
-    _ControlId: number;
-    _Dimension: Uint8Array | null;
-    _DisplayName: string | null;
-    _Flags: number;
-    _Font: string;
-    _Height: number;
-    _JoinedId: number;
-    _LabelAlignment: number;
-    _LabelColor: number;
-    _LabelFont: number;
-    _LimitMax: number;
-    _LimitMin: number;
-    _LineThickness: number;
-    _MainColor: number;
-    _PictureIdDay: number;
-    _PictureIdNight: number;
-    _PosX: number;
-    _PosY: number;
-    _SubColor: number;
-    _TargetChannel: number;
-    _TargetId: number;
-    _TargetProperty: dbpr.TargetPropertyType | null;
-    _TargetRecord: number;
-    _TargetType: number;
-    _ThresholdValue: number;
-    _Type: number;
-    _UniqueName: string | null;
-    _ViewId: number;
-    _Width: number;
-
-    setDisplayName(val: string | null): void;
-    setHeight(val: number): void;
-    setViewId(val: number): void;
-    setJoinedId(val: number): void;
-    setPosX(val: number): void;
-    setPosY(val: number): void;
-    setType(val: dbpr.ControlTypes): void;
-    setLimitMin(val: number): void
-    setLimitMax(val: number): void
-    setMainColor(val: number): void
-    setSubColor(val: number): void
-    setLabelColor(val: number): void
-    setLabelFont(val: number): void
-    setLabelAlignment(val: number): void
-    setLineThickness(val: number): void
-    setThresholdValue(val: number): void
-    setFlags(val: number): void
-    setActionType(val: number): void
-    setTargetType(val: number): void
-    setTargetId(val: number): void;
-    setTargetProperty(val: dbpr.TargetPropertyType): void;
-    setTargetChannel(val: number): void;
-    setTargetRecord(val: number): void;
-    setConfirmOnMsg(val: string): void;
-    setConfirmOffMsg(val: string): void;
-    setPictureIdDay(val: number): void;
-    setPictureIdNight(val: number): void;
-}
-
-export class AutoR1Control implements ControlBuilder {
-    _ActionType: number;
-    _Alignment: number;
-    _ConfirmOffMsg: string | null;
-    _ConfirmOnMsg: string | null;
-    _ControlId: number;
-    _Dimension: Uint8Array | null;
-    _DisplayName: string | null;
-    _Flags: number;
-    _Font: string;
-    _Height: number;
-    _JoinedId: number;
-    _LabelAlignment: number;
-    _LabelColor: number;
-    _LabelFont: number;
-    _LimitMax: number;
-    _LimitMin: number;
-    _LineThickness: number;
-    _MainColor: number;
-    _PictureIdDay: number;
-    _PictureIdNight: number;
-    _PosX: number;
-    _PosY: number;
-    _SubColor: number;
-    _TargetChannel: number;
-    _TargetId: number;
-    _TargetProperty: dbpr.TargetPropertyType | null;
-    _TargetRecord: number;
-    _TargetType: number;
-    _ThresholdValue: number;
-    _Type: dbpr.ControlTypes;
-    _UniqueName: string | null;
-    _ViewId: number;
-    _Width: number;
+export class AutoR1Control implements dbpr.Control {
+    ActionType = dbpr.ActionTypes.NONE;
+    Alignment = -1;
+    ConfirmOffMsg: string | null = null;
+    ConfirmOnMsg: string | null = null;
+    ControlId = -1;
+    Dimension: Uint8Array | null = null;
+    DisplayName: string | null = null;
+    Flags = 0;
+    Font = 'Arial,12,-1,5,50,0,0,0,0,0';
+    Height = 0;
+    JoinedId = 0;
+    LabelAlignment = 1;
+    LabelColor = 0;
+    LabelFont = 5;
+    LimitMax = 9999;
+    LimitMin = 0;
+    LineThickness = 0;
+    MainColor = -1;
+    PictureIdDay = 0;
+    PictureIdNight = 0;
+    PosX = 0;
+    PosY = 0;
+    SubColor = 1;
+    TargetChannel = dbpr.TargetChannels.NONE
+    TargetId = -1;
+    TargetProperty: dbpr.TargetPropertyType | null = null;
+    TargetRecord = 0
+    TargetType = 0;
+    ThresholdValue = 0.0;
+    Type = dbpr.ControlTypes.LED;
+    UniqueName: string | null = null;
+    ViewId = -1;
+    Width = 0;
 
     constructor(row?: dbpr.Control) {
         if (row) {
             const { ViewId, Type, PosX, PosY, Width, Height, DisplayName, TargetId, TargetChannel, TargetProperty, ActionType, Alignment, ConfirmOffMsg, ConfirmOnMsg, ControlId, Dimension, Flags, Font, JoinedId, LabelAlignment, LabelColor, LabelFont, LimitMin, LimitMax, LineThickness, MainColor, PictureIdDay, PictureIdNight, SubColor, TargetRecord, TargetType, ThresholdValue, UniqueName } = row;
-            this.setType(Type);
-            this.setPosX(PosX);
-            this.setPosY(PosY);
-            this.setWidth(Width);
-            this.setHeight(Height);
-            this.setDisplayName(DisplayName);
-            this.setTargetId(TargetId);
-            this.setTargetChannel(TargetChannel);
-            this.setActionType(ActionType);
-            this.setAlignment(Alignment);
-            this.setConfirmOffMsg(ConfirmOffMsg);
-            this.setConfirmOnMsg(ConfirmOnMsg);
-            this.setControlId(ControlId);
-            this.setDimension(Dimension);
-            this.setFlags(Flags);
-            this.setFont(Font);
-            this.setJoinedId(JoinedId);
-            this.setLabelAlignment(LabelAlignment);
-            this.setLabelColor(LabelColor);
-            this.setLabelFont(LabelFont);
-            this.setLimitMin(LimitMin);
-            this.setLimitMax(LimitMax);
-            this.setLineThickness(LineThickness);
-            this.setMainColor(MainColor);
-            this.setPictureIdDay(PictureIdDay);
-            this.setPictureIdNight(PictureIdNight);
-            this.setSubColor(SubColor);
-            this.setTargetProperty(TargetProperty);
-            this.setTargetRecord(TargetRecord);
-            this.setTargetType(TargetType);
-            this.setThresholdValue(ThresholdValue);
-            this.setUniqueName(UniqueName);
+            this.Type = Type;
+            this.PosX = PosX;
+            this.PosY = PosY;
+            this.Width = Width;
+            this.Height = Height;
+            this.DisplayName = DisplayName;
+            this.TargetId = TargetId;
+            this.TargetChannel = TargetChannel;
+            this.ActionType = ActionType;
+            this.Alignment = Alignment;
+            this.ConfirmOffMsg = ConfirmOffMsg;
+            this.ConfirmOnMsg = ConfirmOnMsg;
+            this.ControlId = ControlId;
+            this.Dimension = Dimension;
+            this.Flags = Flags;
+            this.Font = Font;
+            this.JoinedId = JoinedId;
+            this.LabelAlignment = LabelAlignment;
+            this.LabelColor = LabelColor;
+            this.LabelFont = LabelFont;
+            this.LimitMin = LimitMin;
+            this.LimitMax = LimitMax;
+            this.LineThickness = LineThickness;
+            this.MainColor = MainColor;
+            this.PictureIdDay = PictureIdDay;
+            this.PictureIdNight = PictureIdNight;
+            this.SubColor = SubColor;
+            this.TargetProperty = TargetProperty;
+            this.TargetRecord = TargetRecord;
+            this.TargetType = TargetType;
+            this.ThresholdValue = ThresholdValue;
+            this.UniqueName = UniqueName;
         }
     }
 
     public isCPL = (): boolean => {
-        return this._DisplayName === 'CPL';
+        return this.DisplayName === 'CPL';
     }
 
     public isCUT = (): boolean => {
-        return this._DisplayName === 'CUT';
+        return this.DisplayName === 'CUT';
     }
 
     public isViewEQButton = (): boolean => {
-        return this._DisplayName === 'View EQ';
-    }
-
-    get Alignment() {
-        return this._Alignment;
-    }
-
-    public setAlignment(val: number) {
-        this._Alignment = val;
-        return this;
-    }
-
-    get ControlId() {
-        return this._ControlId;
-    }
-
-    public setControlId(val: number) {
-        this._ControlId = val;
-        return this;
-    }
-
-    get Dimension() {
-        return this._Dimension;
-    }
-
-    public setDimension(val: Uint8Array | null) {
-        this._Dimension = val;
-        return this;
-    }
-
-    get Font() {
-        return this._Font;
-    }
-
-    public setFont(val: string) {
-        this._Font = val;
-        return this;
-    }
-
-    get UniqueName() {
-        return this._UniqueName;
-    }
-
-    public setUniqueName(val: string | null) {
-        this._UniqueName = val;
-        return this;
-    }
-
-    get DisplayName() {
-        return this._DisplayName;
-    }
-    public setDisplayName(val: string | null) {
-        this._DisplayName = val;
-        return this;
-    }
-    get Width() {
-        return this._Width;
-    }
-    public setWidth(val: number) {
-        this._Width = val;
-        return this;
-    }
-    get Height() {
-        return this._Height;
-    }
-    public setHeight(val: number) {
-        this._Height = val;
-        return this;
-    }
-    get ViewId() {
-        return this._ViewId;
-    }
-    public setViewId(val: number) {
-        this._ViewId = val;
-        return this;
-    }
-    get JoinedId() {
-        return this._JoinedId;
-    }
-    public setJoinedId(val: number) {
-        this._JoinedId = val;
-        return this;
-    }
-    get PosX() {
-        return this._PosX;
-    }
-    public setPosX(val: number) {
-        this._PosX = val;
-        return this;
-    }
-    get PosY() {
-        return this._PosY;
-    }
-    public setPosY(val: number) {
-        this._PosY = val;
-        return this;
-    }
-    get Type() {
-        return this._Type;
-    }
-    public setType(val: number) {
-        this._Type = val;
-        return this;
-    }
-    get LimitMin() {
-        return this._LimitMin;
-    }
-    public setLimitMin(val: number) {
-        this._LimitMin = val;
-        return this;
-    }
-    get LimitMax() {
-        return this._LimitMax;
-    }
-    public setLimitMax(val: number) {
-        this._LimitMax = val;
-        return this;
-    }
-    get MainColor() {
-        return this._MainColor;
-    }
-    public setMainColor(val: number) {
-        this._MainColor = val;
-        return this;
-    }
-    get SubColor() {
-        return this._SubColor;
-    }
-    public setSubColor(val: number) {
-        this._SubColor = val;
-        return this;
-    }
-    get LabelColor() {
-        return this._LabelColor;
-    }
-    public setLabelColor(val: number) {
-        this._LabelColor = val;
-        return this;
-    }
-    get LabelFont() {
-        return this._LabelFont;
-    }
-    public setLabelFont(val: number) {
-        this._LabelFont = val;
-        return this;
-    }
-    get LabelAlignment() {
-        return this._LabelAlignment;
-    }
-    public setLabelAlignment(val: number) {
-        this._LabelAlignment = val;
-        return this;
-    }
-    get LineThickness() {
-        return this._LineThickness;
-    }
-    public setLineThickness(val: number) {
-        this._LineThickness = val;
-        return this;
-    }
-    get ThresholdValue() {
-        return this._ThresholdValue;
-    }
-    public setThresholdValue(val: number) {
-        this._ThresholdValue = val;
-        return this;
-    }
-    get Flags() {
-        return this._Flags;
-    }
-    public setFlags(val: number) {
-        this._Flags = val;
-        return this;
-    }
-    get ActionType() {
-        return this._ActionType;
-    }
-    public setActionType(val: number) {
-        this._ActionType = val;
-        return this;
-    }
-    get TargetType() {
-        return this._TargetType;
-    }
-    public setTargetType(val: number) {
-        this._TargetType = val;
-        return this;
-    }
-    get TargetId() {
-        return this._TargetId;
-    }
-    public setTargetId(val: number) {
-        this._TargetId = val;
-        return this;
-    }
-    get TargetProperty() {
-        return this._TargetProperty;
-    }
-    public setTargetProperty(val: dbpr.TargetPropertyType | null) {
-        this._TargetProperty = val;
-        return this;
-    }
-    get TargetChannel() {
-        return this._TargetChannel;
-    }
-    public setTargetChannel(val: number) {
-        this._TargetChannel = val;
-        return this;
-    }
-    get TargetRecord() {
-        return this._TargetRecord;
-    }
-    public setTargetRecord(val: number) {
-        this._TargetRecord = val;
-        return this;
-    }
-    get ConfirmOnMsg() {
-        return this._ConfirmOnMsg;
-    }
-    public setConfirmOnMsg(val: string | null) {
-        this._ConfirmOnMsg = val;
-        return this;
-    }
-    get ConfirmOffMsg() {
-        return this._ConfirmOffMsg;
-    }
-    public setConfirmOffMsg(val: string | null) {
-        this._ConfirmOffMsg = val;
-        return this;
-    }
-    get PictureIdDay() {
-        return this._PictureIdDay;
-    }
-    public setPictureIdDay(val: number) {
-        this._PictureIdDay = val;
-        return this;
-    }
-    get PictureIdNight() {
-        return this._PictureIdNight;
-    }
-    public setPictureIdNight(val: number) {
-        this._PictureIdNight = val;
-        return this;
+        return this.DisplayName === 'View EQ';
     }
 
     public targetsLoadMatchEnable() {
@@ -1978,35 +1676,35 @@ export class AutoR1Control implements ControlBuilder {
         TargetId: number,
         TargetChannel: number
     }, muteTargetId: number, sourceGroup: SourceGroup, channelGroup: ChannelGroup, posX: number, posY: number, viewId: number, meterChannelCallback?: () => void, muteChannelCallback?: () => void) {
-        this.setJoinedId(joinedId);
-        this.setTargetId(channelGroup.groupId);
+        this.JoinedId = joinedId
+        this.TargetId = channelGroup.groupId
 
         // Update Infra/100hz button text
         if (this.isCUT()) {
-            this.setDisplayName(sourceGroup.xover);
+            this.DisplayName = sourceGroup.xover
         }
 
         // Meters, these require a TargetChannel
         if (this.isTypeMeter()) {
-            this.setTargetId(MeterChannel.TargetId);
-            this.setTargetChannel(MeterChannel.TargetChannel);
+            this.TargetId = MeterChannel.TargetId
+            this.TargetChannel = MeterChannel.TargetChannel
 
             if (meterChannelCallback) meterChannelCallback();
         } else if (this.isTypeSwitch()) {
             if (this.TargetProperty === dbpr.TargetPropertyType.CONFIG_MUTE) {
                 // Mute
-                this.setTargetId(muteTargetId);
+                this.TargetId = muteTargetId
 
                 if (muteChannelCallback) muteChannelCallback();
             }
 
             if (this.isViewEQButton()) {
                 // ViewEQ Button
-                this.setTargetId(sourceGroup.ViewId + 1);
+                this.TargetId = sourceGroup.ViewId + 1
             }
         } else if (this.isTypeFrame()) {
             if (this.DisplayName) {
-                this.setDisplayName(channelGroup.name);
+                this.DisplayName = channelGroup.name
             }
         } else if (this.isTypeDigital()) {
             if ((this.targetsDelay() || this.targetsLevel())
@@ -2015,18 +1713,18 @@ export class AutoR1Control implements ControlBuilder {
                     || channelGroup.hasRelativeDelay(sourceGroup)
                 )) {
                 // Set relative digital control
-                this.setFlags(dbpr.ControlFlags.RELATIVE);
-                this.setLimitMin(-9999.5);
-                this.setLimitMax(9999);
+                this.Flags = dbpr.ControlFlags.RELATIVE
+                this.LimitMin = -9999.5
+                this.LimitMax = 9999
             }
         }
 
         if (this.isVisible(channelGroup, sourceGroup)) {
-            this.setPosX(this.PosX + posX)
-            this.setPosY(this.PosY + posY)
-            this.setViewId(viewId);
-            this.setConfirmOffMsg(null)
-            this.setConfirmOnMsg(null)
+            this.PosX = this.PosX + posX
+            this.PosY = this.PosY + posY
+            this.ViewId = viewId
+            this.ConfirmOffMsg = null
+            this.ConfirmOnMsg = null
         }
 
         return this
@@ -2061,30 +1759,30 @@ export class AutoR1Template {
     public configureForMainView(joinedId: number, MeterChannel: number, muteTargetId: number, sourceGroup: SourceGroup, channelGroup: ChannelGroup, posX: number, posY: number, viewId: number) {
         this.controls?.forEach((control) => {
 
-            control.setJoinedId(joinedId);
-            control.setTargetId(channelGroup.groupId);
+            control.JoinedId = joinedId
+            control.TargetId = channelGroup.groupId
 
             // Update Infra/100hz button text
             if (control.isCUT()) {
-                control.setDisplayName(sourceGroup.xover);
+                control.DisplayName = sourceGroup.xover
             }
 
             // Meters, these require a TargetChannel
             if (control.isTypeMeter()) {
-                control.setTargetChannel(MeterChannel);
+                control.TargetChannel = MeterChannel
             } else if (control.isTypeSwitch()) {
                 if (control.TargetProperty === dbpr.TargetPropertyType.CONFIG_MUTE) {
                     // Mute
-                    control.setTargetId(muteTargetId);
+                    control.TargetId = muteTargetId
                 }
 
                 if (control.isViewEQButton()) {
                     // ViewEQ Button
-                    control.setTargetId(sourceGroup.ViewId + 1);
+                    control.TargetId = sourceGroup.ViewId + 1
                 }
             } else if (control.isTypeFrame()) {
                 if (control.DisplayName) {
-                    control.setDisplayName(channelGroup.name);
+                    control.DisplayName = channelGroup.name
                 }
             } else if (control.isTypeDigital()) {
                 if ((control.targetsDelay() || control.targetsLevel())
@@ -2095,18 +1793,18 @@ export class AutoR1Template {
                         || channelGroup.type === 'TYPE_POINT_SUBS'
                     )) {
                     // Set relative digital control
-                    control.setFlags(dbpr.ControlFlags.RELATIVE);
-                    control.setLimitMin(-9999.5);
-                    control.setLimitMax(9999);
+                    control.Flags = dbpr.ControlFlags.RELATIVE
+                    control.LimitMin = -9999.5
+                    control.LimitMax = 9999
                 }
             }
 
             if (control.isVisible(channelGroup, sourceGroup)) {
-                control.setPosX(control.PosX + posX)
-                control.setPosY(control.PosY + posY)
-                control.setViewId(viewId);
-                control.setConfirmOffMsg(null)
-                control.setConfirmOnMsg(null)
+                control.PosX = control.PosX + posX
+                control.PosY = control.PosY + posY
+                control.ViewId = viewId
+                control.ConfirmOffMsg = null
+                control.ConfirmOnMsg = null
             }
         })
     }
