@@ -52,7 +52,7 @@ describe('Mute Group', () => {
     beforeEach(() => {
         projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP);
         templateFile = new AutoR1TemplateFile(TEMPLATES);
-        const parentId = projectFile.createGrp('Auto R1');
+        const parentId = projectFile.createGroup({ Name: 'Auto R1' });
         projectFile.createSubLRCGroups(parentId);
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
@@ -119,7 +119,7 @@ describe('Fallback Group', () => {
     beforeEach(() => {
         projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP);
         templateFile = new AutoR1TemplateFile(TEMPLATES);
-        parentId = projectFile.createGrp('Auto R1');
+        parentId = projectFile.createGroup({ Name: 'Auto R1' });
         projectFile.createSubLRCGroups(parentId);
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
@@ -240,7 +240,7 @@ describe('Views and Controls', () => {
         projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP);
         templateFile = new AutoR1TemplateFile(TEMPLATES);
 
-        const parentId = projectFile.createGrp('Auto R1');
+        const parentId = projectFile.createGroup({ Name: 'Auto R1' });
         projectFile.createSubLRCGroups(parentId);
         projectFile.getSrcGrpInfo();
         projectFile.createAPGroup(parentId);
@@ -514,7 +514,7 @@ describe('Project with only sub array', () => {
         projectFile = new AutoR1ProjectFile(PROJECT_SUB_ARRAY);
         templateFile = new AutoR1TemplateFile(TEMPLATES);
 
-        const parentId = projectFile.createGrp('Auto R1');
+        const parentId = projectFile.createGroup({ Name: 'Auto R1' });
         projectFile.createSubLRCGroups(parentId);
         projectFile.getSrcGrpInfo();
         try {

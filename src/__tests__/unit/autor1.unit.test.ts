@@ -853,7 +853,7 @@ describe('configureMainViewMeterTemplate', () => {
 
     it('should update the DisplayName if control is a CUT button', () => {
         // Arrange
-        control.setDisplayName('CUT');
+        control.DisplayName = 'CUT'
         sourceGroup.xover = 'xover' as any;
 
         // Act
@@ -864,7 +864,7 @@ describe('configureMainViewMeterTemplate', () => {
 
     it('should not update the DisplayName if control is not a CUT button', () => {
         // Arrange
-        control.setDisplayName('test');
+        control.DisplayName = 'test'
 
         // Act
         control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
@@ -874,7 +874,7 @@ describe('configureMainViewMeterTemplate', () => {
 
     it('should update the TargetChannel if control is a Meter', () => {
         // Arrange
-        control.setType(DBPR.ControlTypes.METER);
+        control.Type = DBPR.ControlTypes.METER
 
         // Act
         control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
@@ -884,7 +884,7 @@ describe('configureMainViewMeterTemplate', () => {
 
     it('should not update the TargetChannel if control is not a', () => {
         // Arrange
-        control.setType(DBPR.ControlTypes.DIGITAL);
+        control.Type = DBPR.ControlTypes.DIGITAL
 
         // Act
         control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
@@ -894,8 +894,8 @@ describe('configureMainViewMeterTemplate', () => {
 
     it('should update the TargetId if control is a Mute Switch', () => {
         // Arrange
-        control.setType(DBPR.ControlTypes.SWITCH);
-        control.setTargetProperty(DBPR.TargetPropertyType.CONFIG_MUTE);
+        control.Type = DBPR.ControlTypes.SWITCH
+        control.TargetProperty = DBPR.TargetPropertyType.CONFIG_MUTE
 
         // Act
         control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
@@ -905,8 +905,8 @@ describe('configureMainViewMeterTemplate', () => {
 
     it('should not update the TargetId if control is not a Mute Switch', () => {
         // Arrange
-        control.setType(DBPR.ControlTypes.DISPLAY);
-        control.setTargetProperty(DBPR.TargetPropertyType.CHANNEL_ERROR);
+        control.Type = DBPR.ControlTypes.DISPLAY
+        control.TargetProperty = DBPR.TargetPropertyType.CHANNEL_ERROR
 
         // Act
         control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
@@ -1258,11 +1258,11 @@ describe('AutoR1TemplateFile', () => {
 
             templates = [section];
             const templateFile = new AutoR1TemplateFile('/path');
-            let template;
+            let template: any;
             expect(() => template = templateFile.getTemplateByName('testsection')).not.toThrow();
-            expect(template.id).toBe(templates[0].Id);
-            expect(template.joinedId).toBe(templates[0].JoinedId);
-            expect(template.name).toBe(templates[0].Name);
+            expect(template!.id).toBe(templates[0].Id);
+            expect(template!.joinedId).toBe(templates[0].JoinedId);
+            expect(template!.name).toBe(templates[0].Name);
         })
     });
 });

@@ -206,7 +206,7 @@ describe('Methods', () => {
     })
 
     it('Creates SUBs L/C/R groups', () => {
-        const pId = p.createGrp('TEST', 1);
+        const pId = p.createGroup({ Name: 'TEST', ParentId: 1 });
         (p as any).createSubLRCGroups(pId);
         expect((p as any).hasSubGroups()).toBe(3);
     });
@@ -342,7 +342,7 @@ describe('clean', () => {
 
         projectFile.createMeterView(templateFile);
         projectFile.createMainView(templateFile);
-        const groupId = projectFile.createGrp('TEST', 1);
+        const groupId = projectFile.createGroup({ Name: 'TEST', ParentId: 1 });
         projectFile.createSubLRCGroups(groupId);
 
         let newViewCount = projectFile.getAllViews().length;
@@ -475,7 +475,7 @@ describe('createSubLRCGroups', () => {
     });
 
     it('creates the correct number of groups', () => {
-        const groupId = projectFile.createGrp('TEST', 1);
+        const groupId = projectFile.createGroup({ Name: 'TEST', ParentId: 1 });
         const oldGroupCount = projectFile.getAllGroups().length;
 
         projectFile.createSubLRCGroups(groupId);
@@ -497,7 +497,7 @@ describe('addSubCtoSubL', () => {
     });
 
     it('creates a new group', () => {
-        const groupId = projectFile.createGrp('TEST', 1);
+        const groupId = projectFile.createGroup({ Name: 'TEST', ParentId: 1 });
         const oldGroupCount = projectFile.getAllGroups().length;
 
         projectFile.createSubLRCGroups(groupId);
