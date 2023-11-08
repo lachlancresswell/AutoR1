@@ -236,7 +236,7 @@ export class ChannelGroup implements ChannelGroupInterface {
     }
 }
 
-export interface AutoR1SourceGroup extends dbpr.SourceGroup {
+export interface AutoR1SourceGroupRow extends dbpr.SourceGroup {
     ArraySightIdR: number;
     MainGroupId: number;
     MainGroupName: string;
@@ -297,7 +297,7 @@ export class SourceGroup implements dbpr.SourceGroup {
 
     channelGroups: ChannelGroup[] = [];
 
-    constructor(row: AutoR1SourceGroup) {
+    constructor(row: AutoR1SourceGroupRow) {
         this.ViewId = row.ViewId;
         this.Name = row.Name;
         this.OrderIndex = row.OrderIndex;
@@ -521,7 +521,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const stmt = this.db.prepare(query);
 
-        let rtn = stmt.all() as AutoR1SourceGroup[];
+        let rtn = stmt.all() as AutoR1SourceGroupRow[];
 
         if (!rtn || !rtn.length) {
             throw ('Could not find any source groups');
