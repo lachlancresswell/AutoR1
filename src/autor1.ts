@@ -312,6 +312,7 @@ export class SourceGroup implements dbpr.SourceGroup {
         this.Mounting = row.Mounting;
         this.RelativeDelay = row.RelativeDelay;
         this.System = row.System;
+        this.RemarkableChangeDate = row.RemarkableChangeDate;
         this.xover = row.xover || 'CUT';
 
         if (row.TopGroupId && row.TopGroupName) {
