@@ -637,15 +637,16 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
         const mainGroup = this.createGroup(group);
 
-        const insertStmt = (ch: Channel) => this.db.prepare(
-            'INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) SELECT ?, ?, ?, ?, 1, 0'
-        ).run(ch.Name, mainGroup, ch.TargetId, ch.TargetChannel);
-
         this.sourceGroups.forEach((srcGrp) => {
             srcGrp.channelGroups.forEach((chGrp) => {
                 if (!chGrp.removeFromMute) {
                     chGrp.channels.forEach((ch) => {
-                        insertStmt(ch);
+                        this.addChannelToGroup({
+                            Name: ch.Name,
+                            ParentId: mainGroup,
+                            TargetId: ch.TargetId,
+                            TargetChannel: ch.TargetChannel,
+                        })
                     });
                 }
             });
@@ -666,15 +667,16 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             ParentId: parentGroupId
         });
 
-        const insertStmt = (ch: Channel) => this.db.prepare(
-            'INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) SELECT ?, ?, ?, ?, 1, 0'
-        ).run(ch.Name, mainGroup, ch.TargetId, ch.TargetChannel);
-
         this.sourceGroups.forEach((srcGrp) => {
             srcGrp.channelGroups.forEach((chGrp) => {
                 if (!chGrp.removeFromFallback) {
                     chGrp.channels.forEach((ch) => {
-                        insertStmt(ch);
+                        this.addChannelToGroup({
+                            Name: ch.Name,
+                            ParentId: mainGroup,
+                            TargetId: ch.TargetId,
+                            TargetChannel: ch.TargetChannel,
+                        })
                     });
                 }
             });
@@ -693,12 +695,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * // => 1
      */
     public getMuteGroupID(): number {
-        const stmt = this.db.prepare("SELECT GroupId FROM Groups WHERE Name = ?");
-        const rtn = stmt.get(MUTE_GROUP_TITLE) as { GroupId: number };
-        if (!rtn) {
-            throw new Error('Cannot find Mute group');
-        }
-        return rtn.GroupId;
+        return this.getGroupIdFromName(MUTE_GROUP_TITLE);
     }
 
     /**
@@ -713,12 +710,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * // => 1
      */
     public getFallbackGroupID(): number {
-        const stmt = this.db.prepare("SELECT GroupId FROM Groups WHERE Name = ?");
-        const rtn = stmt.get(FALLBACK_GROUP_TITLE) as { GroupId: number };
-        if (!rtn) {
-            throw new Error('Cannot find Fallback group');
-        }
-        return rtn.GroupId;
+        return this.getGroupIdFromName(FALLBACK_GROUP_TITLE);
     }
 
     /**
@@ -773,7 +765,6 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     }
 
     public createNavButtons(templates: AutoR1TemplateFile): void {
-        const getViewsStmt = this.db.prepare(`SELECT ViewId FROM Views WHERE Type = ?`);
         const increaseControlPosYByAmount = this.db.prepare('UPDATE Controls SET PosY = PosY + ? WHERE ViewId = ?');
         const navButtonTemplate = templates.templates.find(template => template.name === "Nav Button");
         const POS_X = 15;
@@ -785,7 +776,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const mainViewId = this.getMainView().ViewId;
         const meterViewId = this.getMeterView().ViewId;
 
-        const views = getViewsStmt.all(1000) as { ViewId: number }[];
+        const views = this.getAllViews();
         for (const vId of views.map(v => v.ViewId)) {
             if (vId !== mainViewId && vId !== meterViewId) {
 
@@ -868,25 +859,18 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         });
         const apGroupId = this.getHighestGroupID();
 
-        const insertStmt = (ch: Channel) => this.db.prepare(
-            'INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags) SELECT ?, ?, ?, ?, 1, 0'
-        ).run(ch.Name, apGroupId, ch.TargetId, ch.TargetChannel);
-
-        apChannelGroups.forEach(insertStmt);
+        apChannelGroups.forEach((ch) => {
+            this.addChannelToGroup({
+                Name: ch.Name,
+                ParentId: apGroupId,
+                TargetId: ch.TargetId,
+                TargetChannel: ch.TargetChannel,
+            });
+        });
     }
 
     public getAPGroup() {
-        const stmt = this.db.prepare(
-            `SELECT * FROM Groups WHERE Name = ?`
-        )
-
-        const rtn = stmt.get(AP_GROUP_TITLE) as dbpr.Group;
-
-        if (!rtn) {
-            throw (Error('No AP group found.'))
-        }
-
-        return rtn;
+        return this.getAllGroups().find((group) => group.Name === AP_GROUP_TITLE);
     }
 
     public getChannelMainGroupTotal(): number {
@@ -1330,13 +1314,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             this.insertControl(mainFallback);
         }
 
-        const apGroupId = (() => {
-            try {
-                return this.getAPGroup().GroupId;
-            } catch {
-                return undefined;
-            }
-        })();
+        const apGroupId = this.getAPGroup()?.GroupId;
 
         if (this.getApStatus()) {
             const thcTemplateOptions: TemplateOptions = {
