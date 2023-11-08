@@ -1096,14 +1096,26 @@ export class TemplateFile extends SqlDbFile {
         }
     }
 
+    /**
+     * Get all controls from a template
+     * @param tempName Name of template
+     * @returns Array of controls
+     * @throws Will throw an error if the template cannot be found.
+     * 
+     * @example
+     * const t = new TemplateFile('path/to/template.r1t');
+     * const controls = t.getTemplateControlsByName('Template 1');
+     * console.log(controls);
+     * // => [{...}, {...}, ...]
+     */
     getTemplateControlsByName(tempName: string): Control[] {
-        const section = this.db.prepare(`SELECT * FROM 'main'.'Sections' WHERE Name = ?`).get(tempName) as Section[];
+        const section = this.db.prepare(`SELECT * FROM 'main'.'Sections' WHERE Name = ?`).get(tempName) as Section;
 
         if (!section) {
             throw new Error(`Template ${tempName} not found.`);
         }
 
-        const controls = this.db.prepare(`SELECT * FROM Controls WHERE JoinedId = ${section[0].JoinedId} ORDER BY PosX ASC`).all() as Control[];
+        const controls = this.db.prepare(`SELECT * FROM Controls WHERE JoinedId = ${section.JoinedId} ORDER BY PosX ASC`).all() as Control[];
 
         return controls;
     }
