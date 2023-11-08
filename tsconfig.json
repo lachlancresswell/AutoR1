@@ -3,8 +3,7 @@
         "module": "commonjs",
         "moduleResolution": "Node",
         "target": "ES2020",
-        "strictNullChecks": true,
-        "strictFunctionTypes": true,
+        "strict": true,
         "types": [
             "jest"
         ],
