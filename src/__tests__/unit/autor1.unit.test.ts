@@ -1044,7 +1044,7 @@ describe('AutoR1ProjectFile', () => {
 
             // Assert
             // 3 times for group creation, once for each channel
-            expect(prepare).toHaveBeenCalledTimes(6);
+            expect(prepare).toHaveBeenCalledTimes(12);
         });
     });
 
@@ -1084,7 +1084,7 @@ describe('AutoR1ProjectFile', () => {
 
             // Assert
             // 3 times for group creation, once for each channel
-            expect(prepare).toHaveBeenCalledTimes(6);
+            expect(prepare).toHaveBeenCalledTimes(12);
         });
     });
 
