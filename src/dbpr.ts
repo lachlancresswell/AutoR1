@@ -558,18 +558,21 @@ export class ProjectFile extends SqlDbFile {
 
     /**
      * Creates a new group with the given title and properties, and returns its GroupId.
-     * @param title The name of the new group.
-     * @param parentId The GroupId of the parent group. Defaults to 1 (the Main group).
-     * @param targetId The target ID of the new group. Defaults to 0.
-     * @param targetChannel The target channel of the new group. Defaults to -1.
-     * @param type The type of the new group. Defaults to 0.
-     * @param flags The flags of the new group. Defaults to 0.
+     * @param Name The name of the new group.
+     * @param ParentId The GroupId of the parent group. Defaults to 1 (the Main group).
+     * @param TargetId The target ID of the new group. Defaults to 0.
+     * @param TargetChannel The target channel of the new group. Defaults to -1.
+     * @param Type The type of the new group. Defaults to 0.
+     * @param Flags The flags of the new group. Defaults to 0.
      * @returns The GroupId of the newly created group.
      * @throws Will throw an error if the parent group does not exist.
      * 
      * @example
      * const p = new ProjectFile('path/to/project.dbpr');
-     * const groupId = p.createGrp('New Group', 2, 0, -1, 0, 0);
+     * const groupId = p.createGrp({
+     * Name: 'My Group', 
+     * ParentId: 2,
+     * });
      * console.log(groupId);
      * // => 284
      */
