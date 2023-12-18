@@ -531,7 +531,7 @@ export class SqlDbFile {
      */
     constructor(path: string) {
         if (!existsSync(path)) {
-            throw new Error("File does not exist.");
+            throw new Error("File does not exist - " + path);
         }
 
         this.f = path;

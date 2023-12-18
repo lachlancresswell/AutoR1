@@ -14,7 +14,8 @@ describe('SqlDbFile', () => {
 
     describe('constructor', () => {
         it('should throw an error if the file does not exist', () => {
-            expect(() => new SqlDbFile('./nonexistent.db')).toThrowError('File does not exist.');
+            const p = './nonexistent.db';
+            expect(() => new SqlDbFile(p)).toThrowError('File does not exist - ' + p);
         });
 
         it('should create a new database connection', () => {
