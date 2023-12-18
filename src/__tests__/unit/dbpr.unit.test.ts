@@ -119,7 +119,7 @@ describe('ProjectFile', () => {
             projectFile.createGroup(groupObj);
 
             // Assert
-            expect(prepare).toHaveBeenCalledTimes(3);
+            expect(run).toHaveBeenCalledTimes(1); // 1 insertion
         });
 
         it('should create group with passed parameters', () => {
@@ -175,7 +175,7 @@ describe('ProjectFile', () => {
             projectFile.addChannelToGroup(groupObj);
 
             // Assert
-            expect(prepare).toHaveBeenCalledTimes(3);
+            expect(run).toHaveBeenCalledTimes(1); // 1 insertion for 1 channel
         });
 
         it('should insert channel with passed parameters', () => {
@@ -433,7 +433,7 @@ describe('ProjectFile', () => {
             };
             const projectFile = new ProjectFile('test.db');
             projectFile.insertControl(control);
-            expect(prepare).toHaveBeenCalledTimes(2);
+            expect(run).toHaveBeenCalledTimes(1); // 1 insertion for 1 control
         })
     });
 });

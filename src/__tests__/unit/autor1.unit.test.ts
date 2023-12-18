@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { ChannelGroup, SourceGroup, AutoR1Control, AutoR1Template, AutoR1TemplateFile, AutoR1ProjectFile, AutoR1SourceGroup } from '../../autor1';
+import { ChannelGroup, SourceGroup, AutoR1Control, AutoR1Template, AutoR1TemplateFile, AutoR1ProjectFile, AutoR1SourceGroupRow } from '../../autor1';
 import * as DBPR from '../../dbpr';
 import { existsSync } from 'fs';
 import * as Database from 'better-sqlite3';
@@ -919,6 +919,8 @@ describe('AutoR1ProjectFile', () => {
     let databaseObject: any;
     let getObject: any;
     let prepare: jest.Mock;
+    let run: jest.Mock;
+    let transaction: jest.Mock;
 
     beforeEach(() => {
         jest.resetAllMocks();
@@ -927,17 +929,23 @@ describe('AutoR1ProjectFile', () => {
         getObject = [];
 
         (existsSync as jest.Mock).mockReturnValue(true);
+        run = jest.fn();
         prepare = jest.fn(() => {
             return {
                 get: jest.fn(() => getObject),
                 all: jest.fn(() => databaseObject),
-                run: jest.fn()
+                run
             }
+        });
+
+        transaction = jest.fn((cb) => {
+            return cb
         });
 
         (Database as any).mockImplementationOnce(() => {
             return {
                 prepare,
+                transaction,
                 exec: jest.fn()
             }
         })
@@ -963,7 +971,7 @@ describe('AutoR1ProjectFile', () => {
         })
 
         it('should get source group info', () => {
-            const row: AutoR1SourceGroup = {
+            const row: AutoR1SourceGroupRow = {
                 SourceGroupId: 1,
                 Type: DBPR.SourceGroupTypes.ADDITIONAL_AMPLIFIER,
                 Name: 'Name',
@@ -1008,7 +1016,7 @@ describe('AutoR1ProjectFile', () => {
     });
 
     describe('createMainMuteGroup', () => {
-        it('should create a main mute group with the correct channels', () => {
+        it('should create a main mute group and add the channels of all source groups within', () => {
             // Arrange
 
             const projectFile: any = new AutoR1ProjectFile('/path');
@@ -1043,8 +1051,8 @@ describe('AutoR1ProjectFile', () => {
             projectFile.createMainMuteGroup();
 
             // Assert
-            // 3 times for group creation, once for each channel
-            expect(prepare).toHaveBeenCalledTimes(12);
+            // 1 time for group creation, once for each channel with !removeFromMute
+            expect(run).toHaveBeenCalledTimes(4);
         });
     });
 
@@ -1083,8 +1091,8 @@ describe('AutoR1ProjectFile', () => {
             projectFile.createMainFallbackGroup();
 
             // Assert
-            // 3 times for group creation, once for each channel
-            expect(prepare).toHaveBeenCalledTimes(12);
+            // Once for group creation, once for each channel with !removeFromFallback
+            expect(run).toHaveBeenCalledTimes(4);
         });
     });
 
