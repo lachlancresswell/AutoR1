@@ -552,9 +552,56 @@ export class SqlDbFile {
     }
 }
 
+const insertControlQuery = `INSERT INTO Controls ('Type', 
+                            'PosX', 
+                            'PosY', 
+                            'Width', 
+                            'Height', 
+                            'ViewId', 
+                            'DisplayName', 
+                            'JoinedId', 
+                            'LimitMin',
+                            'LimitMax', 
+                            'MainColor', 
+                            'SubColor', 
+                            'LabelColor', 
+                            'LabelFont', 
+                            'LabelAlignment', 
+                            'LineThickness', 
+                            'ThresholdValue', 
+                            'Flags', 
+                            'ActionType', 
+                            'TargetType', 
+                            'TargetId', 
+                            'TargetChannel', 
+                            'TargetProperty', 
+                            'TargetRecord', 
+                            'ConfirmOnMsg', 
+                            'ConfirmOffMsg', 
+                            'PictureIdDay', 
+                            'PictureIdNight', 
+                            'Font', 
+                            'Alignment', 
+                            'Dimension') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+
 export class ProjectFile extends SqlDbFile {
+    insertControlStmt: Database.Statement<unknown[]>
+    insertGroupStmt: Database.Statement<unknown[]>
+    selectAllGroupsStmt: Database.Statement<unknown[]>
+    selectGroupWithIdStmt: Database.Statement<unknown[]>
+
     constructor(f: string) {
         super(f);  // Inherit from parent class
+        this.insertControlStmt = this.db.prepare(insertControlQuery);
+
+        this.insertGroupStmt = this.db.prepare(
+            `INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)
+             SELECT ?, ?, ?, ?, ?, ?`
+        )
+        this.selectAllGroupsStmt = this.db.prepare('SELECT * FROM Groups ORDER BY GroupId DESC LIMIT 1;')
+        this.selectGroupWithIdStmt = this.db.prepare('SELECT * FROM Groups WHERE GroupId = ?')
+
         try {
             this.getMasterGroupID();
         } catch (err) {
@@ -607,16 +654,9 @@ export class ProjectFile extends SqlDbFile {
             Flags,
         } = { ...defaults, ...groupObj };
 
-        this.db.prepare(
-            `INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)
-             SELECT ?, ?, ?, ?, ?, ?`
-        ).run(Name, ParentId, TargetId, TargetChannel, Type, Flags);
+        this.insertGroupStmt.run(Name, ParentId, TargetId, TargetChannel, Type, Flags);
 
-        const rtn = this.db.prepare('SELECT * FROM Groups ORDER BY GroupId DESC LIMIT 1;').get() as Group;
-
-        // Get parent name for logging
-        const parentGroup = this.db.prepare('SELECT * FROM Groups WHERE GroupId = ?').get(rtn.GroupId) as Group
-        console.info(`Inserted ${Name} under ${parentGroup.Name}`);
+        const rtn = this.selectAllGroupsStmt.get() as Group;
 
         return rtn.GroupId;
     }
@@ -999,41 +1039,8 @@ export class ProjectFile extends SqlDbFile {
      * // => [{...}, {...}, ...]
      */
     public insertControl(control: Control) {
-        const query = `INSERT INTO Controls ('Type', 
-                            'PosX', 
-                            'PosY', 
-                            'Width', 
-                            'Height', 
-                            'ViewId', 
-                            'DisplayName', 
-                            'JoinedId', 
-                            'LimitMin',
-                            'LimitMax', 
-                            'MainColor', 
-                            'SubColor', 
-                            'LabelColor', 
-                            'LabelFont', 
-                            'LabelAlignment', 
-                            'LineThickness', 
-                            'ThresholdValue', 
-                            'Flags', 
-                            'ActionType', 
-                            'TargetType', 
-                            'TargetId', 
-                            'TargetChannel', 
-                            'TargetProperty', 
-                            'TargetRecord', 
-                            'ConfirmOnMsg', 
-                            'ConfirmOffMsg', 
-                            'PictureIdDay', 
-                            'PictureIdNight', 
-                            'Font', 
-                            'Alignment', 
-                            'Dimension') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        const insertStmt = this.db.prepare(query);
-
         try {
-            insertStmt.run(
+            this.insertControlStmt.run(
                 control.Type,
                 control.PosX,
                 control.PosY,
