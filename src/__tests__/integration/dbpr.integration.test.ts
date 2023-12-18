@@ -6,36 +6,40 @@ const PROJECT_INIT_START = './src/__tests__/Projects/test_init.dbpr';
 const PROJECT_INIT_AP_START = './src/__tests__/Projects/test_init_AP.dbpr';
 const TEMPLATES_START = './src/__tests__/Projects/templates.r2t';
 const PROJECT_NO_EXIST = '/non/existent/path'
-let PROJECT_NO_INIT: string;
-let PROJECT_INIT: string;
-let PROJECT_INIT_AP: string;
-let TEMPLATES: string;
+let PROJECT_NO_INIT = PROJECT_NO_INIT_START + '.test'
+let PROJECT_INIT = PROJECT_INIT_START + '.test'
+let PROJECT_INIT_AP = PROJECT_INIT_AP_START + '.test'
+let TEMPLATES = TEMPLATES_START + '.test'
 
-let i = 100;
+const setup = () => {
+    const fileId = Math.round(Math.random() * 10000);
 
-// Create a new project file for each test
+    fs.copyFileSync(PROJECT_NO_INIT_START, PROJECT_NO_INIT + fileId);
+    fs.copyFileSync(PROJECT_INIT_START, PROJECT_INIT + fileId);
+    fs.copyFileSync(PROJECT_INIT_AP_START, PROJECT_INIT_AP + fileId);
+    fs.copyFileSync(TEMPLATES_START, TEMPLATES + fileId);
+
+    return fileId;
+};
+
+const cleanup = (fileId: number) => {
+    fs.unlinkSync(PROJECT_NO_INIT + fileId);
+    fs.unlinkSync(PROJECT_INIT + fileId);
+    fs.unlinkSync(PROJECT_INIT_AP + fileId);
+    fs.unlinkSync(TEMPLATES + fileId);
+}
+
+let projectFile: ProjectFile;
+let fileId: number;
+
 beforeEach(() => {
-    PROJECT_INIT = PROJECT_INIT_START + i + '.test';
-    PROJECT_INIT_AP = PROJECT_INIT_AP_START + i + '.test';
-    PROJECT_NO_INIT = PROJECT_NO_INIT_START + i + '.test';
-    TEMPLATES = TEMPLATES_START + i + '.test';
-
-    fs.copyFileSync(PROJECT_NO_INIT_START, PROJECT_NO_INIT);
-    fs.copyFileSync(PROJECT_INIT_START, PROJECT_INIT);
-    fs.copyFileSync(PROJECT_INIT_AP_START, PROJECT_INIT_AP);
-    fs.copyFileSync(TEMPLATES_START, TEMPLATES);
+    fileId = setup();
+    projectFile = new ProjectFile(PROJECT_INIT + fileId);
 });
 
 afterEach(() => {
-    fs.unlinkSync(PROJECT_NO_INIT);
-    fs.unlinkSync(PROJECT_INIT);
-    fs.unlinkSync(PROJECT_INIT_AP);
-    fs.unlinkSync(TEMPLATES);
-});
-
-let p: ProjectFile;
-beforeEach(() => {
-    p = new ProjectFile(PROJECT_INIT);
+    projectFile.close();
+    cleanup(fileId);
 });
 
 describe('Constructor', () => {
@@ -44,32 +48,32 @@ describe('Constructor', () => {
     });
 
     it('Constructor throws with unintialised proejct', () => {
-        expect(() => new ProjectFile(PROJECT_NO_INIT)).toThrow('Project file is not initialised');
+        expect(() => new ProjectFile(PROJECT_NO_INIT + fileId)).toThrow('Project file is not initialised');
     });
 });
 
 describe('getGroupIdFromName', () => {
     it('Finds a groups ID from its name', () => {
-        expect(p.getGroupIdFromName('Master')).toBe(2);
+        expect(projectFile.getGroupIdFromName('Master')).toBe(2);
     });
 });
 
 describe('getViewIdFromName', () => {
     it('Finds the ID of a view group from its name', () => {
-        expect(p.getViewIdFromName('Overview')).toBe(1000);
+        expect(projectFile.getViewIdFromName('Overview')).toBe(1000);
     });
 });
 
 describe('getAllGroups', () => {
     it('Finds number of groups in project', () => {
-        expect(p.getAllGroups().length).toBe(283);
+        expect(projectFile.getAllGroups().length).toBe(283);
     });
 });
 
 describe('createGroup', () => {
     it('Creates a new group', () => {
-        const newId = p.createGroup({ Name: 'test' });
-        expect(p.getGroupIdFromName('test')).toBe(newId);
+        const newId = projectFile.createGroup({ Name: 'test' });
+        expect(projectFile.getGroupIdFromName('test')).toBe(newId);
     });
 });
 
@@ -81,9 +85,9 @@ describe('addChannelToGroup', () => {
             TargetId: 2,
             TargetChannel: 3
         };
-        p.addChannelToGroup(newGroup);
+        projectFile.addChannelToGroup(newGroup);
 
-        const insertedGroup = p.getAllGroups().find(g => g.Name === newGroup.Name);
+        const insertedGroup = projectFile.getAllGroups().find(g => g.Name === newGroup.Name);
         expect(insertedGroup).toBeTruthy();
         expect(insertedGroup?.Name).toEqual(newGroup.Name);
         expect(insertedGroup?.ParentId).toEqual(newGroup.ParentId);
@@ -94,116 +98,117 @@ describe('addChannelToGroup', () => {
 
 describe('deleteGroup', () => {
     it('Removes a group', () => {
-        const newId = p.createGroup({ Name: 'test' });
-        expect(p.getGroupIdFromName('test')).toBe(newId);
-        p.deleteGroup(newId);
-        expect(() => p.getGroupIdFromName('test')).toThrow('Could not find group');
+        const newId = projectFile.createGroup({ Name: 'test' });
+        expect(projectFile.getGroupIdFromName('test')).toBe(newId);
+        projectFile.deleteGroup(newId);
+        expect(() => projectFile.getGroupIdFromName('test')).toThrow('Could not find group');
     });
 });
 
 describe('getSourceGroupNameFromID', () => {
     it('Throws when SourceGroup cannot be found', () => {
-        const p = new ProjectFile(PROJECT_INIT)
-        expect(() => p.getSourceGroupNameFromID(10000)).toThrow();
+        expect(() => projectFile.getSourceGroupNameFromID(10000)).toThrow();
     });
 
     it('Doesnt throw when SourceGroup is found', () => {
-        const p = new ProjectFile(PROJECT_INIT)
-        expect(() => p.getSourceGroupNameFromID(1)).not.toThrow();
+        expect(() => projectFile.getSourceGroupNameFromID(1)).not.toThrow();
     });
 
     it('Finds name of a source group from a group ID', () => {
-        const p = new ProjectFile(PROJECT_INIT)
-        expect(p.getSourceGroupNameFromID(1)).toBe('Unused channels');
+        expect(projectFile.getSourceGroupNameFromID(1)).toBe('Unused channels');
     });
 });
 
 describe('getControlsByViewId', () => {
     it('Throws when View cannot be found', () => {
-        expect(() => p.getControlsByViewId(1)).toThrow();
+        expect(() => projectFile.getControlsByViewId(1)).toThrow();
     });
 
     it('Doesnt throw when View is found', () => {
-        expect(() => p.getControlsByViewId(1000)).not.toThrow();
+        expect(() => projectFile.getControlsByViewId(1000)).not.toThrow();
     });
 
     it('Finds controls by view ID', () => {
-        const controls = p.getControlsByViewId(1000);
+        const controls = projectFile.getControlsByViewId(1000);
         expect(controls.length).toBeGreaterThan(0);
     });
 });
 
 describe('getControlsByJoinedId', () => {
     it('Throws when JoinedId cannot be found', () => {
-        expect(() => p.getControlsByJoinedId(10000)).toThrow();
+        expect(() => projectFile.getControlsByJoinedId(10000)).toThrow();
     });
 
     it('Doesnt throw when JoinedId is found', () => {
-        expect(() => p.getControlsByJoinedId(1)).not.toThrow();
+        expect(() => projectFile.getControlsByJoinedId(1)).not.toThrow();
     });
 
     it('Finds controls by JoinedId', () => {
-        const controls = p.getControlsByJoinedId(1);
+        const controls = projectFile.getControlsByJoinedId(1);
         expect(controls.length).toBeGreaterThan(0);
     });
 });
 
 describe('getSourceGroupIDFromName', () => {
     it('Throws when SourceGroup cannot be found', () => {
-        const p = new ProjectFile(PROJECT_INIT)
-        expect(() => p.getSourceGroupIDFromName('test')).toThrow();
+        expect(() => projectFile.getSourceGroupIDFromName('test')).toThrow();
     });
 
     it('Doesnt throw when SourceGroup is found', () => {
-        const p = new ProjectFile(PROJECT_INIT)
-        expect(() => p.getSourceGroupIDFromName('Unused channels')).not.toThrow();
+        expect(() => projectFile.getSourceGroupIDFromName('Unused channels')).not.toThrow();
     });
 
     it('Finds ID of a source group from a source group name', () => {
-        const p = new ProjectFile(PROJECT_INIT)
-        expect(p.getSourceGroupIDFromName('Unused channels')).toBe(1);
+        expect(projectFile.getSourceGroupIDFromName('Unused channels')).toBe(1);
     });
 });
 
 describe('getHighestJoinedID', () => {
     it('Finds the highest control ID', () => {
-        expect(p.getHighestJoinedID()).toBeGreaterThan(0);
+        expect(projectFile.getHighestJoinedID()).toBeGreaterThan(0);
     });
 });
 
 describe('getHighestGroupID', () => {
     it('Finds the highest group ID', () => {
-        expect(p.getHighestGroupID()).toBeGreaterThan(0);
+        expect(projectFile.getHighestGroupID()).toBeGreaterThan(0);
     });
 });
 
 describe('getAllRemoteViews', () => {
     it('Finds all remote views', () => {
-        expect(p.getAllRemoteViews().length).toBeGreaterThan(0);
+        expect(projectFile.getAllRemoteViews().length).toBeGreaterThan(0);
     });
 });
 
 describe('getAllControls', () => {
     it('Finds all controls', () => {
-        expect(p.getAllControls().length).toBeGreaterThan(0);
+        expect(projectFile.getAllControls().length).toBeGreaterThan(0);
     });
 });
 
 describe('getCanIdFromDeviceId', () => {
     it('Finds the CAN ID from a device ID', () => {
-        expect(p.getCanIdFromDeviceId(1)).toBeTruthy();
+        expect(projectFile.getCanIdFromDeviceId(1)).toBeTruthy();
     })
 });
+
+
 
 describe('insertControl', () => {
     let projectFile: ProjectFile;
     let control: Control;
     let loadedControl: Control;
+    let fileId: number;
+    let prevHighestJoinedId: number;
+    let newHighestJoinedId: number;
 
     const JoinedId = 7777;
 
-    beforeEach(() => {
-        projectFile = new ProjectFile(PROJECT_INIT);
+    beforeAll(() => {
+        fileId = setup();
+        projectFile = new ProjectFile(PROJECT_INIT + fileId);
+        prevHighestJoinedId = projectFile.getHighestJoinedID();
         control = {
             ControlId: 1,
             Type: 2,
@@ -242,11 +247,22 @@ describe('insertControl', () => {
 
         projectFile.insertControl(control);
 
+        newHighestJoinedId = projectFile.getHighestJoinedID();
+
         loadedControl = projectFile.getControlsByJoinedId(JoinedId)[0]
+    });
+
+    afterAll(() => {
+        projectFile.close();
+        cleanup(fileId);
     });
 
     it('should insert a control into the project file', () => {
         expect(loadedControl).toBeTruthy();
+    });
+
+    it('should increment global joinedid', () => {
+        expect(projectFile.getHighestJoinedID()).toBe(JoinedId);
     });
 
     it('should insert a control into the project file with the correct JoinedId', () => {
@@ -269,19 +285,19 @@ describe('TemplateFile', () => {
         });
 
         it('Constructor doesnt throw with existing file', () => {
-            expect(() => new TemplateFile(TEMPLATES)).not.toThrow();
+            expect(() => new TemplateFile(TEMPLATES + fileId)).not.toThrow();
         });
     });
 
     describe('getTemplateControlsByName', () => {
         it('Throws when template cannot be found', () => {
-            const templates = new TemplateFile(TEMPLATES);
+            const templates = new TemplateFile(TEMPLATES + fileId);
 
             expect(() => templates.getTemplateControlsByName('test')).toThrow();
         });
 
         it('Finds template controls from a given name', () => {
-            const templates = new TemplateFile(TEMPLATES);
+            const templates = new TemplateFile(TEMPLATES + fileId);
 
             expect(templates.getTemplateControlsByName('Main Title')).toBeTruthy();
         });

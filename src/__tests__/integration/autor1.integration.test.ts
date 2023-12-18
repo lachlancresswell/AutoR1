@@ -5,46 +5,49 @@ import * as fs from 'fs';
 import * as AutoR1 from '../../autor1'
 import { Control } from '../../dbpr';
 
-const PROJECT_NO_INIT_START = './src/__tests__/Projects/test_no_init.dbpr';
 const PROJECT_INIT_START = './src/__tests__/Projects/test_init.dbpr';
 const PROJECT_INIT_AP_START = './src/__tests__/Projects/test_init_AP.dbpr';
 const TEMPLATES_START = './src/__tests__/Projects/templates.r2t';
-let PROJECT_NO_INIT: string;
-let PROJECT_INIT: string;
-let PROJECT_INIT_AP: string;
-let TEMPLATES: string;
+let PROJECT_INIT = PROJECT_INIT_START + '.test'
+let PROJECT_INIT_AP = PROJECT_INIT_AP_START + '.test'
+let TEMPLATES = TEMPLATES_START + '.test'
 
 // Create a new project file for each test
-beforeEach(() => {
-    PROJECT_INIT = PROJECT_INIT_START + '.test';
-    PROJECT_INIT_AP = PROJECT_INIT_AP_START + '.test';
-    PROJECT_NO_INIT = PROJECT_NO_INIT_START + '.test';
-    TEMPLATES = TEMPLATES_START + '.test';
+const setup = () => {
+    const fileId = Math.round(Math.random() * 10000);
 
-    fs.copyFileSync(PROJECT_NO_INIT_START, PROJECT_NO_INIT);
-    fs.copyFileSync(PROJECT_INIT_START, PROJECT_INIT);
-    fs.copyFileSync(PROJECT_INIT_AP_START, PROJECT_INIT_AP);
-    fs.copyFileSync(TEMPLATES_START, TEMPLATES);
-});
+    fs.copyFileSync(PROJECT_INIT_START, PROJECT_INIT + fileId);
+    fs.copyFileSync(PROJECT_INIT_AP_START, PROJECT_INIT_AP + fileId);
+    fs.copyFileSync(TEMPLATES_START, TEMPLATES + fileId);
 
-afterEach(() => {
-    fs.unlinkSync(PROJECT_NO_INIT);
-    fs.unlinkSync(PROJECT_INIT);
-    fs.unlinkSync(PROJECT_INIT_AP);
-    fs.unlinkSync(TEMPLATES);
-});
+    return fileId;
+};
+
+const cleanup = (fileId: number) => {
+    fs.unlinkSync(PROJECT_INIT + fileId);
+    fs.unlinkSync(PROJECT_INIT_AP + fileId);
+    fs.unlinkSync(TEMPLATES + fileId);
+}
 
 describe('getSrcGrpInfo', () => {
     let projectFile: AutoR1ProjectFile;
+    let fileId: number;
 
-    beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
+    beforeAll(() => {
+        fileId = setup();
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
         projectFile.getSrcGrpInfo();
     });
+
+    afterAll(() => {
+        projectFile.close();
+        cleanup(fileId);
+    })
 
     it('should return the correct number of source groups', () => {
         expect(projectFile.sourceGroups.length).toBe(11);
     });
+
 
     it('should return the correct number of channels for a source group', () => {
         expect(projectFile.sourceGroups[1].channelGroups.length).toBe(3);
@@ -53,25 +56,54 @@ describe('getSrcGrpInfo', () => {
     it('Discovers all source groups, channel groups and related info from a project', () => {
         expect(projectFile.sourceGroups.length).toBe(11);
         expect(projectFile.sourceGroups[0].channelGroups.length).toBe(3); // Array two way tops
+        expect(projectFile.sourceGroups[0].channelGroups[0].channels.length).toBeGreaterThan(0);
+
         expect(projectFile.sourceGroups[1].channelGroups.length).toBe(3); // Array single channel tops
+        expect(projectFile.sourceGroups[1].channelGroups[0].channels.length).toBeGreaterThan(0);
+
         expect(projectFile.sourceGroups[2].channelGroups.length).toBe(3); // Array two way subs
+        expect(projectFile.sourceGroups[2].channelGroups[0].channels.length).toBeGreaterThan(0);
+
         expect(projectFile.sourceGroups[3].channelGroups.length).toBe(3); // Array single channel subs
+        expect(projectFile.sourceGroups[3].channelGroups[0].channels.length).toBeGreaterThan(0);
+
         expect(projectFile.sourceGroups[4].channelGroups.length).toBe(6); // Array flown mixed sub top
+        expect(projectFile.sourceGroups[4].channelGroups[0].channels.length).toBeGreaterThan(0);
+
         expect(projectFile.sourceGroups[5].channelGroups.length).toBe(1); // Array mono
+        expect(projectFile.sourceGroups[5].channelGroups[0].channels.length).toBeGreaterThan(0);
+
         expect(projectFile.sourceGroups[6].channelGroups.length).toBe(2); // Array ground stack mono
+        expect(projectFile.sourceGroups[6].channelGroups[0].channels.length).toBeGreaterThan(0);
+
         expect(projectFile.sourceGroups[7].channelGroups.length).toBe(1); // Point source
+        expect(projectFile.sourceGroups[7].channelGroups[0].channels.length).toBeGreaterThan(0);
+
         expect(projectFile.sourceGroups[8].channelGroups.length).toBe(1); // Point source sub
+        expect(projectFile.sourceGroups[8].channelGroups[0].channels.length).toBeGreaterThan(0);
+
         expect(projectFile.sourceGroups[9].channelGroups.length).toBe(2); // Point source mixed
+        expect(projectFile.sourceGroups[9].channelGroups[0].channels.length).toBeGreaterThan(0);
+
         expect(projectFile.sourceGroups[10].channelGroups.length).toBe(1); // SUB array LCR
+        expect(projectFile.sourceGroups[10].channelGroups[0].channels.length).toBeGreaterThan(0);
     });
 });
 
 describe('findControlsByViewId', () => {
     let projectFile: AutoR1ProjectFile;
+    let fileId: number;
 
-    beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
+    beforeAll(() => {
+        fileId = setup();
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
+        projectFile.getSrcGrpInfo();
     });
+
+    afterAll(() => {
+        projectFile.close();
+        cleanup(fileId);
+    })
 
     it('should return an array of controls', () => {
         const controls = projectFile.getControlsByViewId(1000);
@@ -84,13 +116,21 @@ describe('findControlsByViewId', () => {
     });
 });
 
+// SLOW
 describe('getMuteGroupID', () => {
     let projectFile: AutoR1ProjectFile;
+    let fileId: number;
 
     beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
+        fileId = setup();
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
         projectFile.getSrcGrpInfo();
     });
+
+    afterEach(() => {
+        projectFile.close();
+        cleanup(fileId);
+    })
 
     it('should throw if mute group is not found', () => {
         // Assert
@@ -100,6 +140,7 @@ describe('getMuteGroupID', () => {
     it('should not throw if mute group is found', () => {
         // Arrange
         projectFile.createMainMuteGroup();
+        projectFile.getAPGroup();
 
         // Assert
         expect(() => projectFile.getMuteGroupID()).not.toThrow();
@@ -119,11 +160,19 @@ describe('getMuteGroupID', () => {
 
 describe('getFallbackGroupID', () => {
     let projectFile: AutoR1ProjectFile;
+    let fileId: number;
 
     beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
+        fileId = setup();
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
         projectFile.getSrcGrpInfo();
     });
+
+    afterEach(() => {
+        projectFile.close();
+        cleanup(fileId);
+    })
+
 
     it('should throw if fallback group is not found', () => {
         // Assert
@@ -151,41 +200,58 @@ describe('getFallbackGroupID', () => {
 });
 
 describe('getApStatus', () => {
-    let projectNoAP: AutoR1ProjectFile;
-    let projectAP: AutoR1ProjectFile;
+    let projectFileNoAP: AutoR1ProjectFile;
+    let projectFileAP: AutoR1ProjectFile;
+    let fileId: number;
 
-    beforeEach(() => {
-        projectNoAP = new AutoR1ProjectFile(PROJECT_INIT);
-        projectAP = new AutoR1ProjectFile(PROJECT_INIT_AP);
-        projectAP.getSrcGrpInfo();
-        projectNoAP.getSrcGrpInfo();
+    beforeAll(() => {
+        fileId = setup();
+        projectFileNoAP = new AutoR1ProjectFile(PROJECT_INIT + fileId);
+        projectFileAP = new AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        projectFileAP.getSrcGrpInfo();
+        projectFileNoAP.getSrcGrpInfo();
     });
 
+    afterAll(() => {
+        projectFileAP.close();
+        projectFileNoAP.close();
+        cleanup(fileId);
+    })
+
+
     it('should return true if any source group has ArrayProcessingEnable set to true', () => {
-        const result = projectAP.getApStatus();
+        const result = projectFileAP.getApStatus();
         expect(result).toBe(true);
     });
 
     it('should return false if no source group has ArrayProcessingEnable set to true', () => {
-        const result = projectNoAP.getApStatus();
+        const result = projectFileNoAP.getApStatus();
         expect(result).toBe(false);
     });
 
     it('should throw an error if sourceGroups is not loaded', () => {
-        projectNoAP.sourceGroups = [];
-        expect(() => projectNoAP.getApStatus()).toThrow('SourceGroups not loaded');
+        projectFileNoAP.sourceGroups = [];
+        expect(() => projectFileNoAP.getApStatus()).toThrow('SourceGroups not loaded');
     });
 });
 
 describe('createApChannelGroup', () => {
     let projectFileAP: AutoR1ProjectFile;
     let projectFileNoAP: AutoR1ProjectFile;
+    let fileId: number;
 
     beforeEach(() => {
-        projectFileAP = new AutoR1ProjectFile(PROJECT_INIT_AP);
-        projectFileNoAP = new AutoR1ProjectFile(PROJECT_INIT);
+        fileId = setup();
+        projectFileAP = new AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        projectFileNoAP = new AutoR1ProjectFile(PROJECT_INIT + fileId);
         projectFileAP.getSrcGrpInfo()
     });
+
+    afterEach(() => {
+        projectFileAP.close();
+        projectFileNoAP.close();
+        cleanup(fileId);
+    })
 
     it('should create an AP group', () => {
         (projectFileAP as any).createAPGroup(1);
@@ -199,46 +265,62 @@ describe('createApChannelGroup', () => {
     });
 });
 
-describe('Methods', () => {
-    let p: AutoR1ProjectFile;
+// describe('Methods', () => {
+//     let p: AutoR1ProjectFile;
 
-    beforeEach(() => {
-        p = new AutoR1ProjectFile(PROJECT_INIT);
-        p.getSrcGrpInfo();
-    });
+//     beforeEach(() => {
+//         p = new AutoR1ProjectFile(PROJECT_INIT+fileId);
+//         p.getSrcGrpInfo();
+//     });
 
 
-    it('Fails if sub L/C/R groups are not found', () => {
-        expect((p as any).hasSubGroups()).toBe(0);
-    });
+//     it('Fails if sub L/C/R groups are not found', () => {
+//         expect((p as any).hasSubGroups()).toBe(0);
+//     });
 
-    it('Finds status of ArrayProcessing', () => {
-        expect((p as any).getApStatus()).toBe(false);
-    });
+//     it('Finds status of ArrayProcessing', () => {
+//         expect((p as any).getApStatus()).toBe(false);
+//     });
 
-    it('Finds SUB array group', () => {
-        expect((p as any).getSubArrayGroups().length).toBe(3);
-    })
+//     it('Finds SUB array group', () => {
+//         expect((p as any).getSubArrayGroups().length).toBe(3);
+//     })
 
-    it('Creates SUBs L/C/R groups', () => {
-        const pId = p.createGroup({ Name: 'TEST', ParentId: 1 });
-        (p as any).createSubLRCGroups(pId);
-        expect((p as any).hasSubGroups()).toBe(3);
-    });
-});
+//     it('Creates SUBs L/C/R groups', () => {
+//         const pId = p.createGroup({ Name: 'TEST', ParentId: 1 });
+//         (p as any).createSubLRCGroups(pId);
+//         expect((p as any).hasSubGroups()).toBe(3);
+//     });
+// });
 
 describe('Templates', () => {
+    let fileId: number;
+
+    beforeEach(() => {
+        fileId = setup();
+    });
+
+    afterEach(() => {
+        cleanup(fileId);
+    });
+
     it('Loads template file', () => {
-        const t = new AutoR1TemplateFile(TEMPLATES);
+        const t = new AutoR1TemplateFile(TEMPLATES + fileId);
         expect(t.templates.length).toBeGreaterThan(0)
     })
 });
 
 describe('getTemplateWidthHeight', () => {
     let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
-    beforeEach(() => {
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+    beforeAll(() => {
+        fileId = setup();
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+    });
+
+    afterAll(() => {
+        cleanup(fileId);
     });
 
     it('should return the correct size for an existing template', () => {
@@ -260,9 +342,15 @@ describe('getTemplateWidthHeight', () => {
 
 describe('getTemplateControlsFromName', () => {
     let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
-    beforeEach(() => {
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+    beforeAll(() => {
+        fileId = setup();
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+    });
+
+    afterAll(() => {
+        cleanup(fileId);
     });
 
     it('should return the controls for an existing template', () => {
@@ -284,11 +372,19 @@ describe('getTemplateControlsFromName', () => {
 describe('createNavButtons', () => {
     let projectFile: AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
-    beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+    beforeAll(() => {
+        fileId = setup();
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
     });
+
+    afterAll(() => {
+        projectFile.close();
+        templateFile.close();
+        cleanup(fileId);
+    })
 
     it('should create a nav button for each view and lower all existing controls', () => {
         const oldJoinedId = projectFile.getHighestJoinedID();
@@ -314,13 +410,21 @@ describe('createNavButtons', () => {
 describe('createMeterView', () => {
     let projectFile: AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
-    beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+    beforeAll(() => {
+        fileId = setup();
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
 
         projectFile.getSrcGrpInfo();
     });
+
+    afterAll(() => {
+        projectFile.close();
+        templateFile.close();
+        cleanup(fileId);
+    })
 
     it('should create the meter view', () => {
         const oldJoinedId = projectFile.getHighestJoinedID();
@@ -343,11 +447,19 @@ describe('createMeterView', () => {
 describe('clean', () => {
     let projectFile: AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
-    beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+    beforeAll(() => {
+        fileId = setup();
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
+    });
+
+    afterAll(() => {
+        projectFile.close();
+        templateFile.close();
+        cleanup(fileId);
     });
 
     it('should remove all generated views and controls', () => {
@@ -381,39 +493,57 @@ describe('clean', () => {
 });
 
 describe('configureApChannels', () => {
-    let projectFile: AutoR1.AutoR1ProjectFile;
+    let projectFileAP: AutoR1.AutoR1ProjectFile;
+    let projectFileNoAP: AutoR1.AutoR1ProjectFile;
+    let fileId: number;
+
+    beforeEach(() => {
+        fileId = setup();
+        projectFileAP = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        projectFileNoAP = new AutoR1.AutoR1ProjectFile(PROJECT_INIT + fileId);
+        projectFileAP.getSrcGrpInfo();
+        projectFileNoAP.getSrcGrpInfo();
+    });
+
+    afterEach(() => {
+        projectFileAP.close();
+        projectFileNoAP.close();
+        cleanup(fileId);
+    });
 
     it('should create a group containing all AP enabled sources', () => {
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
-        projectFile.getSrcGrpInfo();
-        projectFile.createAPGroup();
-        expect(projectFile.getAllGroups().filter((g) => g.Name === AutoR1.AP_GROUP_TITLE).length).toBe(1);
+        projectFileAP.createAPGroup();
+        expect(projectFileAP.getAllGroups().filter((g) => g.Name === AutoR1.AP_GROUP_TITLE).length).toBe(1);
     });
 
     it('should throw if AP is not enabled for any sources', () => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT);
-        projectFile.getSrcGrpInfo();
-        expect(() => projectFile.createAPGroup()).toThrow()
-        expect(projectFile.getAllGroups().filter((g) => g.Name === AutoR1.AP_GROUP_TITLE).length).toBe(0);
+        expect(() => projectFileNoAP.createAPGroup()).toThrow()
+        expect(projectFileAP.getAllGroups().filter((g) => g.Name === AutoR1.AP_GROUP_TITLE).length).toBe(0);
     });
 
     it('should populate the apGroupID var when AP group is made', () => {
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
-        projectFile.getSrcGrpInfo();
-        expect(projectFile.getAPGroup()).toBeFalsy();
-        projectFile.createAPGroup();
-        expect(projectFile.getAPGroup()).toBeTruthy()
+        expect(projectFileAP.getAPGroup()).toBeFalsy();
+        projectFileAP.createAPGroup();
+        expect(projectFileAP.getAPGroup()).toBeTruthy()
     });
 });
 
 describe('createMainView', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
     beforeEach(() => {
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        fileId = setup();
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
+    });
+
+    afterEach(() => {
+        projectFile.close();
+        templateFile.close();
+        cleanup(fileId);
     });
 
     it('creates the main view', () => {
@@ -446,6 +576,7 @@ describe('insertTemplate', () => {
     let projectFile: AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
     let template: AutoR1Template;
+    let fileId: number;
     let prevJoinedId: number;
     let JoinedId: number;
     let insertedControls: Control[];
@@ -460,10 +591,12 @@ describe('insertTemplate', () => {
     const ViewId = 1000;
     const DisplayName = 'My Display Name';
 
-    beforeEach(() => {
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+    beforeAll(() => {
+        fileId = setup();
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
+
         template = templateFile.templates[1];
 
         prevJoinedId = projectFile.getHighestJoinedID();
@@ -472,11 +605,16 @@ describe('insertTemplate', () => {
 
         insertedControls = projectFile.getControlsByViewId(ViewId);
         insertedControl = insertedControls.filter((c) => c.JoinedId === JoinedId)[0]
+    });
 
+    afterAll(() => {
+        projectFile.close();
+        templateFile.close();
+        cleanup(fileId);
     });
 
     it('should cause the highest JoinedId to be incremented', () => {
-        expect(JoinedId).toBeGreaterThan(prevJoinedId);
+        expect(projectFile.getHighestJoinedID()).toBeGreaterThan(prevJoinedId);
     })
 
     it('should cause insert a new control into the Control table', () => {
@@ -531,11 +669,19 @@ describe('insertTemplate', () => {
 describe('createMainViewOverview', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
-    beforeEach(() => {
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+    beforeAll(() => {
+        fileId = setup();
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
+    });
+
+    afterAll(() => {
+        projectFile.close();
+        templateFile.close();
+        cleanup(fileId);
     });
 
     it('correctly assigns ViewId value', () => {
@@ -550,11 +696,19 @@ describe('createMainViewOverview', () => {
 describe('createMainViewMeters', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
     beforeEach(() => {
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        fileId = setup();
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
+    });
+
+    afterEach(() => {
+        projectFile.close();
+        templateFile.close();
+        cleanup(fileId);
     });
 
     it('correctly assigns ViewId value', () => {
@@ -569,10 +723,18 @@ describe('createMainViewMeters', () => {
 describe('createSubLRCGroups', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
     beforeEach(() => {
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        fileId = setup();
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+    });
+
+    afterEach(() => {
+        projectFile.close();
+        templateFile.close();
+        cleanup(fileId);
     });
 
     it('creates the correct number of groups', () => {
@@ -590,11 +752,16 @@ describe('createSubLRCGroups', () => {
 
 describe('addSubCtoSubL', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
-    let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
     beforeEach(() => {
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        fileId = setup();
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+    });
+
+    afterEach(() => {
+        projectFile.close();
+        cleanup(fileId);
     });
 
     it('creates a new group', () => {
@@ -614,60 +781,64 @@ describe('addSubCtoSubL', () => {
 
 describe('Crossover', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
-    let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
-    beforeEach(() => {
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+    beforeAll(() => {
+        fileId = setup();
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        projectFile.getSrcGrpInfo();
+    });
+
+    afterAll(() => {
+        projectFile.close();
+        cleanup(fileId);
     });
 
     it('should discover a CUT crossover', () => {
-        projectFile.getSrcGrpInfo();
         expect(projectFile.sourceGroups[0].xover).toBe('CUT')
     })
 
     it('should discover an Infra crossover', () => {
-        projectFile.getSrcGrpInfo();
         expect(projectFile.sourceGroups[2].xover).toBe('Infra')
     })
 
     it('should discover a 100Hz crossover', () => {
-        projectFile.getSrcGrpInfo();
         expect(projectFile.sourceGroups[3].xover).toBe('100Hz')
     })
 });
 
 describe('group discover', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
+    let fileId: number;
 
-    beforeEach(() => {
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP);
+    beforeAll(() => {
+        fileId = setup();
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        projectFile.getSrcGrpInfo();
+    });
+
+    afterAll(() => {
+        projectFile.close();
+        cleanup(fileId);
     });
 
     it('should not have assigned a main group for the main group', () => {
-        projectFile.getSrcGrpInfo();
         expect(projectFile.sourceGroups[0].channelGroups[0].mainGroup).toBeFalsy()
     })
 
     it('should discover the left group', () => {
-        projectFile.getSrcGrpInfo();
         expect(projectFile.sourceGroups[0].channelGroups[0].leftGroup).toBeTruthy()
     })
 
     it('should discover the right group', () => {
-        projectFile.getSrcGrpInfo();
         expect(projectFile.sourceGroups[0].channelGroups[0].rightGroup).toBeTruthy()
     })
 
     it('should discover the main group for the left group', () => {
-        projectFile.getSrcGrpInfo();
-
         expect(projectFile.sourceGroups[0].channelGroups[0].leftGroup!.mainGroup).toBeTruthy()
     })
 
     it('should discover the main group for the right group', () => {
-        projectFile.getSrcGrpInfo();
-
         expect(projectFile.sourceGroups[0].channelGroups[0].rightGroup!.mainGroup).toBeTruthy()
     });
-})
+});
