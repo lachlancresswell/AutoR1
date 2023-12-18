@@ -659,42 +659,47 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             throw new Error("Template has no controls.");
         }
 
-        for (const templateControl of template.controls) {
-            const control = Object.assign(new AutoR1Control(), templateControl);
+        // Wrap in transaction to speed up insertion
+        const transaction = this.db.transaction((templateControls: AutoR1Control[]) => {
+            for (const templateControl of templateControls) {
+                const control = Object.assign(new AutoR1Control(), templateControl);
 
-            // If item of type FRAME or BUTTON to swap views (TargetType is PAGE), 
-            // and a DisplayName has been provided, and we are not dealing with a fallback/regular button,
-            // then set the display name to the provided name
-            if ((control.isTypeFrame()
-                || (control.isTypeSwitch()
-                    && control.TargetType === dbpr.TargetTypes.VIEW))
-                && (control.DisplayName
-                    && control.DisplayName !== "Fallback"
-                    && control.DisplayName !== "Regular" && DisplayName)) {
-                control.DisplayName = DisplayName;
-            }
-
-            // Set TargetChannel if required
-            if (Object.values({ ...dbpr.TargetPropertyTypeChannel, ...dbpr.TargetPropertyDisplayChannel, ...dbpr.TargetPropertyLedChannel, ...dbpr.TargetPropertyMeterChannel, ...dbpr.TargetPropertySwitchChannel, ...dbpr.TargetPropertyDigitalChannel, ...dbpr.TargetPropertyDisplayChannel }).includes(control.TargetProperty as dbpr.TargetPropertyType) && TargetChannel) {
-                control.TargetChannel = TargetChannel;
-
-                // Convert the digital input to a read-only display control for delay setting on a flown array
-                if (control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY
-                    && options?.sourceGroupType === dbpr.SourceGroupTypes.ARRAY) {
-                    control.Type = dbpr.ControlTypes.DISPLAY;
+                // If item of type FRAME or BUTTON to swap views (TargetType is PAGE), 
+                // and a DisplayName has been provided, and we are not dealing with a fallback/regular button,
+                // then set the display name to the provided name
+                if ((control.isTypeFrame()
+                    || (control.isTypeSwitch()
+                        && control.TargetType === dbpr.TargetTypes.VIEW))
+                    && (control.DisplayName
+                        && control.DisplayName !== "Fallback"
+                        && control.DisplayName !== "Regular" && DisplayName)) {
+                    control.DisplayName = DisplayName;
                 }
+
+                // Set TargetChannel if required
+                if (Object.values({ ...dbpr.TargetPropertyTypeChannel, ...dbpr.TargetPropertyDisplayChannel, ...dbpr.TargetPropertyLedChannel, ...dbpr.TargetPropertyMeterChannel, ...dbpr.TargetPropertySwitchChannel, ...dbpr.TargetPropertyDigitalChannel, ...dbpr.TargetPropertyDisplayChannel }).includes(control.TargetProperty as dbpr.TargetPropertyType) && TargetChannel) {
+                    control.TargetChannel = TargetChannel;
+
+                    // Convert the digital input to a read-only display control for delay setting on a flown array
+                    if (control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY
+                        && options?.sourceGroupType === dbpr.SourceGroupTypes.ARRAY) {
+                        control.Type = dbpr.ControlTypes.DISPLAY;
+                    }
+                }
+
+                control.PosX = control.PosX + posX;
+                control.PosY = control.PosY + posY;
+                control.Width = Width || control.Width;
+                control.Height = Height || control.Height;
+                control.JoinedId = joinedId!;
+                control.TargetId = TargetId || control.TargetId;
+                control.ViewId = ViewId;
+
+                this.insertControl(control)
             }
+        });
 
-            control.PosX = control.PosX + posX;
-            control.PosY = control.PosY + posY;
-            control.Width = Width || control.Width;
-            control.Height = Height || control.Height;
-            control.JoinedId = joinedId;
-            control.TargetId = TargetId || control.TargetId;
-            control.ViewId = ViewId;
-
-            this.insertControl(control)
-        }
+        transaction(template.controls);
     }
 
     /**
@@ -712,20 +717,24 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
         const mainGroup = this.createGroup(group);
 
-        this.sourceGroups.forEach((srcGrp) => {
-            srcGrp.channelGroups.forEach((chGrp) => {
-                if (!chGrp.removeFromMute) {
-                    chGrp.channels.forEach((ch) => {
-                        this.addChannelToGroup({
-                            Name: ch.Name,
-                            ParentId: mainGroup,
-                            TargetId: ch.TargetId,
-                            TargetChannel: ch.TargetChannel,
-                        })
-                    });
-                }
+        // Wrap in transaction to speed up insertion
+        const transaction = this.db.transaction((sourceGroups: SourceGroup[]) => {
+            sourceGroups.forEach((srcGrp) => {
+                srcGrp.channelGroups.forEach((chGrp) => {
+                    if (!chGrp.removeFromMute) {
+                        chGrp.channels.forEach((ch) => {
+                            this.addChannelToGroup({
+                                Name: ch.Name,
+                                ParentId: mainGroup,
+                                TargetId: ch.TargetId,
+                                TargetChannel: ch.TargetChannel,
+                            })
+                        });
+                    }
+                });
             });
         });
+        transaction(this.sourceGroups)
     };
 
     /**
@@ -934,14 +943,18 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         });
         const apGroupId = this.getHighestGroupID();
 
-        apChannelGroups.forEach((ch) => {
-            this.addChannelToGroup({
-                Name: ch.Name,
-                ParentId: apGroupId,
-                TargetId: ch.TargetId,
-                TargetChannel: ch.TargetChannel,
+        // Wrap in transaction to speed up insertion
+        const transaction = this.db.transaction((apChannelGroups: Channel[]) => {
+            apChannelGroups.forEach((ch) => {
+                this.addChannelToGroup({
+                    Name: ch.Name,
+                    ParentId: apGroupId,
+                    TargetId: ch.TargetId,
+                    TargetChannel: ch.TargetChannel,
+                });
             });
-        });
+        })
+        transaction(apChannelGroups);
     }
 
     public getAPGroup() {
@@ -1054,20 +1067,25 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         let suffix = [" SUBs L", " SUBs R", " SUBs C"];
         let subArrayGroups = this.getSubArrayGroups();
-        for (const [idx, subArrayGroup] of subArrayGroups.entries()) {
-            this.createGroup({
-                Name: `${subArrayGroupName}${suffix[idx]}`, ParentId: subGroupParentID
-            });
-            let pId = this.getHighestGroupID();
 
-            for (const subDevices of subArrayGroup) {
-                this.addChannelToGroup({
-                    Name: subDevices.Name,
-                    ParentId: pId,
-                    TargetId: subDevices.TargetId, TargetChannel: subDevices.TargetChannel,
+        // Wrap in transaction to speed up insertion
+        const transaction = this.db.transaction((subArrayGroups: IterableIterator<[number, Channel[]]>) => {
+            for (const [idx, subArrayGroup] of subArrayGroups) {
+                this.createGroup({
+                    Name: `${subArrayGroupName}${suffix[idx]}`, ParentId: subGroupParentID
                 });
+                let pId = this.getHighestGroupID();
+
+                for (const subDevices of subArrayGroup) {
+                    this.addChannelToGroup({
+                        Name: subDevices.Name,
+                        ParentId: pId,
+                        TargetId: subDevices.TargetId, TargetChannel: subDevices.TargetChannel,
+                    });
+                }
             }
-        }
+        })
+        transaction(subArrayGroups.entries());
     }
 
     public addSubCtoSubL = (): void => {
@@ -1237,68 +1255,72 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const metersGroupHeight = templates.getTemplateWidthHeight("Meters Group").height
 
-        for (const srcGrp of this.sourceGroups) {
-            srcGrp.channelGroups.forEach((chGrp) => {
+        // Wrap in transaction to speed up insertion
+        const transaction = this.db.transaction((sourceGroups: SourceGroup[]) => {
+            for (const srcGrp of sourceGroups) {
+                srcGrp.channelGroups.forEach((chGrp) => {
 
-                // Skip TOPs and SUBs group if L/R groups are present
-                if (chGrp.hasLorR() && !chGrp.isLorR()) {
-                    return;
-                }
+                    // Skip TOPs and SUBs group if L/R groups are present
+                    if (chGrp.hasLorR() && !chGrp.isLorR()) {
+                        return;
+                    }
 
-                const joinedId = this.getHighestJoinedID() + 1;
-                const metersGroupTemplateOptions: TemplateOptions = {
-                    DisplayName: chGrp.name,
-                    TargetId: chGrp.groupId,
-                    joinedId
-                }
-                this.insertTemplate(
-                    metersGroupTemplate,
-                    meterViewId,
-                    posX,
-                    posY,
-                    metersGroupTemplateOptions,
-                );
-
-                const navButtonTemplateOptions: TemplateOptions = {
-                    DisplayName: chGrp.name,
-                    TargetId: srcGrp.ViewId,
-                    TargetChannel: dbpr.TargetChannels.NONE,
-                    Width: meterW + 2, // R1 frames are to be 2px wider than expected
-                    joinedId
-                }
-                this.insertTemplate(
-                    templates.getTemplateByName("Nav Button"),
-                    meterViewId,
-                    posX - 1, // R1 frames are to be 1px further to the left than expected
-                    posY - 1, // R1 frames are to be 1px higher than expected
-                    navButtonTemplateOptions
-                )
-
-                posY += metersGroupHeight + 10;
-
-                for (const ch of chGrp.channels) {
-                    const DisplayName = `${ch.Name} - ${this.getCanIdFromDeviceId(ch.TargetId)} - ${['', 'A', 'B', 'C', 'D'][ch.TargetChannel]}`;
-                    const meterTemplateOptions: TemplateOptions = {
-                        DisplayName,
-                        TargetId: ch.TargetId,
-                        TargetChannel: ch.TargetChannel,
-                        sourceGroupType: srcGrp.Type
+                    const joinedId = this.getHighestJoinedID() + 1;
+                    const metersGroupTemplateOptions: TemplateOptions = {
+                        DisplayName: chGrp.name,
+                        TargetId: chGrp.groupId,
+                        joinedId
                     }
                     this.insertTemplate(
-                        meterTemplate,
+                        metersGroupTemplate,
                         meterViewId,
                         posX,
                         posY,
-                        meterTemplateOptions
+                        metersGroupTemplateOptions,
                     );
 
-                    posY += spacingY;
-                }
+                    const navButtonTemplateOptions: TemplateOptions = {
+                        DisplayName: chGrp.name,
+                        TargetId: srcGrp.ViewId,
+                        TargetChannel: dbpr.TargetChannels.NONE,
+                        Width: meterW + 2, // R1 frames are to be 2px wider than expected
+                        joinedId
+                    }
+                    this.insertTemplate(
+                        navButtonTemplate,
+                        meterViewId,
+                        posX - 1, // R1 frames are to be 1px further to the left than expected
+                        posY - 1, // R1 frames are to be 1px higher than expected
+                        navButtonTemplateOptions
+                    )
 
-                posX += spacingX;
-                posY = startY;
-            });
-        }
+                    posY += metersGroupHeight + 10;
+
+                    for (const ch of chGrp.channels) {
+                        const DisplayName = `${ch.Name} - ${this.getCanIdFromDeviceId(ch.TargetId)} - ${['', 'A', 'B', 'C', 'D'][ch.TargetChannel]}`;
+                        const meterTemplateOptions: TemplateOptions = {
+                            DisplayName,
+                            TargetId: ch.TargetId,
+                            TargetChannel: ch.TargetChannel,
+                            sourceGroupType: srcGrp.Type
+                        }
+                        this.insertTemplate(
+                            meterTemplate,
+                            meterViewId,
+                            posX,
+                            posY,
+                            meterTemplateOptions
+                        );
+
+                        posY += spacingY;
+                    }
+
+                    posX += spacingX;
+                    posY = startY;
+                });
+            }
+        });
+        transaction(this.sourceGroups);
     }
 
     private createMainViewOverview(templateFile: AutoR1TemplateFile, posX: number, posY: number, mainViewId: number) {
@@ -1481,69 +1503,73 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const { width: arraySightTempWidth, height: arraySightTempHeight } = templateFile.getTemplateWidthHeight('Main ArraySight Frame');
         const { width: meterTempWidth, height: meterTempHeight } = templateFile.getTemplateWidthHeight('Group LR AP CPL2');
 
-        this.sourceGroups.forEach((sourceGroup, srcGrpIndex) => {
-            sourceGroup.channelGroups.forEach((channelGroup, chGrpIndex) => {
-                const commonJoinedId = this.getHighestJoinedID() + 1;
+        // Wrap in transaction to speed up insertion
+        const transaction = this.db.transaction((sourceGroups: SourceGroup[]) => {
+            sourceGroups.forEach((sourceGroup, srcGrpIndex) => {
+                sourceGroup.channelGroups.forEach((channelGroup, chGrpIndex) => {
+                    const commonJoinedId = this.getHighestJoinedID() + 1;
 
-                if (channelGroup.isLorR()) {  // TOP or SUB L/R/C Group
-                    return;
-                }
+                    if (channelGroup.isLorR()) {  // TOP or SUB L/R/C Group
+                        return;
+                    }
 
-                const controls = AutoR1ProjectFile.configureMainViewMeterTemplate(templateFile, sourceGroup, channelGroup, commonJoinedId, posX, posY, mainViewId);
+                    const controls = AutoR1ProjectFile.configureMainViewMeterTemplate(templateFile, sourceGroup, channelGroup, commonJoinedId, posX, posY, mainViewId);
 
-                controls.forEach((control) => this.insertControl(control));
+                    controls.forEach((control) => this.insertControl(control));
 
-                if (sourceGroup.ArraySightId) {
-                    const joinedId = this.getHighestJoinedID() + 1;
+                    if (sourceGroup.ArraySightId) {
+                        const joinedId = this.getHighestJoinedID() + 1;
 
-                    this.insertTemplate(
-                        templateFile.getTemplateByName('Main ArraySight Frame'),
-                        mainViewId,
-                        posX,
-                        posY - arraySightTempHeight - 10,
-                        { joinedId }
-                    );
-
-                    const ids = [sourceGroup.ArraySightId, sourceGroup.ArraySightIdR].filter((id) => id);
-
-                    const arraySightTemplate = new TemporaryTemplate();
-                    arraySightTemplate.setName('Main ArraySight');
-                    arraySightTemplate.setLR(!!sourceGroup.ArraySightIdR);
-                    arraySightTemplate.load(templateFile);
-
-                    ids.forEach((TargetId, i) => {
-                        const arraySightTemplateOptions: TemplateOptions = {
-                            TargetId,
-                            joinedId
-                        }
                         this.insertTemplate(
-                            arraySightTemplate as any,
+                            templateFile.getTemplateByName('Main ArraySight Frame'),
                             mainViewId,
-                            posX + 5 + (i * 67),
-                            posY - arraySightTempHeight - 10 + 5,
-                            arraySightTemplateOptions
+                            posX,
+                            posY - arraySightTempHeight - 10,
+                            { joinedId }
                         );
-                    })
-                }
 
-                const navButtonTemplateOptions: TemplateOptions = {
-                    DisplayName: channelGroup.name,
-                    TargetId: sourceGroup.ViewId,
-                    TargetChannel: dbpr.TargetChannels.NONE,
-                    joinedId: commonJoinedId,
-                    Width: templateFile.getTemplateWidthHeight('Nav Button').width + 2, // R1 frames are to be 2px wider than expected
-                }
-                this.insertTemplate(
-                    templateFile.getTemplateByName("Nav Button"),
-                    mainViewId,
-                    posX - 1, // R1 frames are to be 1px further to the left than expected
-                    posY - 1, // R1 frames are to be 1px higher than expected
-                    navButtonTemplateOptions
-                )
+                        const ids = [sourceGroup.ArraySightId, sourceGroup.ArraySightIdR].filter((id) => id);
 
-                posX += meterTempWidth + METER_SPACING_X;
-            });
-        })
+                        const arraySightTemplate = new TemporaryTemplate();
+                        arraySightTemplate.setName('Main ArraySight');
+                        arraySightTemplate.setLR(!!sourceGroup.ArraySightIdR);
+                        arraySightTemplate.load(templateFile);
+
+                        ids.forEach((TargetId, i) => {
+                            const arraySightTemplateOptions: TemplateOptions = {
+                                TargetId,
+                                joinedId
+                            }
+                            this.insertTemplate(
+                                arraySightTemplate as any,
+                                mainViewId,
+                                posX + 5 + (i * 67),
+                                posY - arraySightTempHeight - 10 + 5,
+                                arraySightTemplateOptions
+                            );
+                        })
+                    }
+
+                    const navButtonTemplateOptions: TemplateOptions = {
+                        DisplayName: channelGroup.name,
+                        TargetId: sourceGroup.ViewId,
+                        TargetChannel: dbpr.TargetChannels.NONE,
+                        joinedId: commonJoinedId,
+                        Width: templateFile.getTemplateWidthHeight('Nav Button').width + 2, // R1 frames are to be 2px wider than expected
+                    }
+                    this.insertTemplate(
+                        templateFile.getTemplateByName("Nav Button"),
+                        mainViewId,
+                        posX - 1, // R1 frames are to be 1px further to the left than expected
+                        posY - 1, // R1 frames are to be 1px higher than expected
+                        navButtonTemplateOptions
+                    )
+
+                    posX += meterTempWidth + METER_SPACING_X;
+                });
+            })
+        });
+        transaction(this.sourceGroups);
     }
 
     /**
