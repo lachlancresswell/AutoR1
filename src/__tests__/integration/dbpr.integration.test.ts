@@ -1,45 +1,17 @@
 import { ActionTypes, Control, ProjectFile, TargetChannels, TargetPropertyType, TargetTypes, TemplateFile } from '../../dbpr'
-import * as fs from 'fs';
-
-const PROJECT_NO_INIT_START = './src/__tests__/Projects/test_no_init.dbpr';
-const PROJECT_INIT_START = './src/__tests__/Projects/test_init.dbpr';
-const PROJECT_INIT_AP_START = './src/__tests__/Projects/test_init_AP.dbpr';
-const TEMPLATES_START = './src/__tests__/Projects/templates.r2t';
-const PROJECT_NO_EXIST = '/non/existent/path'
-let PROJECT_NO_INIT = PROJECT_NO_INIT_START + '.test'
-let PROJECT_INIT = PROJECT_INIT_START + '.test'
-let PROJECT_INIT_AP = PROJECT_INIT_AP_START + '.test'
-let TEMPLATES = TEMPLATES_START + '.test'
-
-const setup = () => {
-    const fileId = Math.round(Math.random() * 10000);
-
-    fs.copyFileSync(PROJECT_NO_INIT_START, PROJECT_NO_INIT + fileId);
-    fs.copyFileSync(PROJECT_INIT_START, PROJECT_INIT + fileId);
-    fs.copyFileSync(PROJECT_INIT_AP_START, PROJECT_INIT_AP + fileId);
-    fs.copyFileSync(TEMPLATES_START, TEMPLATES + fileId);
-
-    return fileId;
-};
-
-const cleanup = (fileId: number) => {
-    fs.unlinkSync(PROJECT_NO_INIT + fileId);
-    fs.unlinkSync(PROJECT_INIT + fileId);
-    fs.unlinkSync(PROJECT_INIT_AP + fileId);
-    fs.unlinkSync(TEMPLATES + fileId);
-}
+import { setupTest, cleanupTest, PROJECT_INIT, PROJECT_NO_EXIST, PROJECT_NO_INIT, TEMPLATES } from '../setupTests';
 
 let projectFile: ProjectFile;
 let fileId: number;
 
 beforeEach(() => {
-    fileId = setup();
+    fileId = setupTest();
     projectFile = new ProjectFile(PROJECT_INIT + fileId);
 });
 
 afterEach(() => {
     projectFile.close();
-    cleanup(fileId);
+    cleanupTest(fileId);
 });
 
 describe('Constructor', () => {
@@ -206,7 +178,7 @@ describe('insertControl', () => {
     const JoinedId = 7777;
 
     beforeAll(() => {
-        fileId = setup();
+        fileId = setupTest();
         projectFile = new ProjectFile(PROJECT_INIT + fileId);
         prevHighestJoinedId = projectFile.getHighestJoinedID();
         control = {
@@ -254,7 +226,7 @@ describe('insertControl', () => {
 
     afterAll(() => {
         projectFile.close();
-        cleanup(fileId);
+        cleanupTest(fileId);
     });
 
     it('should insert a control into the project file', () => {
