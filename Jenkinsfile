@@ -7,7 +7,7 @@ pipeline {
     stages {
         stage('Install') { 
             steps {
-                sh 'npm install' 
+                sh 'npm install --registry https://localhost:4873' 
             }
         }
         stage('Unit Tests') { 
