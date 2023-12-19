@@ -10,11 +10,6 @@ pipeline {
                 sh 'npm install' 
             }
         }
-        stage('Build') { 
-            steps {
-                sh 'npm run build' 
-            }
-        }
         stage('Unit Tests') { 
             steps {
                 sh 'npx jest unit.test' 
