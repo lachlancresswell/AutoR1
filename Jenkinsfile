@@ -2,12 +2,13 @@ pipeline {
     agent {
         docker {
             image 'node:20-bullseye'
+            args  '--net="host"'
         }
     }
     stages {
         stage('Install') { 
             steps {
-                sh 'npm install --registry https://localhost:4873' 
+                sh 'npm install --registry http://verdaccio:4873' 
             }
         }
         stage('Unit Tests') { 
@@ -24,6 +25,12 @@ pipeline {
             steps {
                 sh 'npx jest e2e.test' 
             }
+        }
+    }
+
+    post { 
+        always { 
+            cleanWs()
         }
     }
 }
