@@ -1,57 +1,28 @@
-/* eslint-disable */
 /**
  * Tests here operate on project files on disk.
  */
 import { AutoR1ProjectFile, AutoR1TemplateFile, FALLBACK_GROUP_TITLE, MAIN_WINDOW_TITLE, METER_SPACING_X, METER_WINDOW_TITLE, MUTE_GROUP_TITLE } from '../../autor1';
-import * as fs from 'fs';
 import * as dbpr from '../../dbpr'
+import { PROJECT_INIT_AP, PROJECT_SUB_ARRAY, TEMPLATES, cleanupTest, setupTest } from '../setupTests';
 
-const PROJECT_NO_INIT_START = './src/__tests__/Projects/test_no_init.dbpr';
-const PROJECT_INIT_START = './src/__tests__/Projects/test_init.dbpr';
-const PROJECT_INIT_AP_START = './src/__tests__/Projects/test_init_AP.dbpr';
-const PROJECT_SUB_ARRAY_START = './src/__tests__/Projects/sub_array.dbpr';
-const TEMPLATES_START = './src/__tests__/Projects/templates.r2t';
-const PROJECT_INIT = PROJECT_INIT_START + '.test.dbpr';
-const PROJECT_INIT_AP = PROJECT_INIT_AP_START + '.test.dbpr';
-const PROJECT_NO_INIT = PROJECT_NO_INIT_START + '.test.dbpr';
-const PROJECT_SUB_ARRAY = PROJECT_SUB_ARRAY_START + '.test.dbpr';
-const TEMPLATES = TEMPLATES_START + '.test.r2t';
-
-// Create a new project file for each test
-beforeEach(() => {
-
-    if (fs.existsSync(PROJECT_NO_INIT)) fs.unlinkSync(PROJECT_NO_INIT);
-    if (fs.existsSync(PROJECT_INIT)) fs.unlinkSync(PROJECT_INIT);
-    if (fs.existsSync(PROJECT_INIT_AP)) fs.unlinkSync(PROJECT_INIT_AP);
-    if (fs.existsSync(PROJECT_SUB_ARRAY)) fs.unlinkSync(PROJECT_SUB_ARRAY);
-    if (fs.existsSync(TEMPLATES)) fs.unlinkSync(TEMPLATES);
-
-    fs.copyFileSync(PROJECT_NO_INIT_START, PROJECT_NO_INIT);
-    fs.copyFileSync(PROJECT_INIT_START, PROJECT_INIT);
-    fs.copyFileSync(PROJECT_INIT_AP_START, PROJECT_INIT_AP);
-    fs.copyFileSync(PROJECT_SUB_ARRAY_START, PROJECT_SUB_ARRAY);
-    fs.copyFileSync(TEMPLATES_START, TEMPLATES);
-});
-
-afterEach(() => {
-    //fs.unlinkSync(PROJECT_NO_INIT);
-    //fs.unlinkSync(PROJECT_INIT);
-    //fs.unlinkSync(PROJECT_INIT_AP);
-    //fs.unlinkSync(PROJECT_SUB_ARRAY);
-    //fs.unlinkSync(TEMPLATES);
-});
 
 describe('Mute Group', () => {
     let projectFile: AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
+    let fileId: number;
 
     afterEach(() => {
         projectFile.close();
+        templateFile.close();
+
+        cleanupTest(fileId);
     })
 
     beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        fileId = setupTest();
+
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
         const parentId = projectFile.createGroup({ Name: 'Auto R1' });
         projectFile.createSubLRCGroups(parentId);
         projectFile.getSrcGrpInfo();
@@ -59,24 +30,33 @@ describe('Mute Group', () => {
     });
 
     it('mute group should only exist after calling method', () => {
+        // Act
         const muteGroup = projectFile.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
 
+        // Assert
         expect(muteGroup).toBeFalsy();
     })
 
     it('should create main mute group', () => {
+        // Act
         projectFile.createMainMuteGroup();
-        const muteGroup = projectFile.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
 
+        // Assert
+        const muteGroup = projectFile.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
         expect(muteGroup).toBeTruthy();
     })
 
     it('should skip certain channel groups when creating main mute group', () => {
+        // Arrange
+        const groupQuery = `SELECT * FROM Groups WHERE ParentId = ?`
         projectFile.sourceGroups[0].channelGroups[0].removeFromMute = true;
-        projectFile.createMainMuteGroup();
-        const muteGroup = projectFile.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
 
-        const channelsInGroup = projectFile.db.prepare(`SELECT * FROM Groups WHERE ParentId = ${muteGroup?.GroupId}`).all();
+        // Act
+        projectFile.createMainMuteGroup();
+
+        // Assert
+        const muteGroup = projectFile.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
+        const channelsInGroup = projectFile.db.prepare(groupQuery).all(muteGroup?.GroupId);
 
         expect(muteGroup).toBeTruthy();
         expect(channelsInGroup.length).toBe(159)
@@ -111,14 +91,20 @@ describe('Fallback Group', () => {
     let projectFile: AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
     let parentId: number;
+    let fileId: number;
 
     afterEach(() => {
         projectFile.close();
+        templateFile.close();
+
+        cleanupTest(fileId);
     })
 
     beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        fileId = setupTest();
+
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
         parentId = projectFile.createGroup({ Name: 'Auto R1' });
         projectFile.createSubLRCGroups(parentId);
         projectFile.getSrcGrpInfo();
@@ -126,31 +112,42 @@ describe('Fallback Group', () => {
     });
 
     it('fallback group should only exist after calling method', () => {
+        // Act
         const fallbackGroup = projectFile.getAllGroups().find((group) => group.Name === FALLBACK_GROUP_TITLE);
 
+        // Assert
         expect(fallbackGroup).toBeFalsy();
     })
 
     it('should create main fallback group', () => {
+        // Act
         projectFile.createMainFallbackGroup();
         const fallbackGroup = projectFile.getAllGroups().find((group) => group.Name === FALLBACK_GROUP_TITLE);
+
+        // Assert
 
         expect(fallbackGroup).toBeTruthy();
     })
 
     it('should skip certain channel groups when creating main fallback group', () => {
+        // Arrange
+        const groupQuery = `SELECT * FROM Groups WHERE ParentId = ?`;
         projectFile.sourceGroups[0].channelGroups[0].removeFromFallback = true;
+
+        // Act
         projectFile.createMainFallbackGroup();
         const fallbackGroup = projectFile.getAllGroups().find((group) => group.Name === FALLBACK_GROUP_TITLE);
+        const channelsInGroup = projectFile.db.prepare(groupQuery).all(fallbackGroup?.GroupId);
 
-        const channelsInGroup = projectFile.db.prepare(`SELECT * FROM Groups WHERE ParentId = ${fallbackGroup?.GroupId}`).all();
-
+        // Assert
         expect(fallbackGroup).toBeTruthy();
         expect(channelsInGroup.length).toBe(159)
     })
 
     it('should assign template on the main page to the fallback group', () => {
         // Arrange
+        const groupQuery = `SELECT * FROM Groups WHERE ParentId = ?`;
+
         // Remove the primary channel group along with the sub group
         // Allows project to be openned in R1 and checked. First group should not fallover.
         projectFile.sourceGroups[0].channelGroups[0].removeFromFallback = true;
@@ -161,7 +158,7 @@ describe('Fallback Group', () => {
         projectFile.createMainView(templateFile);
 
         const fallbackGroup = projectFile.getAllGroups().find((group) => group.Name === FALLBACK_GROUP_TITLE);
-        const channelsInGroup = projectFile.db.prepare(`SELECT * FROM Groups WHERE ParentId = ${fallbackGroup?.GroupId}`).all();
+        const channelsInGroup = projectFile.db.prepare(groupQuery).all(fallbackGroup?.GroupId);
 
         const allControls = projectFile.getControlsByViewId((projectFile as any).getMainView().ViewId);
 
@@ -231,14 +228,13 @@ describe('Views and Controls', () => {
     let templateFile: AutoR1TemplateFile;
     let mainViewId: number;
     let meterViewId: number;
-
-    afterAll(() => {
-        projectFile.close();
-    })
+    let fileId: number;
 
     beforeAll(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        fileId = setupTest();
+
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
 
         const parentId = projectFile.createGroup({ Name: 'Auto R1' });
         projectFile.createSubLRCGroups(parentId);
@@ -253,72 +249,123 @@ describe('Views and Controls', () => {
         meterViewId = (projectFile as any).getMeterView().ViewId;
     });
 
+    afterAll(() => {
+        projectFile.close();
+        templateFile.close();
+        cleanupTest(fileId);
+    })
+
     describe('Meter Page', () => {
         it('should create the meter page', () => {
-            const view = projectFile.db.prepare(`SELECT * FROM Views WHERE ViewId = ${meterViewId}`).all()[0] as dbpr.View;
+            // Arrange
+            const viewQuery = `SELECT * FROM Views WHERE ViewId = ?`;
+
+            // Act
+            const view = projectFile.db.prepare(viewQuery).all(meterViewId)[0] as dbpr.View;
+
+            // Assert
             expect(view).toBeTruthy();
             expect(view.Name).toBe(METER_WINDOW_TITLE);
         })
 
         it('should correctly assign TargetType value to digital sync display for groups', () => {
-            const digitalSyncControl = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${meterViewId} AND TargetProperty = '${dbpr.TargetPropertyType.INPUT_DIGITAL_SYNC}' AND TargetChannel = ${dbpr.TargetChannels.NONE}`).all() as dbpr.Control[];
+            // Arrange 
+            const query = `SELECT * FROM Controls WHERE ViewId = ? AND TargetProperty = ? AND TargetChannel = ?`;
+            const groupQuery = `SELECT * FROM Groups WHERE GroupId = ?`;
 
-            digitalSyncControl.forEach((control) => {
-                expect(control.TargetType).toBe(dbpr.TargetTypes.GROUP)
-                const groupRow = projectFile.db.prepare(`SELECT * FROM Groups WHERE GroupId = ${control.TargetId}`).all() as dbpr.Group[];
-                expect(groupRow.length).toBe(1);
-                expect(groupRow[0].Type).toBe(dbpr.TargetTypes.GROUP)
-            })
+            // Act
+            const digitalSyncControl = projectFile.db.prepare(query).all(meterViewId, dbpr.TargetPropertyType.INPUT_DIGITAL_SYNC, dbpr.TargetChannels.NONE) as dbpr.Control[];
+
+            const groupRows = digitalSyncControl.map(control => projectFile.db.prepare(groupQuery).all(control.TargetId) as dbpr.Group[]);
+
+            // Assert
+            digitalSyncControl.forEach((control, index) => {
+                expect(control.TargetType).toBe(dbpr.TargetTypes.GROUP);
+                expect(groupRows[index].length).toBe(1);
+                expect(groupRows[index][0].Type).toBe(dbpr.TargetTypes.GROUP);
+            });
         });
 
         it('should correctly assign TargetChannel value digital sync display for groups', () => {
-            const digitalSyncControl = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${meterViewId} AND TargetProperty = '${dbpr.TargetPropertyType.INPUT_DIGITAL_SYNC}' AND TargetType = ${dbpr.TargetTypes.GROUP}`).all() as dbpr.Control[];
+            // Arrange
+            const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND TargetProperty = ? AND TargetType = ?`;
+            const groupQuery = `SELECT * FROM Groups WHERE GroupId = ?`;
 
-            digitalSyncControl.forEach((control) => {
-                expect(control.TargetChannel).toBe(dbpr.TargetChannels.NONE)
-                const groupRow = projectFile.db.prepare(`SELECT * FROM Groups WHERE GroupId = ${control.TargetId}`).all() as dbpr.Group[];
-                expect(groupRow.length).toBe(1);
-                expect(groupRow[0].Type).toBe(dbpr.TargetTypes.GROUP)
-            })
+            // Act
+            const digitalSyncControl = projectFile.db.prepare(controlQuery).all(meterViewId, dbpr.TargetPropertyType.INPUT_DIGITAL_SYNC, dbpr.TargetTypes.GROUP) as dbpr.Control[];
+            const groupRows = digitalSyncControl.map(control => projectFile.db.prepare(groupQuery).all(control.TargetId) as dbpr.Group[]);
+
+            // Assert
+            digitalSyncControl.forEach((control, index) => {
+                expect(control.TargetChannel).toBe(dbpr.TargetChannels.NONE);
+                expect(groupRows[index].length).toBe(1);
+                expect(groupRows[index][0].Type).toBe(dbpr.TargetTypes.GROUP);
+            });
         });
 
         describe('Digital sync displays', () => {
 
             it('digital sync displays should not have a TargetChannel set above 0', () => {
-                const digitalSyncControl = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${meterViewId} AND TargetProperty = 'Input_Digital_Sync'`).all() as dbpr.Control[];
+                // Arrange
+                const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND TargetProperty = 'Input_Digital_Sync'`;
+
+                // Act
+                const digitalSyncControl = projectFile.db.prepare(controlQuery).all(meterViewId) as dbpr.Control[];
+
+                // Assert
                 expect(digitalSyncControl.find(c => c.TargetChannel > 0)).toBeFalsy();
             })
 
             it('should correctly assign TargetType value to digital sync display for devices', () => {
-                const digitalSyncControl = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${meterViewId} AND TargetProperty = '${dbpr.TargetPropertyType.INPUT_DIGITAL_SYNC}' AND TargetChannel = ${dbpr.TargetChannels.DEVICE}`).all() as dbpr.Control[];
+                // Arrange
+                const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND TargetProperty = ? AND TargetChannel = ?`;
+                const groupQuery = `SELECT * FROM Groups WHERE TargetId = ?`;
 
-                digitalSyncControl.forEach((control) => {
-                    expect(control.TargetType).toBe(dbpr.TargetTypes.DIRECT_ACCESS)
-                    const groupRow = projectFile.db.prepare(`SELECT * FROM Groups WHERE TargetId = ${control.TargetId}`).all() as dbpr.Group[];
-                    expect(groupRow.length).toBeGreaterThanOrEqual(1);
-                    groupRow.forEach((row) => {
-                        expect(row.Type).toBe(dbpr.TargetTypes.CHANNEL)
-                    })
-                })
+                // Act
+                const digitalSyncControl = projectFile.db.prepare(controlQuery).all(meterViewId, dbpr.TargetPropertyType.INPUT_DIGITAL_SYNC, dbpr.TargetChannels.DEVICE) as dbpr.Control[];
+
+                const groupRows = digitalSyncControl.map(control => projectFile.db.prepare(groupQuery).all(control.TargetId) as dbpr.Group[]);
+
+                // Assert
+                digitalSyncControl.forEach((control, index) => {
+                    expect(control.TargetType).toBe(dbpr.TargetTypes.DIRECT_ACCESS);
+                    expect(groupRows[index].length).toBeGreaterThanOrEqual(1);
+                    groupRows[index].forEach((row) => {
+                        expect(row.Type).toBe(dbpr.TargetTypes.CHANNEL);
+                    });
+                });
             });
 
             it('should correctly assign TargetChannel value digital sync display for devices', () => {
-                const digitalSyncControl = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${meterViewId} AND TargetProperty = '${dbpr.TargetPropertyType.INPUT_DIGITAL_SYNC}' AND TargetType = ${dbpr.TargetTypes.DIRECT_ACCESS}`).all() as dbpr.Control[];
+                // Arrange
+                const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND TargetProperty = ? AND TargetType = ?`;
+                const groupQuery = `SELECT * FROM Groups WHERE TargetId = ?`;
 
-                digitalSyncControl.forEach((control) => {
-                    expect(control.TargetChannel).toBe(dbpr.TargetChannels.DEVICE)
-                    const groupRow = projectFile.db.prepare(`SELECT * FROM Groups WHERE TargetId = ${control.TargetId}`).all() as dbpr.Group[];
-                    expect(groupRow.length).toBeGreaterThanOrEqual(1);
-                    groupRow.forEach((row) => {
+                // Act
+                const digitalSyncControl = projectFile.db.prepare(controlQuery).all(meterViewId, dbpr.TargetPropertyType.INPUT_DIGITAL_SYNC, dbpr.TargetTypes.DIRECT_ACCESS) as dbpr.Control[];
+
+                const groupRows = digitalSyncControl.map(control => projectFile.db.prepare(groupQuery).all(control.TargetId) as dbpr.Group[]);
+
+                // Assert
+                digitalSyncControl.forEach((control, index) => {
+                    expect(control.TargetChannel).toBe(dbpr.TargetChannels.DEVICE);
+                    expect(groupRows[index].length).toBeGreaterThanOrEqual(1);
+                    groupRows[index].forEach((row) => {
                         expect(row.Type).toBe(dbpr.TargetTypes.CHANNEL);
-                    })
-                })
+                    });
+                });
             });
 
         });
 
         it('should generate GR indicators properly', () => {
-            const ovlIndicators = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${meterViewId} AND Type = ${dbpr.ControlTypes.LED} and TargetProperty = '${dbpr.TargetPropertyType.CHANNEL_STATUS_REM_HOLD_GR}'`).all() as dbpr.Control[];
+            // Arrange
+            const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND Type = ? and TargetProperty = ?`;
+
+            // Act
+            const ovlIndicators = projectFile.db.prepare(controlQuery).all(meterViewId, dbpr.ControlTypes.LED, dbpr.TargetPropertyType.CHANNEL_STATUS_REM_HOLD_GR) as dbpr.Control[];
+
+            // Assert
             expect(ovlIndicators.length).toBeTruthy();
             ovlIndicators.forEach(control => {
                 expect(control.TargetType).toBe(dbpr.TargetTypes.DIRECT_ACCESS);
@@ -328,7 +375,13 @@ describe('Views and Controls', () => {
         });
 
         it('should generate OVL indicators properly', () => {
-            const ovlIndicators = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${meterViewId} AND Type = ${dbpr.ControlTypes.LED} and TargetProperty = '${dbpr.TargetPropertyType.CHANNEL_STATUS_REM_HOLD_OVL}'`).all() as dbpr.Control[];
+            // Arrange
+            const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND Type = ? and TargetProperty = ?`;
+
+            // Act
+            const ovlIndicators = projectFile.db.prepare(controlQuery).all(meterViewId, dbpr.ControlTypes.LED, dbpr.TargetPropertyType.CHANNEL_STATUS_REM_HOLD_OVL) as dbpr.Control[];
+
+            // Assert
             ovlIndicators.forEach(control => {
                 expect(control.TargetType).toBe(dbpr.TargetTypes.DIRECT_ACCESS);
                 expect(control.TargetId).toBeTruthy();
@@ -339,7 +392,13 @@ describe('Views and Controls', () => {
 
     describe('Main Page', () => {
         it('should create the main page', () => {
-            const view = projectFile.db.prepare(`SELECT * FROM Views WHERE ViewId = ${mainViewId}`).all()[0] as dbpr.View;
+            // Arrange
+            const viewQuery = `SELECT * FROM Views WHERE ViewId = ?`;
+
+            // Act
+            const view = projectFile.db.prepare(viewQuery).all(mainViewId)[0] as dbpr.View;
+
+            // Assert
             expect(view).toBeTruthy();
             expect(view.Name).toBe(MAIN_WINDOW_TITLE);
         })
@@ -348,24 +407,33 @@ describe('Views and Controls', () => {
          * Addresses bug where meter were disappearing due to objects being passed as references
          */
         it('should correctly position meters', () => {
+            // Arrange
             const controls = projectFile.getControlsByViewId(mainViewId).filter(control =>
                 control.Type === dbpr.ControlTypes.FRAME
                 && Math.round(control.PosX) >= 483
                 && Math.round(control.PosY) == 110
             );
 
+            // Act
             const { width: meterTempWidth, height: meterTempHeight } = templateFile.getTemplateWidthHeight('Group LR AP CPL2');
 
+            // Assert
             controls.forEach((control, index) => {
                 expect(Math.round(control.PosX)).toBe(483 + (index * METER_SPACING_X) + (index * meterTempWidth))
             });
         });
 
         it('should correctly assign controls for main group', () => {
-            const rtn = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'Power' AND Type = ${dbpr.ControlTypes.SWITCH}`).all() as dbpr.Control[];
+            // Arrange
+            const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND DisplayName = 'Power' AND Type = ?`;
+
+            // Act
+            const rtn = projectFile.db.prepare(controlQuery).all(mainViewId, dbpr.ControlTypes.SWITCH) as dbpr.Control[];
             expect(rtn.length).toBe(1)
             const mainViewPowerButton = rtn[0];
             const mainGroupId = projectFile.getMasterGroupID();
+
+            // Assert
             expect(mainViewPowerButton.TargetType).toBe(dbpr.TargetTypes.GROUP);
             expect(mainViewPowerButton.TargetChannel).toBe(dbpr.TargetChannels.NONE); // No target channel configured as it is targeting a group
             expect(mainViewPowerButton.TargetId).toBe(mainGroupId);
@@ -373,15 +441,27 @@ describe('Views and Controls', () => {
         });
 
         it('should not insert View EQ switch for an additional amp device', () => {
-            const viewEqSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'View EQ' AND Type = ${dbpr.ControlTypes.SWITCH}`).all() as dbpr.Control[];
+            // Arrange
+            const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND DisplayName = 'View EQ' AND Type = ?`;
+
+            // Act
+            const viewEqSwitches = projectFile.db.prepare(controlQuery).all(mainViewId, dbpr.ControlTypes.SWITCH) as dbpr.Control[];
             // const nonAdditionalDeviceSources = projectFile.db.prepare(`SELECT * FROM Views WHERE Name LIKE '%EQ%'`).all();
+
+            // Assert
             expect(viewEqSwitches.length).toBe(14)
             //TODO: Sub controls on main page are not created for mixed sub/top arrays so the above value cannot be calculated properly currently
         })
 
         it('should insert controls from each template under the same JoinedId', () => {
+            // Arrange
+            const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND DisplayName = 'View EQ' AND Type = ?`;
+
+            // Act
             // Fetch a control that is present in all meter templates and expect IDs to increment by 1 each time
-            const viewEqSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'View EQ' AND Type = ${dbpr.ControlTypes.SWITCH}`).all() as dbpr.Control[];
+            const viewEqSwitches = projectFile.db.prepare(controlQuery).all(mainViewId, dbpr.ControlTypes.SWITCH) as dbpr.Control[];
+
+            // Assert
             viewEqSwitches.reduce((prevCplSwitch, curCplSwitch) => {
                 if (prevCplSwitch) {
                     expect(curCplSwitch.JoinedId).toBeGreaterThanOrEqual(prevCplSwitch.JoinedId + 1);
@@ -392,15 +472,27 @@ describe('Views and Controls', () => {
         });
 
         it('should not insert load match enable switch for an additional amp device', () => {
-            const group1Switch = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'Group 1' AND Type = ${dbpr.ControlTypes.SWITCH}`).get() as dbpr.Control;
-            const group1MainControls = projectFile.db.prepare(`SELECT * FROM Controls WHERE JoinedId = ${group1Switch.JoinedId}`).all() as dbpr.Control[];
+            // Arrange
+            const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND DisplayName = 'Group 1' AND Type = ?`;
+            const groupControlQuery = `SELECT * FROM Controls WHERE JoinedId = ?`;
+
+            // Act
+            const group1Switch = projectFile.db.prepare(controlQuery).get(mainViewId, dbpr.ControlTypes.SWITCH) as dbpr.Control;
+            const group1MainControls = projectFile.db.prepare(groupControlQuery).all(group1Switch.JoinedId) as dbpr.Control[];
+
+            // Assert
             expect(group1MainControls.find((control) => control.TargetProperty === dbpr.TargetPropertyType.CONFIG_LOAD_MATCH_ENABLE)).toBeFalsy();
         });
 
         it('should set the font correctly for text boxes', () => {
-            const projectTitle = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = ? and Type = ?`).get('Auto - Main', dbpr.ControlTypes.TEXT) as dbpr.Control;
+            // Arrange
+            const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND DisplayName = ? and Type = ?`;
+
+            // Act
+            const projectTitle = projectFile.db.prepare(controlQuery).get(mainViewId, 'Auto - Main', dbpr.ControlTypes.TEXT) as dbpr.Control;
             const templateTitle = templateFile.db.prepare(`SELECT * FROM Controls WHERE DisplayName = ? and Type = ?`).get('Auto - Main', dbpr.ControlTypes.TEXT) as dbpr.Control;
 
+            // Assert
             expect(projectTitle.Font).toBe(templateTitle.Font);
         })
 
@@ -408,13 +500,18 @@ describe('Views and Controls', () => {
          * Addresses bug where relative delay controls were not being set correctly
          */
         it('should correctly set relative delay controls', () => {
+            // Arrange
+            const controlQuery = `SELECT * FROM Controls WHERE ViewId != ? AND ViewId != ? AND DisplayName = ? AND TargetProperty = ?`
+            const delayControlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND TargetProperty = ? AND Flags = ?`;
+
+            // Act
             const overviewView = projectFile.getAllRemoteViews().find(view => view.Name === 'Overview')
 
-            const regularRelDelayControls = projectFile.db.prepare(`
-            SELECT * FROM Controls WHERE ViewId != ${mainViewId} AND ViewId != ${overviewView?.ViewId} AND DisplayName = ? AND TargetProperty = ?`).all('rel. Delay', dbpr.TargetPropertyDigitalChannel.CHANNEL_STATUS_MS_DELAY) as dbpr.Control[];
+            const regularRelDelayControls = projectFile.db.prepare(controlQuery).all(mainViewId, overviewView?.ViewId, 'rel. Delay', dbpr.TargetPropertyDigitalChannel.CHANNEL_STATUS_MS_DELAY) as dbpr.Control[];
 
-            const mainViewRelDelayControls = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND TargetProperty = ? AND Flags = ?`).all(dbpr.TargetPropertyDigitalChannel.CHANNEL_STATUS_MS_DELAY, dbpr.ControlFlags.RELATIVE) as dbpr.Control[];
+            const mainViewRelDelayControls = projectFile.db.prepare(delayControlQuery).all(mainViewId, dbpr.TargetPropertyDigitalChannel.CHANNEL_STATUS_MS_DELAY, dbpr.ControlFlags.RELATIVE) as dbpr.Control[];
 
+            // Assert
             expect(mainViewRelDelayControls.length).toBe(regularRelDelayControls.length)
         })
 
@@ -425,7 +522,7 @@ describe('Views and Controls', () => {
             const muteControls = projectFile.getControlsByViewId(mainViewId).filter(control => (
                 control.Type === dbpr.ControlTypes.SWITCH
                 && control.TargetProperty === dbpr.TargetPropertyType.CONFIG_MUTE
-                && Math.round(control.PosY) === 446
+                && Math.round(control.PosY) === 403
             ));
 
             expect(muteControls.length).toBeTruthy();
@@ -460,17 +557,20 @@ describe('Views and Controls', () => {
         });
 
         it('should correctly assign TargetId for meter controls', () => {
+            // Act
             const meterControls = projectFile.getControlsByViewId(mainViewId).filter(control => (
                 control.Type === dbpr.ControlTypes.METER
                 && control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_GAIN_REDUCTION_HEADROOM
-                && Math.round(control.PosY) === 149
+                && Math.round(control.PosY) === 106
             ));
 
-            expect(meterControls.length).toBeTruthy();
-
+            // Assert
             const discoveredMeterChannelTargetIDs: {
                 TargetId: number, TargetChannel: number
             }[] = []
+
+            expect(meterControls.length).toBeTruthy();
+
             meterControls.forEach(control => {
                 expect(control.TargetId).toBeGreaterThan(0);
                 expect(control.TargetChannel).toBeGreaterThan(0);
@@ -485,12 +585,18 @@ describe('Views and Controls', () => {
             });
         });
 
-        // TODO: Cannot be run simultaneously with all other tests for an unknown reason
         it('should correctly skip CPL controls for sources which it is not available for', () => {
-            const overviewView = projectFile.getAllRemoteViews().find(view => view.Name === 'Overview')
-            const regularCplSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId != ${mainViewId} AND ViewId != ${overviewView?.ViewId} AND DisplayName = 'CPL' AND Type = ${dbpr.ControlTypes.DIGITAL}`).all() as dbpr.Control[];
+            // Arrange
+            const controlQuery = `SELECT * FROM Controls WHERE ViewId != ? AND ViewId != ? AND DisplayName = 'CPL' AND Type = ?`;
+            const cplControlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND DisplayName = 'CPL' AND Type = ?`;
 
-            const mainViewCplSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'CPL' AND Type = ${dbpr.ControlTypes.DIGITAL}`).all() as dbpr.Control[];
+            // Act
+            const overviewView = projectFile.getAllRemoteViews().find(view => view.Name === 'Overview')
+            const regularCplSwitches = projectFile.db.prepare(controlQuery).all(mainViewId, overviewView!.ViewId, dbpr.ControlTypes.DIGITAL) as dbpr.Control[];
+
+            const mainViewCplSwitches = projectFile.db.prepare(cplControlQuery).all(mainViewId, dbpr.ControlTypes.DIGITAL) as dbpr.Control[];
+
+            // Assert
             expect(mainViewCplSwitches.length).toBe(regularCplSwitches.length)
             mainViewCplSwitches.forEach(cplSwitch => {
                 expect(cplSwitch.TargetType).toBe(dbpr.TargetTypes.GROUP);
@@ -507,12 +613,15 @@ describe('Project with only sub array', () => {
     let templateFile: AutoR1TemplateFile;
     let mainViewId: number;
     let meterViewId: number;
+    let fileId: number;
     const CPL_SOURCE_COUNT = 0;
     const VIEW_EQ_SWITCH_COUNT = 1;
 
     beforeEach(() => {
-        projectFile = new AutoR1ProjectFile(PROJECT_SUB_ARRAY);
-        templateFile = new AutoR1TemplateFile(TEMPLATES);
+        fileId = setupTest();
+
+        projectFile = new AutoR1ProjectFile(PROJECT_SUB_ARRAY + fileId);
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
 
         const parentId = projectFile.createGroup({ Name: 'Auto R1' });
         projectFile.createSubLRCGroups(parentId);
@@ -533,23 +642,48 @@ describe('Project with only sub array', () => {
         meterViewId = (projectFile as any).getMeterView().ViewId;
     });
 
+    afterEach(() => {
+        projectFile.close();
+        templateFile.close();
+
+        cleanupTest(fileId);
+    })
+
     it('should create the main page', () => {
-        const view = projectFile.db.prepare(`SELECT * FROM Views WHERE ViewId = ${mainViewId}`).all()[0] as dbpr.View;
+        // Arrange
+        const viewQuery = `SELECT * FROM Views WHERE ViewId = ?`;
+
+        // Act
+        const view = projectFile.db.prepare(viewQuery).all(mainViewId)[0] as dbpr.View;
+
+        // Assert
         expect(view).toBeTruthy();
         expect(view.Name).toBe(MAIN_WINDOW_TITLE);
     })
 
     it('should create the meter page', () => {
-        const view = projectFile.db.prepare(`SELECT * FROM Views WHERE ViewId = ${meterViewId}`).all()[0] as dbpr.View;
+        // Arrange
+        const viewQuery = `SELECT * FROM Views WHERE ViewId = ?`;
+
+        // Act
+        const view = projectFile.db.prepare(viewQuery).all(meterViewId)[0] as dbpr.View;
+
+        // Assert
         expect(view).toBeTruthy();
         expect(view.Name).toBe(METER_WINDOW_TITLE);
     })
 
     it('should correctly assign controls for main group', () => {
-        const rtn = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'Power' AND Type = ${dbpr.ControlTypes.SWITCH}`).all() as dbpr.Control[];
+        // Arrange
+        const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND DisplayName = 'Power' AND Type = ?`;
+
+        // Act
+        const rtn = projectFile.db.prepare(controlQuery).all(mainViewId, dbpr.ControlTypes.SWITCH) as dbpr.Control[];
         expect(rtn.length).toBe(1)
         const mainViewPowerButton = rtn[0];
         const mainGroupId = projectFile.getMasterGroupID();
+
+        // Assert
         expect(mainViewPowerButton.TargetType).toBe(dbpr.TargetTypes.GROUP);
         expect(mainViewPowerButton.TargetChannel).toBe(dbpr.TargetChannels.NONE); // No target channel configured as it is targeting a group
         expect(mainViewPowerButton.TargetId).toBe(mainGroupId);
@@ -557,8 +691,13 @@ describe('Project with only sub array', () => {
     });
 
     it('should correctly skip CPL controls for sources which it is not available for', () => {
+        // Arrange
+        const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND DisplayName = 'CPL' AND Type = ?`;
 
-        const cplSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'CPL' AND Type = ${dbpr.ControlTypes.DIGITAL}`).all() as dbpr.Control[];
+        // Act
+        const cplSwitches = projectFile.db.prepare(controlQuery).all(mainViewId, dbpr.ControlTypes.DIGITAL) as dbpr.Control[];
+
+        // Assert
         expect(cplSwitches.length).toBe(CPL_SOURCE_COUNT)
         cplSwitches.forEach(cplSwitch => {
             expect(cplSwitch.TargetType).toBe(dbpr.TargetTypes.GROUP);
@@ -569,8 +708,14 @@ describe('Project with only sub array', () => {
     });
 
     it('should insert controls from each template under the same JoinedId', () => {
+        // Arrange
+        const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND DisplayName = 'View EQ' AND Type = ?`;
+
+        // Act
         // Fetch a control that is present in all meter templates and expect IDs to increment by 1 each time
-        const viewEqSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'View EQ' AND Type = ${dbpr.ControlTypes.SWITCH}`).all() as dbpr.Control[];
+        const viewEqSwitches = projectFile.db.prepare(controlQuery).all(mainViewId, dbpr.ControlTypes.SWITCH) as dbpr.Control[];
+
+        // Assert
         viewEqSwitches.reduce((prevCplSwitch, curCplSwitch) => {
             if (prevCplSwitch) {
                 expect(curCplSwitch.JoinedId).toBe(prevCplSwitch.JoinedId + 1);
@@ -580,16 +725,28 @@ describe('Project with only sub array', () => {
     });
 
     it('should not insert View EQ switch for an additional amp device', () => {
-        const viewEqSwitches = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = 'View EQ' AND Type = ${dbpr.ControlTypes.SWITCH}`).all() as dbpr.Control[];
+        // Arrange
+        const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND DisplayName = 'View EQ' AND Type = ?`;
+
+        // Act
+        const viewEqSwitches = projectFile.db.prepare(controlQuery).all(mainViewId, dbpr.ControlTypes.SWITCH) as dbpr.Control[];
         // const nonAdditionalDeviceSources = projectFile.db.prepare(`SELECT * FROM Views WHERE Name LIKE '%EQ%'`).all();
+
+        // Assert
         expect(viewEqSwitches.length).toBe(VIEW_EQ_SWITCH_COUNT)
         //TODO: Sub controls on main page are not created for mixed sub/top arrays so the above value cannot be calculated properly currently
     })
 
     it('should set the font correctly for text boxes', () => {
-        const projectTitle = projectFile.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND DisplayName = ? and Type = ?`).get('Auto - Main', dbpr.ControlTypes.TEXT) as dbpr.Control;
-        const templateTitle = templateFile.db.prepare(`SELECT * FROM Controls WHERE DisplayName = ? and Type = ?`).get('Auto - Main', dbpr.ControlTypes.TEXT) as dbpr.Control;
+        // Arrange
+        const controlQuery = `SELECT * FROM Controls WHERE ViewId = ? AND DisplayName = ? and Type = ?`;
+        const titleControlQuery = `SELECT * FROM Controls WHERE DisplayName = ? and Type = ?`;
 
+        // Act
+        const projectTitle = projectFile.db.prepare(controlQuery).get(mainViewId, 'Auto - Main', dbpr.ControlTypes.TEXT) as dbpr.Control;
+        const templateTitle = templateFile.db.prepare(titleControlQuery).get('Auto - Main', dbpr.ControlTypes.TEXT) as dbpr.Control;
+
+        // Assert
         expect(projectTitle.Font).toBe(templateTitle.Font);
     });
 });
