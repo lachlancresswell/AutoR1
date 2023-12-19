@@ -751,20 +751,25 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             ParentId: parentGroupId
         });
 
-        this.sourceGroups.forEach((srcGrp) => {
-            srcGrp.channelGroups.forEach((chGrp) => {
-                if (!chGrp.removeFromFallback) {
-                    chGrp.channels.forEach((ch) => {
-                        this.addChannelToGroup({
-                            Name: ch.Name,
-                            ParentId: mainGroup,
-                            TargetId: ch.TargetId,
-                            TargetChannel: ch.TargetChannel,
-                        })
-                    });
-                }
+        // Wrap in transaction to speed up insertion
+        const transaction = this.db.transaction((sourceGroups: SourceGroup[]) => {
+            sourceGroups.forEach((srcGrp) => {
+                srcGrp.channelGroups.forEach((chGrp) => {
+                    if (!chGrp.removeFromFallback) {
+                        chGrp.channels.forEach((ch) => {
+                            this.addChannelToGroup({
+                                Name: ch.Name,
+                                ParentId: mainGroup,
+                                TargetId: ch.TargetId,
+                                TargetChannel: ch.TargetChannel,
+                            })
+                        });
+                    }
+                });
             });
         });
+
+        transaction(this.sourceGroups);
     };
 
     /**
