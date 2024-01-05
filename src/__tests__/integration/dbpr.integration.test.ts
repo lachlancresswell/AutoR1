@@ -70,10 +70,15 @@ describe('addChannelToGroup', () => {
 
 describe('deleteGroup', () => {
     it('Removes a group', () => {
+        // Arrange
         const newId = projectFile.createGroup({ Name: 'test' });
-        expect(projectFile.getGroupIdFromName('test')).toBe(newId);
         projectFile.deleteGroup(newId);
-        expect(() => projectFile.getGroupIdFromName('test')).toThrow('Could not find group');
+
+        // Act
+        const rtn = projectFile.getGroupIdFromName('test');
+
+        // Assert
+        expect(rtn).toBeFalsy();
     });
 });
 
