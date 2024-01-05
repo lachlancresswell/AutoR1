@@ -1193,7 +1193,9 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const view = stmt.get(MAIN_WINDOW_TITLE) as dbpr.View;
 
         if (!view) {
-            throw (Error(`Could not find Auto R1 Meter view with name ${MAIN_WINDOW_TITLE}`))
+            console.log(`Could not find Auto R1 Meter view with name ${MAIN_WINDOW_TITLE}`);
+
+            return undefined;
         }
 
         return view;
@@ -1204,7 +1206,9 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const view = stmt.get(METER_WINDOW_TITLE) as dbpr.View;
 
         if (!view) {
-            throw (Error(`Could not find Auto R1 Meter view with name ${METER_WINDOW_TITLE}`))
+            console.log(`Could not find Auto R1 Meter view with name ${METER_WINDOW_TITLE}`)
+
+            return undefined;
         }
 
         return view;
@@ -1343,11 +1347,15 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const mainOverviewTemplate = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_OVERVIEW);
         const mainFallbackTemplate = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_FALLBACK);
 
-        const meterViewId = this.getMeterView().ViewId;
+        const meterView = this.getMeterView();
+
+        if (!meterView) {
+            throw new Error("Meter view not found");
+        }
 
         const navButtonTemplateOptions: TemplateOptions = {
             DisplayName: METER_WINDOW_TITLE,
-            TargetId: meterViewId,
+            TargetId: meterView.ViewId,
             TargetChannel: dbpr.TargetChannels.NONE
         }
         this.insertTemplate(
