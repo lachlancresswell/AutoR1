@@ -1,10 +1,12 @@
 {
-  "name": "ts",
-  "version": "1.0.0",
-  "description": "",
-  "main": "app.js",
+  "name": "autor1",
+  "version": "2.0.0",
+  "description": "Auto-generate fallback and meter display from existing group info in d&b audiotechnik's R1 and ArrayCalc software.",
+  "main": "dist/app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dist/app.js",
+    "build": "npx tsc",
+    "test": "npx jest .test.ts"
   },
   "author": "",
   "license": "ISC",
