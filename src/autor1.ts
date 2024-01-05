@@ -641,7 +641,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 for (let row of rtn) {
                     devGrp.channels.push(row);
                 }
-                console.log(`Assigned ${rtn.length} channels to ${devGrp.name}`);
+                console.debug(`Assigned ${rtn.length} channels to ${devGrp.name}`);
             });
         });
     }
@@ -1974,7 +1974,7 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
             const controls = this.db.prepare(`SELECT * FROM Controls WHERE JoinedId = ${joinedId} ORDER BY PosX ASC`).all() as dbpr.Control[];
 
             this.templates.push(new AutoR1Template(template, controls));
-            console.log(`Loaded template - ${index} / ${this.templates[this.templates.length - 1].name}`);
+            console.debug(`Loaded template - ${index} / ${this.templates[this.templates.length - 1].name}`);
         });
     }
 

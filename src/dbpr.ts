@@ -712,7 +712,7 @@ export class ProjectFile extends SqlDbFile {
         const children = childrenStmt.all(groupID) as { GroupId: number }[];
 
         if (!children.length) {
-            console.info(`Could not find any groups with ParentID ${groupID}`);
+            console.debug(`Could not find any groups with ParentID ${groupID}`);
         } else {
             for (const child of children) {
                 this.deleteGroup((child).GroupId);
@@ -890,7 +890,7 @@ export class ProjectFile extends SqlDbFile {
         const rtn = stmt.get(name) as { GroupId: number }
 
         if (!rtn) {
-            console.info(`Could not find group with name ${name}`);
+            console.debug(`Could not find group with name ${name}`);
             return undefined;
         }
 
@@ -912,7 +912,7 @@ export class ProjectFile extends SqlDbFile {
         const stmt = this.db.prepare('SELECT ViewId FROM Views WHERE Name = ?');
         const rtn = stmt.get(name) as { ViewId: number };
         if (!rtn) {
-            console.info(`Could not find view with name ${name}`);
+            console.debug(`Could not find view with name ${name}`);
             return undefined;
         }
         return rtn.ViewId;
