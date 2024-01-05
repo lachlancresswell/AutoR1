@@ -406,18 +406,62 @@ describe('createNavButtons', () => {
     });
 });
 
+describe('removeNavButtons', () => {
+    let projectFile: AutoR1ProjectFile;
+    let templateFile: AutoR1TemplateFile;
+    let fileId: number;
+    let oldControlCount: number;
+
+    beforeEach(() => {
+        fileId = setupTest();
+
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT + fileId);
+
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
         projectFile.createMainView(templateFile);
+
+        oldControlCount = projectFile.getAllControls().length;
+
         projectFile.createNavButtons(templateFile);
+    });
 
-        const newControls = projectFile.getControlsByViewId(overviewViewId!);
+    afterEach(() => {
+        templateFile.close();
+        projectFile.close();
+        cleanupTest(fileId);
+    });
 
-        expect(projectFile.getHighestJoinedID()).toBeGreaterThan(oldJoinedId);
-        expect(newControls.length).toBe(oldControls.length + 2);
-        oldControls.forEach((oldControl, index) => {
-            const newControl = newControls[index];
-            expect(newControl.PosY).toBe(oldControl.PosY + AutoR1.NAV_BUTTON_Y + AutoR1.NAV_BUTTON_SPACING);
+    it('should remove all nav button controls', () => {
+        // Arrange
+        const mainViewId = (projectFile as any).getMainView().ViewId;
+
+        // Act
+        (projectFile as any).removeNavButtons(mainViewId);
+
+        const rtn = projectFile.getAllControls().length;
+
+        // Assert
+        expect(rtn).toBe(oldControlCount);
+    })
+
+    it('should move all controls on all views except the AutoR1 Main and Meter views back up', () => {
+        // Arrange
+        const mainViewId = (projectFile as any).getMainView().ViewId;
+        const views = projectFile.getAllRemoteViews().filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
+        const oldControls = projectFile.getAllControls().filter((control) => views.find((view) => view.ViewId === control.ViewId));
+
+        // Act
+        (projectFile as any).removeNavButtons(mainViewId);
+
+        const newControls = projectFile.getAllControls().filter((control) => views.find((view) => view.ViewId === control.ViewId));
+
+        // Assert
+        newControls.forEach((newControl) => {
+            const oldControl = oldControls.find((control) => control.ControlId === newControl.ControlId);
+
+            expect(newControl.PosY).toBeLessThan(oldControl!.PosY);
         });
     });
 });
