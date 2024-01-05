@@ -861,6 +861,13 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         console.log(`Deleted ${PARENT_GROUP_TITLE} group.`);
     }
 
+    /**
+     * Inserts view navigation buttons on all views except the AutoR1 Main view
+     * @param templates AutoR1 template file containing the navigation button template
+     * @returns void
+     * @throws Will throw an error if the Nav Button template cannot be found.
+     * @throws Will throw an error if the Main or Meter views cannot be found.
+     */
     public createNavButtons(templates: AutoR1TemplateFile): void {
         const increaseControlPosYByAmount = this.db.prepare('UPDATE Controls SET PosY = PosY + ? WHERE ViewId = ?');
         const navButtonTemplate = templates.templates.find(template => template.name === AutoR1TemplateTitles.NAV_BUTTONS);
@@ -922,6 +929,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         });
     }
 
+    /**
+     * Removes all nav buttons from the project and returns the controls to their original positions
+     * @param proj R1 project file
+     * @param mainViewId ViewId of the main view
+     */
     private removeNavButtons(mainViewId: number): void {
         const getControlsStmt = this.db.prepare(`SELECT ViewId FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = ?`);
         const updateControlsStmt = this.db.prepare('UPDATE Controls SET PosY = PosY - ? WHERE ViewId = ?');
@@ -1203,7 +1215,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         return this.sourceGroups.find((src) => src.hasArrayProcessingEnabled()) ? true : false;
     }
 
-    private getMainView() {
+    /**
+     * Find the AutoR1 Main View row
+     * @returns View object or undefined
+     */
+    private getMainView(): dbpr.View | undefined {
         const stmt = this.db.prepare(`SELECT * from Views WHERE Name = ?`);
         const view = stmt.get(MAIN_WINDOW_TITLE) as dbpr.View;
 
@@ -1216,7 +1232,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         return view;
     }
 
-    private getMeterView() {
+    /**
+     * Find the AutoR1 Meter View row
+     * @returns View object or undefined
+     */
+    private getMeterView(): dbpr.View | undefined {
         const stmt = this.db.prepare(`SELECT * from Views WHERE Name = ?`);
         const view = stmt.get(METER_WINDOW_TITLE) as dbpr.View;
 
@@ -1357,6 +1377,15 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         transaction(this.sourceGroups);
     }
 
+    /**
+     * Inserts the AutoR1 Main View Overview template
+     * @param templateFile TemplateFile that contains templates for inserting
+     * @param posX X position to start inserting controls
+     * @param posY Y position to start inserting controls
+     * @param mainViewId ID of the main view
+     * 
+     * @throws Will throw an error if the meter view cannot be found
+     */
     private createMainViewOverview(templateFile: AutoR1TemplateFile, posX: number, posY: number, mainViewId: number) {
 
         const mainOverviewTemplate = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_OVERVIEW);
