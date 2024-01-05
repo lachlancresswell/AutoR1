@@ -6,9 +6,9 @@ dist
 coverage
 
 #d&b files
-*.dbpr
+*.dbpr*
 *.dbpr-journal
 *.dblock
-*.r2t
+*.r2t*
 /LOGS
 /dist/LOGS/
