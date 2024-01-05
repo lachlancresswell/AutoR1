@@ -356,22 +356,55 @@ describe('createNavButtons', () => {
     let templateFile: AutoR1TemplateFile;
     let fileId: number;
 
-    beforeAll(() => {
+    beforeEach(() => {
         fileId = setupTest();
         projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
         templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+
+        projectFile.getSrcGrpInfo();
+        projectFile.createMeterView(templateFile);
+        projectFile.createMainView(templateFile);
     });
 
-    afterAll(() => {
+    afterEach(() => {
         projectFile.close();
         templateFile.close();
         cleanupTest(fileId);
     })
 
-    it('should create a nav button for each view and lower all existing controls', () => {
-        const oldJoinedId = projectFile.getHighestJoinedID();
-        const overviewViewId = projectFile.getViewIdFromName('Overview')
-        const oldControls = projectFile.getControlsByViewId(overviewViewId!);
+    it('should create two nav buttons on all views except the AutoR1 Main and Meter views', () => {
+        // Arrange
+        const oldControls = projectFile.getAllControls()
+        const navButtonTemplateSize = templateFile.getTemplateControlsFromName(AutoR1.AutoR1TemplateTitles.NAV_BUTTONS).length;
+
+        const views = projectFile.getAllRemoteViews().filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        const newControls = projectFile.getAllControls()
+
+        // Assert
+        expect(newControls.length).toBe(oldControls.length + (views.length * (navButtonTemplateSize * 2)));
+    });
+
+    it('should move all controls on all views except the AutoR1 Main and Meter views down to make space for the nav buttons', () => {
+        // Arrange        
+        const views = projectFile.getAllRemoteViews().filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
+        const oldControls = projectFile.getAllControls().filter((control) => views.find((view) => view.ViewId === control.ViewId));
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        const newControls = projectFile.getAllControls().filter((control) => views.find((view) => view.ViewId === control.ViewId));
+
+        // Assert
+        oldControls.forEach((oldControl) => {
+            const newControl = newControls.find((control) => control.ControlId === oldControl.ControlId);
+            expect(newControl!.PosY).toBeGreaterThan(oldControl.PosY);
+        });
+    });
+});
 
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
