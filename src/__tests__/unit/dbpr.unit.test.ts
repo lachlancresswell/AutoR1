@@ -92,12 +92,57 @@ describe('ProjectFile', () => {
             expect(prepare).toHaveBeenCalledWith('DELETE FROM Groups WHERE GroupId = ?');
         });
 
-        it('should throw if group is not found', () => {
-            databaseObject = { GROUP_ID: GroupId };
+        it('should be called for each child group found', () => {
+            // Arrange
+            (Database as any).mockReset();
+
+            /**
+             * PARENT
+             * - CHILD
+             *  - CHILD
+             * - CHILD
+             */
+            const groups = [{
+                GroupId: 1,
+                children: [{
+                    GroupId: 2,
+                    children: [{
+                        GroupId: 4,
+                        children: []
+                    }]
+                }, {
+                    GroupId: 3,
+                    children: []
+                }]
+            }]
+
+            // Mock recursive from deleteGroup
+            const prepare = jest.fn().mockReturnValue(({
+                all: jest.fn()
+                    .mockImplementationOnce(() => groups)
+                    .mockImplementationOnce(() => groups[0].children)
+                    .mockImplementationOnce(() => groups[0].children[0].children)
+                    .mockImplementationOnce(() => groups[0].children[0].children[0].children)
+                    .mockImplementationOnce(() => groups[0].children[1].children),
+                run: jest.fn(),
+                get: jest.fn().mockReturnValue({ GROUP_ID: GroupId })
+            }));
+
+            (Database as any).mockImplementation(() => {
+                return {
+                    prepare
+                }
+            });
+
             const projectFile = new ProjectFile('test.db');
-            databaseObject = undefined;
-            expect(() => projectFile.deleteGroup(GroupId)).toThrow(`Could not find any groups with ParentID `);
-        });
+
+            // Act
+            projectFile.deleteGroup(GroupId);
+
+
+            // Assert
+            expect(prepare().all).toHaveBeenCalledTimes(5);
+        })
     });
 
     describe('createGroup', () => {
