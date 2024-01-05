@@ -26,6 +26,11 @@ pipeline {
                 sh 'npx jest e2e.test' 
             }
         }
+        stage('App Test') {
+            steps {
+                sh 'npx tsc && cd dist && node app.js' 
+            }   
+        }
     }
 
     post { 
