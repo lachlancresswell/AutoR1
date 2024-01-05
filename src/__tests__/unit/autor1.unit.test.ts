@@ -1163,50 +1163,6 @@ describe('AutoR1Template', () => {
         })
     });
 
-    describe('configureForMainView', () => {
-        const control: DBPR.Control = {
-            ControlId: 1727,
-            Type: 4,
-            PosX: 253,
-            PosY: 56,
-            Width: 100,
-            Height: 24,
-            ViewId: 1024,
-            DisplayName: "CUT",
-            UniqueName: null,
-            JoinedId: 4,
-            LimitMin: 0.0,
-            LimitMax: 1.0,
-            MainColor: 1,
-            SubColor: 1,
-            LabelColor: 0,
-            LabelFont: 5,
-            LabelAlignment: 64,
-            LineThickness: 0,
-            ThresholdValue: 0.0,
-            Flags: 262,
-            ActionType: 1,
-            TargetType: 0,
-            TargetId: 306,
-            TargetChannel: -1,
-            TargetProperty: DBPR.TargetPropertyType.CONFIG_FILTER1,
-            TargetRecord: 0,
-            ConfirmOnMsg: null,
-            ConfirmOffMsg: null,
-            PictureIdDay: 0,
-            PictureIdNight: 0,
-            Font: "Arial,12,-1,5,50,0,0,0,0,0",
-            Alignment: 132,
-            Dimension: null
-        };
-
-        const controls = [
-            new AutoR1Control(CONTROL),
-            new AutoR1Control(CONTROL),
-            new AutoR1Control(CONTROL),
-            new AutoR1Control(CONTROL),
-        ]
-    });
 });
 
 describe('AutoR1TemplateFile', () => {
