@@ -108,9 +108,12 @@ describe('getMuteGroupID', () => {
         cleanupTest(fileId);
     })
 
-    it('should throw if mute group is not found', () => {
+    it('should return undefined if mute group is not found', () => {
+        // Act
+        const rtn = projectFile.getMuteGroupID()
+
         // Assert
-        expect(() => projectFile.getMuteGroupID()).toThrow();
+        expect(rtn).toBeFalsy();
     });
 
     it('should not throw if mute group is found', () => {
@@ -150,9 +153,12 @@ describe('getFallbackGroupID', () => {
     })
 
 
-    it('should throw if fallback group is not found', () => {
+    it('should return undefined if fallback group is not found', () => {
+        // Act
+        const rtn = projectFile.getFallbackGroupID()
+
         // Assert
-        expect(() => projectFile.getFallbackGroupID()).toThrow();
+        expect(rtn).toBeFalsy();
     });
 
     it('should not throw if fallback group is found', () => {
@@ -365,14 +371,14 @@ describe('createNavButtons', () => {
     it('should create a nav button for each view and lower all existing controls', () => {
         const oldJoinedId = projectFile.getHighestJoinedID();
         const overviewViewId = projectFile.getViewIdFromName('Overview')
-        const oldControls = projectFile.getControlsByViewId(overviewViewId);
+        const oldControls = projectFile.getControlsByViewId(overviewViewId!);
 
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
         projectFile.createMainView(templateFile);
         projectFile.createNavButtons(templateFile);
 
-        const newControls = projectFile.getControlsByViewId(overviewViewId);
+        const newControls = projectFile.getControlsByViewId(overviewViewId!);
 
         expect(projectFile.getHighestJoinedID()).toBeGreaterThan(oldJoinedId);
         expect(newControls.length).toBe(oldControls.length + 2);

@@ -1102,8 +1102,11 @@ describe('AutoR1ProjectFile', () => {
             const projectFile: any = new AutoR1ProjectFile('/path');
             getObject = undefined;
 
+            // Act
+            const rtn = projectFile.getFallbackGroupID();
+
             // Assert
-            expect(() => projectFile.getFallbackGroupID()).toThrow()
+            expect(rtn).toBeFalsy();
         });
 
         it('should not throw if fallback group is found', () => {
