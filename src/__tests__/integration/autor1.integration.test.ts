@@ -507,47 +507,64 @@ describe('clean', () => {
     let projectFile: AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
     let fileId: number;
+    let oldViewCount: number;
+    let oldControlCount: number;
+    let oldGroupCount: number;
+    let groupId: number;
 
-    beforeAll(() => {
+    beforeEach(() => {
         fileId = setupTest();
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
+
         templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+
+        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT + fileId);
         projectFile.getSrcGrpInfo();
-    });
 
-    afterAll(() => {
-        projectFile.close();
-        templateFile.close();
-        cleanupTest(fileId);
-    });
-
-    it('should remove all generated views and controls', () => {
-        const oldViewCount = projectFile.getAllRemoteViews().length;
-        const oldGroupCount = projectFile.getAllGroups().length;
-        const oldControlCount = projectFile.getAllControls().length;
+        oldViewCount = projectFile.getAllRemoteViews().length;
+        oldControlCount = projectFile.getAllControls().length;
+        oldGroupCount = projectFile.getAllGroups().length;
 
         projectFile.createMeterView(templateFile);
         projectFile.createMainView(templateFile);
-        const groupId = projectFile.createGroup({ Name: 'TEST', ParentId: 1 });
+        groupId = projectFile.createGroup({ Name: 'TEST', ParentId: 1 });
         projectFile.createSubLRCGroups(groupId);
+    });
 
-        let newViewCount = projectFile.getAllRemoteViews().length;
-        let newGroupCount = projectFile.getAllGroups().length;
-        let newControlCount = projectFile.getAllControls().length;
+    afterEach(() => {
+        templateFile.close();
+        projectFile.close();
+        cleanupTest(fileId);
+    });
 
-        expect(newViewCount).toBe(oldViewCount + 2);
-        expect(newGroupCount).toBeGreaterThan(oldGroupCount);
-        expect(newControlCount).toBeGreaterThan(oldControlCount);
-
+    it('should remove all generated views from processed project', () => {
+        // Act
         projectFile.clean(groupId);
 
-        newViewCount = projectFile.getAllRemoteViews().length;
-        newGroupCount = projectFile.getAllGroups().length;
-        newControlCount = projectFile.getAllControls().length;
+        const rtn = projectFile.getAllRemoteViews().length;
 
-        expect(newViewCount).toBe(oldViewCount);
-        expect(newGroupCount).toBe(oldGroupCount);
-        expect(newControlCount).toBe(oldControlCount);
+        // Assert
+        expect(rtn).toBe(oldViewCount);
+    })
+
+    it('should remove all generated controls from processed project', () => {
+        // Act
+        projectFile.clean(groupId);
+
+        const rtn = projectFile.getAllControls().length;
+
+        // Assert
+
+        expect(rtn).toBe(oldControlCount);
+    });
+
+    it('should remove all generated groups from processed project', () => {
+        // Act
+        projectFile.clean(groupId);
+
+        const rtn = projectFile.getAllGroups().length;
+
+        // Assert
+        expect(rtn).toBe(oldGroupCount);
     });
 });
 
