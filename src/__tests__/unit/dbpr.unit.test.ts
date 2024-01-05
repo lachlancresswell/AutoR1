@@ -325,11 +325,17 @@ describe('ProjectFile', () => {
             expect(projectFile.getGroupIdFromName(Name)).toBe(GroupId);
         });
 
-        it('should throw if master group is not found', () => {
+        it('should return undefined if master group is not found', () => {
+            // Arrange
             databaseObject = { Name };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
-            expect(() => projectFile.getGroupIdFromName(Name)).toThrow(`Could not find group with name ${Name}`);
+
+            // Act
+            const rtn = projectFile.getGroupIdFromName(Name);
+
+            // Assert
+            expect(rtn).toBeFalsy();
         });
     });
 
@@ -340,11 +346,17 @@ describe('ProjectFile', () => {
             expect(projectFile.getViewIdFromName(Name)).toBe(ViewId);
         });
 
-        it('should throw if master group is not found', () => {
+        it('should return undefined if master group is not found', () => {
+            // Arrange
             databaseObject = { Name };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
-            expect(() => projectFile.getViewIdFromName(Name)).toThrow(`Could not find view with name ${Name}`);
+
+            // Act
+            const rtn = projectFile.getViewIdFromName(Name)
+
+            // Assert
+            expect(rtn).toBeFalsy();
         });
     });
 
