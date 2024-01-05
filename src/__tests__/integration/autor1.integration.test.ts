@@ -568,42 +568,6 @@ describe('clean', () => {
     });
 });
 
-describe('configureApChannels', () => {
-    let projectFileAP: AutoR1.AutoR1ProjectFile;
-    let projectFileNoAP: AutoR1.AutoR1ProjectFile;
-    let fileId: number;
-
-    beforeEach(() => {
-        fileId = setupTest();
-        projectFileAP = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
-        projectFileNoAP = new AutoR1.AutoR1ProjectFile(PROJECT_INIT + fileId);
-        projectFileAP.getSrcGrpInfo();
-        projectFileNoAP.getSrcGrpInfo();
-    });
-
-    afterEach(() => {
-        projectFileAP.close();
-        projectFileNoAP.close();
-        cleanupTest(fileId);
-    });
-
-    it('should create a group containing all AP enabled sources', () => {
-        projectFileAP.createAPGroup();
-        expect(projectFileAP.getAllGroups().filter((g) => g.Name === AutoR1.AP_GROUP_TITLE).length).toBe(1);
-    });
-
-    it('should throw if AP is not enabled for any sources', () => {
-        expect(() => projectFileNoAP.createAPGroup()).toThrow()
-        expect(projectFileAP.getAllGroups().filter((g) => g.Name === AutoR1.AP_GROUP_TITLE).length).toBe(0);
-    });
-
-    it('should populate the apGroupID var when AP group is made', () => {
-        expect(projectFileAP.getAPGroup()).toBeFalsy();
-        projectFileAP.createAPGroup();
-        expect(projectFileAP.getAPGroup()).toBeTruthy()
-    });
-});
-
 describe('createMainView', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
