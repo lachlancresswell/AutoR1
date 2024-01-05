@@ -217,7 +217,7 @@ describe('getApStatus', () => {
     });
 });
 
-describe('createApChannelGroup', () => {
+describe('createAPGroup', () => {
     let projectFileAP: AutoR1ProjectFile;
     let projectFileNoAP: AutoR1ProjectFile;
     let fileId: number;
@@ -236,44 +236,103 @@ describe('createApChannelGroup', () => {
     })
 
     it('should create an AP group', () => {
-        (projectFileAP as any).createAPGroup(1);
+        // Act
+        projectFileAP.createAPGroup(1);
 
         const apGroup = projectFileAP.getGroupIdFromName(AutoR1.AP_GROUP_TITLE);
+
+        // Assert
         expect(apGroup).toBeDefined();
     });
 
-    it('should throw an error if no AP channel groups are found', () => {
-        expect(() => (projectFileNoAP as any).createAPGroup()).toThrow('No AP channel groups found.');
+    it('should not create AP group if no AP sources are found', () => {
+        // Arrange
+        projectFileNoAP.createAPGroup();
+
+        // Act
+        const rtn = projectFileAP.getAllGroups().filter((g) => g.Name === AutoR1.AP_GROUP_TITLE)
+
+        // Assert
+        expect(rtn.length).toBe(0);
+    })
+
+    it('should return false if no AP sources are found', () => {
+        // Act
+        const rtn = projectFileNoAP.createAPGroup();
+
+        // Assert
+        expect(rtn).toBeFalsy();
+    });
+
+    it('should populate the apGroupID var when AP group is made', () => {
+        // Act
+        projectFileAP.createAPGroup();
+
+        // Assert
+        expect(projectFileAP.getAPGroup()).toBeTruthy()
     });
 });
 
-// describe('Methods', () => {
-//     let p: AutoR1ProjectFile;
+describe('hasSubGroups', () => {
+    let projectFile: AutoR1ProjectFile;
+    let fileId: number;
 
-//     beforeEach(() => {
-//         p = new AutoR1ProjectFile(PROJECT_INIT+fileId);
-//         p.getSrcGrpInfo();
-//     });
+    beforeEach(() => {
+        fileId = setupTest();
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        projectFile.getSrcGrpInfo()
+    });
+
+    afterEach(() => {
+        projectFile.close();
+        cleanupTest(fileId);
+    })
 
 
-//     it('Fails if sub L/C/R groups are not found', () => {
-//         expect((p as any).hasSubGroups()).toBe(0);
-//     });
+    it('Fails if sub L/C/R groups are not found', () => {
+        // Act
+        const rtn = (projectFile as any).hasSubGroups();
 
-//     it('Finds status of ArrayProcessing', () => {
-//         expect((p as any).getApStatus()).toBe(false);
-//     });
+        // Assert
+        expect(rtn).toBe(0);
+    });
 
-//     it('Finds SUB array group', () => {
-//         expect((p as any).getSubArrayGroups().length).toBe(3);
-//     })
+    it('Creates SUBs L/C/R groups', () => {
+        // Arrange
+        const pId = projectFile.createGroup({ Name: 'TEST', ParentId: 1 });
+        (projectFile as any).createSubLRCGroups(pId);
 
-//     it('Creates SUBs L/C/R groups', () => {
-//         const pId = p.createGroup({ Name: 'TEST', ParentId: 1 });
-//         (p as any).createSubLRCGroups(pId);
-//         expect((p as any).hasSubGroups()).toBe(3);
-//     });
-// });
+        // Act
+        const rtn = (projectFile as any).hasSubGroups();
+
+        // Assert
+        expect(rtn).toBe(3);
+    });
+});
+
+describe('getSubArrayGroups', () => {
+    let projectFile: AutoR1ProjectFile;
+    let fileId: number;
+
+    beforeEach(() => {
+        fileId = setupTest();
+        projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        projectFile.getSrcGrpInfo()
+    });
+
+    afterEach(() => {
+        projectFile.close();
+        cleanupTest(fileId);
+    })
+
+    it('Finds SUB array group', () => {
+        // Act
+        const rtn = (projectFile as any).getSubArrayGroups()
+
+        // Assert
+        expect(rtn.length).toBe(3);
+    })
+});
 
 describe('Templates', () => {
     let fileId: number;
