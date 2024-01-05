@@ -976,7 +976,9 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
 
         if (apChannelGroups.length < 1) {
-            throw (new Error("No AP channel groups found."))
+            console.debug("No AP channel groups found.")
+
+            return;
         }
 
         this.createGroup({
@@ -1162,7 +1164,9 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
 
         if (!success) {
-            throw new Error("No sub centre group found");
+            console.debug("No sub centre group found");
+
+            return;
         }
     }
 
