@@ -783,7 +783,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * console.log(muteGroupId);
      * // => 1
      */
-    public getMuteGroupID(): number {
+    public getMuteGroupID(): number | undefined {
         return this.getGroupIdFromName(MUTE_GROUP_TITLE);
     }
 
@@ -798,7 +798,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * console.log(fallbackGroupId);
      * // => 1
      */
-    public getFallbackGroupID(): number {
+    public getFallbackGroupID(): number | undefined {
         return this.getGroupIdFromName(FALLBACK_GROUP_TITLE);
     }
 
