@@ -962,7 +962,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     * @param projectFile R1 project file 
     * @param parentGroupId Group id to create the AP group under
     */
-    public createAPGroup(parentGroupId = MAIN_GROUP_ID): void {
+    public createAPGroup(parentGroupId = MAIN_GROUP_ID): boolean {
         const apChannelGroups: Channel[] = [];
 
         for (const srcGrp of this.sourceGroups) {
@@ -978,7 +978,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         if (apChannelGroups.length < 1) {
             console.debug("No AP channel groups found.")
 
-            return;
+            return false;
         }
 
         this.createGroup({
@@ -999,6 +999,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             });
         })
         transaction(apChannelGroups);
+
+        return true;
     }
 
     public getAPGroup() {
