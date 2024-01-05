@@ -21,6 +21,16 @@ export const MAIN_GROUP_ID = 1;
 export const FALLBACK_GROUP_TITLE = 'MAIN FALLBACK';
 export const MUTE_GROUP_TITLE = 'MAIN MUTE';
 
+export enum AutoR1TemplateTitles {
+    MAIN_OVERVIEW = 'Main Overview',
+    MAIN_TITLE = "Main Title",
+    MAIN_FALLBACK = "Main Fallback",
+    METERS_TITLE = "Meters Title",
+    METERS_GROUP = "Meters Group",
+    METER = "Meter",
+    NAV_BUTTONS = "Nav Button",
+}
+
 type ChannelGroupTypes = 'TYPE_SUBS_C' | 'TYPE_SUBS_R' | 'TYPE_SUBS_L' | 'TYPE_SUBS' | 'TYPE_TOPS_L' | 'TYPE_TOPS_R' | 'TYPE_TOPS' | 'TYPE_POINT_TOPS' | 'TYPE_POINT_SUBS' | 'TYPE_ADDITIONAL_AMPLIFIER';
 
 interface TemplateOptions {
@@ -855,11 +865,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
     public createNavButtons(templates: AutoR1TemplateFile): void {
         const increaseControlPosYByAmount = this.db.prepare('UPDATE Controls SET PosY = PosY + ? WHERE ViewId = ?');
-        const navButtonTemplate = templates.templates.find(template => template.name === "Nav Button");
+        const navButtonTemplate = templates.templates.find(template => template.name === AutoR1TemplateTitles.NAV_BUTTONS);
         const POS_X = 15;
 
         if (!navButtonTemplate) {
-            throw new Error("Nav Button template not found.");
+            throw new Error(`${AutoR1TemplateTitles.NAV_BUTTONS} template not found.`);
         }
 
         const mainViewId = this.getMainView().ViewId;
@@ -1205,12 +1215,12 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             throw (new Error("No source groups found."))
         }
 
-        const metersTitleDimensions = templates.getTemplateWidthHeight("Meters Title");
+        const metersTitleDimensions = templates.getTemplateWidthHeight(AutoR1TemplateTitles.METERS_TITLE);
         const titleH = metersTitleDimensions.height
-        const metersGroupDimensions = templates.getTemplateWidthHeight("Meters Group");
+        const metersGroupDimensions = templates.getTemplateWidthHeight(AutoR1TemplateTitles.METERS_GROUP);
         const meterGrpW = metersGroupDimensions.width;
         const meterGrpH = metersGroupDimensions.height;
-        const { width: meterW, height: meterH } = templates.getTemplateWidthHeight("Meter");
+        const { width: meterW, height: meterH } = templates.getTemplateWidthHeight(AutoR1TemplateTitles.METER);
 
         const spacingX = Math.max(meterW, meterGrpW) + METER_SPACING_X;
         const spacingY = meterH + METER_SPACING_Y;
@@ -1228,7 +1238,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         let posX = METER_VIEW_STARTX;
         let posY = METER_VIEW_STARTY;
 
-        const navButtonTemplate = templates.getTemplateByName("Nav Button");
+        const navButtonTemplate = templates.getTemplateByName(AutoR1TemplateTitles.NAV_BUTTONS);
 
         const navButtonOptions: TemplateOptions = {
             DisplayName: MAIN_WINDOW_TITLE,
@@ -1242,7 +1252,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             posY + NAV_BUTTON_Y,
             navButtonOptions);
 
-        const metersTitleTemplate = templates.getTemplateByName("Meters Title");
+        const metersTitleTemplate = templates.getTemplateByName(AutoR1TemplateTitles.METERS_TITLE);
 
         this.insertTemplate(
             metersTitleTemplate,
@@ -1250,15 +1260,15 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             posX,
             posY,
         );
-        posY += templates.getTemplateWidthHeight("Meters Title").height + METER_SPACING_Y;
+        posY += templates.getTemplateWidthHeight(AutoR1TemplateTitles.METERS_TITLE).height + METER_SPACING_Y;
 
         let startY = posY;
 
-        const metersGroupTemplate = templates.getTemplateByName("Meters Group");
+        const metersGroupTemplate = templates.getTemplateByName(AutoR1TemplateTitles.METERS_GROUP);
 
-        const meterTemplate = templates.getTemplateByName("Meter");
+        const meterTemplate = templates.getTemplateByName(AutoR1TemplateTitles.METER);
 
-        const metersGroupHeight = templates.getTemplateWidthHeight("Meters Group").height
+        const metersGroupHeight = templates.getTemplateWidthHeight(AutoR1TemplateTitles.METERS_GROUP).height
 
         // Wrap in transaction to speed up insertion
         const transaction = this.db.transaction((sourceGroups: SourceGroup[]) => {
@@ -1330,8 +1340,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
     private createMainViewOverview(templateFile: AutoR1TemplateFile, posX: number, posY: number, mainViewId: number) {
 
-        const mainOverviewTemplate = templateFile.getTemplateWidthHeight("Main Overview");
-        const mainFallbackTemplate = templateFile.getTemplateWidthHeight("Main Fallback");
+        const mainOverviewTemplate = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_OVERVIEW);
+        const mainFallbackTemplate = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_FALLBACK);
 
         const meterViewId = this.getMeterView().ViewId;
 
@@ -1349,19 +1359,19 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         );
 
         this.insertTemplate(
-            templateFile.getTemplateByName('Main Title'),
+            templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_TITLE),
             mainViewId,
             posX,
             posY,
         )
-        posY += templateFile.getTemplateWidthHeight("Main Title").height + METER_SPACING_Y;
+        posY += templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_TITLE).height + METER_SPACING_Y;
 
         const mainMainTemplateOptions: TemplateOptions = {
             TargetId: this.getMasterGroupID()
         }
 
         this.insertTemplate(
-            templateFile.getTemplateByName('Main Overview'),
+            templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_OVERVIEW),
             mainViewId,
             posX,
             posY,
@@ -1377,7 +1387,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         })()
 
         this.insertTemplate(
-            templateFile.getTemplateByName('Main Fallback'),
+            templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_FALLBACK),
             mainViewId,
             posX,
             posY + mainOverviewTemplate.height + 10,
@@ -1560,10 +1570,10 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                         TargetId: sourceGroup.ViewId,
                         TargetChannel: dbpr.TargetChannels.NONE,
                         joinedId: commonJoinedId,
-                        Width: templateFile.getTemplateWidthHeight('Nav Button').width + 2, // R1 frames are to be 2px wider than expected
+                        Width: templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.NAV_BUTTONS).width + 2, // R1 frames are to be 2px wider than expected
                     }
                     this.insertTemplate(
-                        templateFile.getTemplateByName("Nav Button"),
+                        templateFile.getTemplateByName(AutoR1TemplateTitles.NAV_BUTTONS),
                         mainViewId,
                         posX - 1, // R1 frames are to be 1px further to the left than expected
                         posY - 1, // R1 frames are to be 1px higher than expected
@@ -1583,9 +1593,9 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      */
     public createMainView(templateFile: AutoR1TemplateFile) {
         // Get width + height of templates used
-        const { width: mainTempWidth, height: mainTempHeight } = templateFile.getTemplateWidthHeight('Main Overview');
-        const { width: mainFallbackWidth, height: mainFallbackHeight } = templateFile.getTemplateWidthHeight('Main Fallback');
-        const { width: _mainTitleTempWidth, height: mainTitleTempHeight } = templateFile.getTemplateWidthHeight('Main Title');
+        const { width: mainTempWidth, height: mainTempHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_OVERVIEW);
+        const { width: mainFallbackWidth, height: mainFallbackHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_FALLBACK);
+        const { width: _mainTitleTempWidth, height: mainTitleTempHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_TITLE);
         const { width: meterTempWidth, height: meterTempHeight } = templateFile.getTemplateWidthHeight('Group LR AP CPL2');
         const { width: arraySightTempWidth, height: arraySightTempHeight } = templateFile.getTemplateWidthHeight('Main ArraySight Frame');
 
