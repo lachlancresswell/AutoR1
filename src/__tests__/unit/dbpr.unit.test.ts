@@ -14,22 +14,35 @@ describe('SqlDbFile', () => {
 
     describe('constructor', () => {
         it('should throw an error if the file does not exist', () => {
+            // Arrange
             const p = './nonexistent.db';
+
+            // Assert
             expect(() => new SqlDbFile(p)).toThrowError('File does not exist - ' + p);
         });
 
         it('should create a new database connection', () => {
+            // Arrange
             (existsSync as jest.Mock).mockReturnValue(true);
+
+            // Act
             const dbFile = new SqlDbFile(testDbPath);
+
+            // Assert
             expect(dbFile.db).toBeInstanceOf(Database);
         });
     });
 
     describe('close', () => {
         it('should close the database connection', () => {
+            // Arrange
             (existsSync as jest.Mock).mockReturnValue(true);
+
+            // Act
             const dbFile = new SqlDbFile(testDbPath);
             dbFile.close();
+
+            // Assert
             expect(Database.prototype.close).toHaveBeenCalled();
         });
     });
@@ -67,17 +80,26 @@ describe('ProjectFile', () => {
     describe('constructor', () => {
 
         it('should throw an error if the project file does not exist', () => {
+            // Arrange
             jest.resetAllMocks();
+
+            // Assert
             expect(() => new ProjectFile('test.db')).toThrowError('File does not exist');
         });
 
         it('it should not throw for an unintialised project', () => {
+            // Arrange
             (existsSync as jest.Mock).mockReturnValue(true);
+
+            // Assert
             expect(() => new ProjectFile('test.db')).toThrow('Project file is not initialised');
         });
 
         it('should not throw an error if the project file is initialised', () => {
+            // Arrange
             databaseObject = { GROUP_ID: GroupId };
+
+            // Assert
             expect(() => {
                 new ProjectFile('test.db');
             }).not.toThrow();
@@ -86,9 +108,13 @@ describe('ProjectFile', () => {
 
     describe('deleteGroup', () => {
         it('should call to database for deletion', () => {
-            databaseObject = [];
+            // Arrange
             const projectFile = new ProjectFile('test.db');
+
+            // Act
             projectFile.deleteGroup(GroupId);
+
+            // Assert
             expect(prepare).toHaveBeenCalledWith('DELETE FROM Groups WHERE GroupId = ?');
         });
 
@@ -271,15 +297,23 @@ describe('ProjectFile', () => {
 
     describe('getMasterGroupID', () => {
         it('should return the master group id', () => {
+            // Arrange
             databaseObject = { GroupId };
+
+            // Act
             const projectFile = new ProjectFile('test.db');
+
+            // Assert
             expect(projectFile.getMasterGroupID()).toBe(GroupId);
         });
 
         it('should throw if master group is not found', () => {
+            // Arrange
             databaseObject = { GroupId: 1 };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
+
+            // Assert
             expect(() => projectFile.getMasterGroupID()).toThrow('Cannot find Master group');
         });
     });
@@ -287,15 +321,24 @@ describe('ProjectFile', () => {
 
     describe('getSourceGroupNameFromID', () => {
         it('should return the master group id', () => {
+            // Arrange
             databaseObject = { Name };
             const projectFile = new ProjectFile('test.db');
-            expect(projectFile.getSourceGroupNameFromID(GroupId)).toBe(Name);
+
+            // Act
+            const rtn = projectFile.getSourceGroupNameFromID(GroupId);
+
+            // Assert
+            expect(rtn).toBe(Name);
         });
 
         it('should throw if master group is not found', () => {
+            // Arrange
             databaseObject = { Name };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
+
+            // Assert
             expect(() => projectFile.getSourceGroupNameFromID(GroupId)).toThrow(`Could not find SourceGroup with id ${GroupId}`);
         });
     });
@@ -303,71 +346,108 @@ describe('ProjectFile', () => {
 
     describe('getControlsByViewId', () => {
         it('should return the master group id', () => {
+            // Arrange
             databaseObject = [{ Name }];
             const projectFile = new ProjectFile('test.db');
+
+            // Assert
             expect(projectFile.getControlsByViewId(GroupId)).toBe(databaseObject);
         });
 
         it('should throw if master group is not found', () => {
+            // Arrange
             databaseObject = { Name };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
+
+            // Assert
             expect(() => projectFile.getControlsByViewId(GroupId)).toThrow(`Could not find any controls with viewId ${GroupId}`);
         });
     });
 
     describe('getSourceGroupIDFromName', () => {
         it('should return the master group id', () => {
+            // Arrange
             const SourceGroupId = 1
             databaseObject = { SourceGroupId };
             const projectFile = new ProjectFile('test.db');
-            expect(projectFile.getSourceGroupIDFromName(Name)).toBe(SourceGroupId);
+
+            // Act
+            const rtn = projectFile.getSourceGroupIDFromName(Name);
+
+            // Assert
+            expect(rtn).toBe(SourceGroupId);
         });
 
         it('should throw if master group is not found', () => {
+            // Arrange
             databaseObject = { Name };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
+
+            // Assert
             expect(() => projectFile.getSourceGroupIDFromName(Name)).toThrow(`Could not find SourceGroup with name ${Name}`);
         });
     });
 
     describe('getHighestJoinedID', () => {
         it('should return the master group id', () => {
+            // Arrange
             const JoinedId = 1
             databaseObject = { JoinedId };
             const projectFile = new ProjectFile('test.db');
-            expect(projectFile.getHighestJoinedID()).toBe(JoinedId);
+
+            // Act
+            const rtn = projectFile.getHighestJoinedID();
+
+            // Assert
+            expect(rtn).toBe(JoinedId);
         });
 
         it('should throw if master group is not found', () => {
+            // Arrange
             databaseObject = { Name };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
+
+            // Assert
             expect(() => projectFile.getHighestJoinedID()).toThrow(`Views have not been generated. Please run initial setup in R1 first.`);
         });
     });
 
     describe('getHighestGroupID', () => {
         it('should return the master group id', () => {
+            // Arrange
             databaseObject = { 'max(GroupId)': GroupId };
             const projectFile = new ProjectFile('test.db');
-            expect(projectFile.getHighestGroupID()).toBe(GroupId);
+
+            // Act
+            const rtn = projectFile.getHighestGroupID();
+            // Assert
+            expect(rtn).toBe(GroupId);
         });
 
         it('should throw if master group is not found', () => {
+            // Arrange
             databaseObject = { Name };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
+
+            // Assert
             expect(() => projectFile.getHighestGroupID()).toThrow(`Could not find any groups.`);
         });
     });
 
     describe('getGroupIdFromName', () => {
         it('should return the master group id', () => {
+            // Arrange
             databaseObject = { GroupId };
             const projectFile = new ProjectFile('test.db');
-            expect(projectFile.getGroupIdFromName(Name)).toBe(GroupId);
+            // Act
+            const rtn = projectFile.getGroupIdFromName(Name);
+
+            // Assert
+            expect(rtn).toBe(GroupId);
         });
 
         it('should return undefined if master group is not found', () => {
@@ -386,8 +466,11 @@ describe('ProjectFile', () => {
 
     describe('getViewIdFromName', () => {
         it('should return the master group id', () => {
+            // Arrange
             databaseObject = { ViewId };
             const projectFile = new ProjectFile('test.db');
+
+            // Assert
             expect(projectFile.getViewIdFromName(Name)).toBe(ViewId);
         });
 
@@ -407,51 +490,79 @@ describe('ProjectFile', () => {
 
     describe('getAllViews', () => {
         it('should return the master group id', () => {
+            // Arrange
             databaseObject = { ViewId };
             const projectFile = new ProjectFile('test.db');
-            expect(projectFile.getAllRemoteViews()).toBe(databaseObject);
+
+            // Act
+            const rtn = projectFile.getAllRemoteViews();
+
+            // Assert
+            expect(rtn).toBe(databaseObject);
         });
 
         it('should throw if master group is not found', () => {
+            // Arrange
             databaseObject = { test: 'test' };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
+
+            // Assert
             expect(() => projectFile.getAllRemoteViews()).toThrow(`Could not find any views`);
         });
     });
 
     describe('getAllGroups', () => {
         it('should return the master group id', () => {
+            // Arrange
             databaseObject = { ViewId };
             const projectFile = new ProjectFile('test.db');
-            expect(projectFile.getAllGroups()).toBe(databaseObject);
+
+            // Act 
+            const rtn = projectFile.getAllGroups();
+
+            // Assert
+            expect(rtn).toBe(databaseObject);
         });
 
         it('should throw if master group is not found', () => {
+            // Arrange
             databaseObject = { test: 'test' };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
+
+            // Assert
             expect(() => projectFile.getAllGroups()).toThrow(`Could not find any groups`);
         });
     });
 
     describe('getAllControls', () => {
         it('should return the master group id', () => {
+            // Arrange
             databaseObject = { ViewId };
             const projectFile = new ProjectFile('test.db');
-            expect(projectFile.getAllControls()).toBe(databaseObject);
+
+            // Act
+            const rtn = projectFile.getAllControls();
+
+            // Assert
+            expect(rtn).toBe(databaseObject);
         });
 
         it('should throw if no controls are found', () => {
+            // Arrange
             databaseObject = { ViewId };
             const projectFile = new ProjectFile('test.db');
             databaseObject = undefined;
+
+            // Assert
             expect(() => projectFile.getAllControls()).toThrow(`Could not find any controls`);
         });
     });
 
     describe('insertControl', () => {
         it('should insert a control into the project', () => {
+            // Arrange
             databaseObject = { ViewId };
             const control: Control = {
                 ControlId: 1727,
@@ -489,7 +600,11 @@ describe('ProjectFile', () => {
                 Dimension: null
             };
             const projectFile = new ProjectFile('test.db');
+
+            // Act
             projectFile.insertControl(control);
+
+            // Assert
             expect(run).toHaveBeenCalledTimes(1); // 1 insertion for 1 control
         })
     });
@@ -519,36 +634,52 @@ describe('TemplateFile', () => {
 
     describe('constructor', () => {
         it('should log the number of templates found in the file', () => {
+            // Arrange
             templates = [{ JoinedId: 1 }, { JoinedId: 2 }, { JoinedId: 3 }];
             const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+            // Act
             new TemplateFile('test.db')
+
+            // Assert
             expect(logSpy).toHaveBeenCalledWith('Found 3 templates in file.');
             logSpy.mockRestore();
         });
 
         it('should throw an error if no templates are found in the file', () => {
+            // Arrange
             templates = undefined;
             jest.spyOn(console, 'log').mockImplementation();
+
+            // Assert
             expect(() => new TemplateFile('test.db')).toThrowError('Could not find any templates in file.');
         });
     });
 
     describe('getTemplateControlsByName', () => {
         it('should return an array of controls for a valid template name', () => {
+            // Arrange
             databaseObject = [{ ControlId: 1 }];
             templates = [{ JoinedId: 1 }, { JoinedId: 2 }, { JoinedId: 3 }];
             const templateFile = new TemplateFile('path/to/template.dbpr');
+
+            // Act
             const controls = templateFile.getTemplateControlsByName('MyTemplate');
+
+            // Assert
             expect(Array.isArray(controls)).toBe(true);
             expect(controls.length).toBeGreaterThan(0);
         });
 
         it('should throw an error for an invalid template name', () => {
+            // Arrange
             databaseObject = [{ ControlId: 1 }];
             templates = [{ JoinedId: 1 }, { JoinedId: 2 }, { JoinedId: 3 }];
             const templateFile = new TemplateFile('path/to/template.dbpr');
             databaseObject = undefined;
             templates = undefined;
+
+            // Assert
             expect(() => templateFile.getTemplateControlsByName('InvalidTemplate')).toThrowError('Template InvalidTemplate not found.');
         });
     });
