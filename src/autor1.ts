@@ -872,20 +872,39 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             throw new Error(`${AutoR1TemplateTitles.NAV_BUTTONS} template not found.`);
         }
 
-        const mainViewId = this.getMainView().ViewId;
-        const meterViewId = this.getMeterView().ViewId;
+        const mainView = this.getMainView();
+        const meterView = this.getMeterView();
 
+        if (!mainView || !meterView) {
+            throw new Error("Main or Meter view not found.");
+        }
+
+        const mainViewId = mainView.ViewId;
+        const meterViewId = meterView.ViewId;
+
+        const spacing = 25;
         const views = this.getAllRemoteViews();
-        for (const vId of views.map(v => v.ViewId)) {
+        const buttonWidth = templates.getTemplateWidthHeight(AutoR1TemplateTitles.NAV_BUTTONS).width
+
+        const mainNavButtonTemplateOptions = {
+            DisplayName: MAIN_WINDOW_TITLE,
+            TargetId: mainViewId,
+            TargetChannel: dbpr.TargetChannels.NONE,
+        }
+
+        const metersNavButtonTemplateOptions = {
+            DisplayName: METER_WINDOW_TITLE,
+            TargetId: meterViewId,
+            TargetChannel: dbpr.TargetChannels.NONE,
+        }
+
+        views.forEach((v, i) => {
+            const vId = v.ViewId
+
             if (vId !== mainViewId && vId !== meterViewId) {
 
                 increaseControlPosYByAmount.run(NAV_BUTTON_Y + NAV_BUTTON_SPACING, vId);
 
-                const mainNavButtonTemplateOptions = {
-                    DisplayName: MAIN_WINDOW_TITLE,
-                    TargetId: meterViewId + 1,
-                    TargetChannel: dbpr.TargetChannels.NONE,
-                }
                 this.insertTemplate(
                     navButtonTemplate,
                     vId,
@@ -894,14 +913,6 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                     mainNavButtonTemplateOptions
                 );
 
-                const metersNavButtonTemplateOptions = {
-                    DisplayName: METER_WINDOW_TITLE,
-                    TargetId: meterViewId,
-                    TargetChannel: dbpr.TargetChannels.NONE,
-                }
-
-                const buttonWidth = templates.getTemplateWidthHeight('Nav Button').width
-                const spacing = 25;
                 this.insertTemplate(
                     navButtonTemplate,
                     vId,
@@ -910,7 +921,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                     metersNavButtonTemplateOptions
                 );
             }
-        }
+        });
     }
 
     private removeNavButtons(mainViewId: number): void {
