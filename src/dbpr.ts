@@ -700,7 +700,7 @@ export class ProjectFile extends SqlDbFile {
     /**
      * Recursively delete a group and all its children
      * @param groupID GroupId
-     * @throws Will throw an error if the group cannot be found.
+     * @returns true if group is found and deleted, false if not
      * 
      * @example
      * const p = new ProjectFile('path/to/project.dbpr');
@@ -711,12 +711,12 @@ export class ProjectFile extends SqlDbFile {
         const childrenStmt = this.db.prepare('SELECT GroupId FROM Groups WHERE ParentId = ?');
         const children = childrenStmt.all(groupID) as { GroupId: number }[];
 
-        if (!children) {
-            throw new Error(`Could not find any groups with ParentID ${groupID}`);
-        }
-
-        for (const child of children) {
-            this.deleteGroup((child).GroupId);
+        if (!children.length) {
+            console.info(`Could not find any groups with ParentID ${groupID}`);
+        } else {
+            for (const child of children) {
+                this.deleteGroup((child).GroupId);
+            }
         }
 
         // Delete group
@@ -877,8 +877,7 @@ export class ProjectFile extends SqlDbFile {
     /**
      * Finds ID of a group from its name
      * @param name Name of group
-     * @returns GroupId
-     * @throws Will throw an error if the group cannot be found.
+     * @returns GroupId or undefined
      * 
      * @example
      * const p = new ProjectFile('path/to/project.dbpr');
@@ -886,20 +885,22 @@ export class ProjectFile extends SqlDbFile {
      * console.log(groupId);
      * // => 2
      */
-    public getGroupIdFromName(name: string): number {
+    public getGroupIdFromName(name: string): number | undefined {
         const stmt = this.db.prepare('SELECT GroupId FROM Groups WHERE Name = ?');
         const rtn = stmt.get(name) as { GroupId: number }
+
         if (!rtn) {
-            throw new Error(`Could not find group with name ${name}`);
+            console.info(`Could not find group with name ${name}`);
+            return undefined;
         }
+
         return rtn.GroupId
     }
 
     /**
      * Finds ID of a view from its name
      * @param name Name of view
-     * @returns ViewId
-     * @throws Will throw an error if the view cannot be found.
+     * @returns ViewId or undefined
      * 
      * @example
      * const p = new ProjectFile('path/to/project.dbpr');
@@ -907,11 +908,12 @@ export class ProjectFile extends SqlDbFile {
      * console.log(viewId);
      * // => 1000
      */
-    public getViewIdFromName(name: string): number {
+    public getViewIdFromName(name: string): number | undefined {
         const stmt = this.db.prepare('SELECT ViewId FROM Views WHERE Name = ?');
         const rtn = stmt.get(name) as { ViewId: number };
         if (!rtn) {
-            throw new Error(`Could not find view with name ${name}`);
+            console.info(`Could not find view with name ${name}`);
+            return undefined;
         }
         return rtn.ViewId;
     }
