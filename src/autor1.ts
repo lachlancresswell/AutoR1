@@ -820,30 +820,28 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     public clean(parentGroupId = MAIN_GROUP_ID) {
         console.log("Cleaning R1 project.");
 
-        try {
-            const mainViewId = this.getViewIdFromName(MAIN_WINDOW_TITLE);
+        const mainViewId = this.getViewIdFromName(MAIN_WINDOW_TITLE);
+
+        // Remove anything to do with the AutoR1 Main view
+        if (mainViewId) {
+            this.removeNavButtons(mainViewId!);
 
             this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?').run(mainViewId);
             console.log(`Deleted ${MAIN_WINDOW_TITLE} controls.`);
 
             this.db.prepare('DELETE FROM Views WHERE "Name" = ?').run(MAIN_WINDOW_TITLE);
             console.log(`Deleted ${MAIN_WINDOW_TITLE} view.`);
-
-            this.removeNavButtons(mainViewId);
-        } catch (error) {
-            console.error(error);
         }
 
-        try {
-            const meterViewId = this.getViewIdFromName(METER_WINDOW_TITLE);
+        const meterViewId = this.getViewIdFromName(METER_WINDOW_TITLE);
 
+        // Remove anything to do with the AutoR1 Meter view
+        if (meterViewId) {
             this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?').run(meterViewId);
             console.log(`Deleted ${METER_WINDOW_TITLE} view controls.`);
 
             this.db.prepare('DELETE FROM Views WHERE "Name" = ?').run(METER_WINDOW_TITLE);
             console.log(`Deleted ${METER_WINDOW_TITLE} view.`);
-        } catch (error) {
-            console.error(error);
         }
 
         const subArrayNameStmt = this.db.prepare("SELECT Name FROM SourceGroups WHERE Type = ?");
