@@ -28,7 +28,16 @@ pipeline {
         }
         stage('App Test') {
             steps {
-                sh 'npx tsc && cd dist && node app.js' 
+                sh 'npx tsc && cp ./src/__tests__/Projects/* ./dist'
+                script {
+                    def output = sh(script: 'cd dist && node app.js', returnStdout: true).trim()
+                    def completedCount = output.count('.......completed')
+                    def notInitialisedCount = output.count('Project file is not initialised')
+
+                    if (completedCount != 4 || notInitialisedCount != 1) {
+                        error("Unexpected output from App Test: ${output}")
+                    }
+                }
             }   
         }
     }

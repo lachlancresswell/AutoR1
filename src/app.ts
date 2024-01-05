@@ -48,7 +48,6 @@ fs.readdirSync('./').forEach(file => {
 
 console.info(`Found ${projectPaths.length} projects in folder.`);
 
-let status = 0;
 projectPaths.forEach((projectPath) => {
     const autoPath = newAutoPath(projectPath);
 
@@ -88,7 +87,7 @@ projectPaths.forEach((projectPath) => {
         console.debug('Completed\n');
     } catch (e) {
         fs.unlinkSync(autoPath);
-        status = 1;
+
         process.stdout.write(`${(e as Error).message}\n`);
         console.debug(`${(e as Error).message}\n`);
     }
@@ -96,4 +95,4 @@ projectPaths.forEach((projectPath) => {
 
 templates.close();
 
-process.exit(status)
+process.exit(0)
