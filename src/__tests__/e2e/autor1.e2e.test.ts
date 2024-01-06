@@ -1,7 +1,7 @@
 /**
  * Tests here operate on project files on disk.
  */
-import { AutoR1ProjectFile, AutoR1TemplateFile, FALLBACK_GROUP_TITLE, MAIN_WINDOW_TITLE, METER_SPACING_X, METER_WINDOW_TITLE, MUTE_GROUP_TITLE } from '../../autor1';
+import { AutoR1ProjectFile, AutoR1TemplateFile, AutoR1TemplateTitles, EQ_WINDOW_TITLE, FALLBACK_GROUP_TITLE, MAIN_WINDOW_TITLE, METER_SPACING_X, METER_WINDOW_TITLE, MUTE_GROUP_TITLE } from '../../autor1';
 import * as dbpr from '../../dbpr'
 import { PROJECT_INIT_AP, PROJECT_SUB_ARRAY, TEMPLATES, cleanupTest, setupTest } from '../setupTests';
 
@@ -627,6 +627,46 @@ describe('Views and Controls', () => {
             expect(mainPageControl).toBeTruthy();
         });
     });
+
+    describe('EQ Page', () => {
+        it('should create the EQ page', () => {
+            // Arrange
+            const viewQuery = `SELECT * FROM Views WHERE ViewId = ?`;
+
+
+            // Act
+            projectFile.createEqView(templateFile);
+            const viewId = (projectFile as any).getViewIdFromName(EQ_WINDOW_TITLE)
+            const view = projectFile.db.prepare(viewQuery).all(viewId)[0] as dbpr.View;
+
+            // Assert
+            expect(view).toBeTruthy();
+            expect(view.Name).toBe(EQ_WINDOW_TITLE);
+        })
+
+        it('should populate the EQ page with controls', () => {
+            // Act
+            projectFile.createEqView(templateFile);
+            const viewId = (projectFile as any).getViewIdFromName(EQ_WINDOW_TITLE)
+            const controls = projectFile.getControlsByViewId(viewId);
+
+            // Assert
+            expect(controls).toBeTruthy();
+        })
+
+        it('should have created X number of EQ controls', () => {
+            // Arrange
+            const CONTROL_COUNT = 13;
+
+            // Act
+            projectFile.createEqView(templateFile);
+            const viewId = (projectFile as any).getViewIdFromName(EQ_WINDOW_TITLE)
+            const controls = projectFile.getControlsByViewId(viewId).filter((control) => control.Type === dbpr.ControlTypes.EQ);
+
+            // Assert
+            expect(controls.length).toBe(CONTROL_COUNT);
+        })
+    })
 });
 
 describe('Project with only sub array', () => {

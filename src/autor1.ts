@@ -13,6 +13,7 @@ const PARENT_GROUP_TITLE = "AUTO";
 export const AP_GROUP_TITLE = "AP";
 export const METER_WINDOW_TITLE = "AUTO - Meters";
 export const MAIN_WINDOW_TITLE = "AUTO - Main";
+export const EQ_WINDOW_TITLE = "AUTO - EQ";
 
 export const NAV_BUTTON_SPACING = 20;
 
