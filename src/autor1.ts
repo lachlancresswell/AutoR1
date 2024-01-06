@@ -43,6 +43,10 @@ export enum AutoR1TemplateTitles {
     METER = "Meter",
     THC = "THC",
     NAV_BUTTONS = "Nav Button",
+    EQ1 = "EQ1",
+    EQ1_TITLE = "EQ1 Title",
+    EQ2 = "EQ2",
+    EQ2_TITLE = "EQ2 Title"
 }
 
 type ChannelGroupTypes = 'TYPE_SUBS_C' | 'TYPE_SUBS_R' | 'TYPE_SUBS_L' | 'TYPE_SUBS' | 'TYPE_TOPS_L' | 'TYPE_TOPS_R' | 'TYPE_TOPS' | 'TYPE_POINT_TOPS' | 'TYPE_POINT_SUBS' | 'TYPE_ADDITIONAL_AMPLIFIER';
@@ -1442,6 +1446,124 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     }
 
     /**
+     * Creates the EQ vew and associated controls
+     * @param templateFile AutoR1 template file containing the Meter view templates
+     * @returns void
+     */
+    public createEqView(templateFile: AutoR1TemplateFile): void {
+        const H_RES = 2840;
+        const V_RES = 3500;
+        const BUFFER = 10;
+        const INITIAL_POS_X = 20;
+        const ZOOM_LEVEL = 50;
+
+        let posX = INITIAL_POS_X;
+        let posY = 20;
+
+        const { width: eqTemplateWidth, height: eqTemplateHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.EQ1);
+
+        const query = `INSERT INTO Views('Type','Name','Icon','Flags','HomeViewIndex','NaviBarIndex','HRes','VRes','ZoomLevel','ScalingFactor','ScalingPosX','ScalingPosY','ReferenceVenueObjectId') VALUES (1000,?,NULL,4,NULL,-1,?,?,?,NULL,NULL,NULL,NULL);`;
+
+        this.db.prepare(query).run(EQ_WINDOW_TITLE, H_RES, V_RES, ZOOM_LEVEL);
+        const rtn = this.db.prepare(`SELECT max(ViewId) FROM Views`).get() as { 'max(ViewId)': number };
+        if (!rtn) {
+            throw (Error(`Could not create Auto R1 Meter view`));
+        }
+        const eqViewId = rtn['max(ViewId)'];
+
+        let eqTemplate = templateFile.getTemplateByName(AutoR1TemplateTitles.EQ1);
+        let eqTitleTemplate = templateFile.getTemplateByName(AutoR1TemplateTitles.EQ1_TITLE);
+        for (let i = 0; i < 2; i += 1) {
+            this.insertTemplate(
+                eqTitleTemplate,
+                eqViewId,
+                posX,
+                posY,
+            );
+
+            posY += eqTitleTemplate.height + BUFFER;
+
+            const sourcesWithEqViews = this.sourceGroups.filter(sg => sg.hasEQView());
+            let index = 0;
+            sourcesWithEqViews.forEach((sourceGroup) => {
+                let primaryChannelGroups = sourceGroup.channelGroups.filter(cg => !cg.mainGroup)
+
+                // Point Sources with both SUBs and TOPs only get a single, combined EQ for some reason. Remove one of the channel groups to prevent doubling up.
+                primaryChannelGroups = primaryChannelGroups.filter((cg) => {
+                    if (sourceGroup.Type !== dbpr.SourceGroupTypes.POINT_SOURCE) {
+                        return cg
+                    } else {
+                        if (sourceGroup.hasSUBs() && sourceGroup.hasTOPs()) {
+                            if (cg.isSUBs()) {
+                                return false
+                            } else {
+                                return cg;
+                            }
+                        } else {
+                            return cg;
+                        }
+                    }
+                })
+
+                primaryChannelGroups.forEach((channelGroup) => {
+                    let TargetId = -1;
+
+                    // Array types have sub groups 
+                    if (sourceGroup.Type === dbpr.SourceGroupTypes.ARRAY) {
+                        // Array sources with both SUBs and TOPs need sub groups assigned correctly
+                        if (channelGroup.isSUBs() && sourceGroup.hasTOPs()) {
+                            TargetId = sourceGroup.childGroupIds[0];
+                        } else if (channelGroup.isTOPs() && sourceGroup.hasSUBs()) {
+                            TargetId = sourceGroup.childGroupIds[1];
+                        } else {
+                            // Array sources without both SUBs and TOPs only have a single sub group
+                            TargetId = sourceGroup.childGroupIds[0];
+                        }
+                    } else {
+                        // Point sources with SUBs and TOPs have sub groups
+                        if (channelGroup.isSUBs() && sourceGroup.hasTOPs()) {
+                            TargetId = sourceGroup.childGroupIds[0];
+                        } else if (channelGroup.isTOPs() && sourceGroup.hasSUBs()) {
+                            TargetId = sourceGroup.childGroupIds[1];
+                        } else {
+                            // SUBarrays, point sources without both SUBs and TOPs and additional amplifiers do not have sub groups
+                            TargetId = sourceGroup.masterGroupId!;
+                        }
+                    }
+
+                    const metersGroupTemplateOptions: TemplateOptions = {
+                        DisplayName: channelGroup.name,
+                        TargetId
+                    }
+
+                    this.insertTemplate(
+                        eqTemplate,
+                        eqViewId,
+                        posX,
+                        posY,
+                        metersGroupTemplateOptions,
+                    );
+
+                    index += 1;
+                    posX += BUFFER + eqTemplateWidth;
+                    if (!(index % 5)) {
+                        posX = INITIAL_POS_X;
+                        posY += BUFFER + eqTemplateHeight;
+                    }
+                })
+            })
+
+            eqTemplate = templateFile.getTemplateByName(AutoR1TemplateTitles.EQ2);
+            eqTitleTemplate = templateFile.getTemplateByName(AutoR1TemplateTitles.EQ2_TITLE);
+            posX = INITIAL_POS_X;
+            posY += BUFFER + eqTemplateHeight + 100;
+        }
+
+        const updateQuery = `UPDATE Views SET VRes = ? WHERE ViewId = ?`
+        this.db.prepare(updateQuery).run(posY += BUFFER, eqViewId);
+    }
+
+    /**
      * Inserts the AutoR1 Main View Overview template
      * @param templateFile TemplateFile that contains templates for inserting
      * @param posX X position to start inserting controls
@@ -1994,12 +2116,16 @@ export class AutoR1Template {
     parentId: number;
     joinedId: number;
     controls: AutoR1Control[];
+    width: number;
+    height: number;
 
-    constructor(sections: dbpr.Section, controls: dbpr.Control[]) {
+    constructor(sections: dbpr.Section, controls: dbpr.Control[], width: number, height: number) {
         this.id = sections.Id
         this.name = sections.Name
         this.parentId = sections.ParentId
         this.joinedId = sections.JoinedId
+        this.width = width;
+        this.height = height;
 
         this.controls = [];
         controls.forEach((control) => {
@@ -2061,7 +2187,6 @@ export class AutoR1Template {
     }
 }
 
-
 export class AutoR1TemplateFile extends dbpr.TemplateFile {
     templates: AutoR1Template[] = [];
 
@@ -2070,11 +2195,13 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
 
         const templates = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`).all() as dbpr.Section[];
 
-        templates.forEach((template, index) => {
+        templates.filter(t => t.JoinedId > 0).forEach((template, index) => {
             const joinedId = template.JoinedId;
             const controls = this.db.prepare(`SELECT * FROM Controls WHERE JoinedId = ${joinedId} ORDER BY PosX ASC`).all() as dbpr.Control[];
 
-            this.templates.push(new AutoR1Template(template, controls));
+            const { width, height } = this.getTemplateWidthHeight(template.Name);
+
+            this.templates.push(new AutoR1Template(template, controls, width, height));
             console.debug(`Loaded template - ${index} / ${this.templates[this.templates.length - 1].name}`);
         });
     }

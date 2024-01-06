@@ -82,6 +82,8 @@ projectPaths.forEach((projectPath) => {
         process.stdout.write(`.`);
         projectFile.addSubCtoSubL();
         process.stdout.write(`.`);
+        projectFile.createEqView(templates);
+        process.stdout.write(`.`);
         projectFile.close();
         process.stdout.write(`completed\n`)
         console.debug('Completed\n');

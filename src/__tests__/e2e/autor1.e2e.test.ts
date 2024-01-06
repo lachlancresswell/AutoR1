@@ -656,7 +656,8 @@ describe('Views and Controls', () => {
 
         it('should have created X number of EQ controls', () => {
             // Arrange
-            const CONTROL_COUNT = 13;
+            // Two EQs for 13 sources/channel groups
+            const CONTROL_COUNT = 13 * 2;
 
             // Act
             projectFile.createEqView(templateFile);
@@ -981,4 +982,11 @@ describe('Templates', () => {
         expect(rtn).toBeTruthy();
     });
 
+    it('should find EQ template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.EQ1);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
 })
