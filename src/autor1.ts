@@ -1307,6 +1307,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         return view;
     }
 
+    /**
+     * Creates the Meter vew and associated controls
+     * @param templates AutoR1 template file containing the Meter view templates
+     * @returns void
+     */
     public createMeterView = (templates: AutoR1TemplateFile): void => {
         if (!this.sourceGroups.length) {
             throw (new Error("No source groups found."))
@@ -1624,6 +1629,13 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         return controls;
     }
 
+    /**
+     * Inserts the meter portion of the Main view
+     * @param templateFile Loaded .r2t template file
+     * @param posX X position to start inserting controls
+     * @param posY Y position to start inserting controls
+     * @param mainViewId ID of the main view
+     */
     private createMainViewMeters(templateFile: AutoR1TemplateFile, posX: number, posY: number, mainViewId: number) {
         const {
             width: arraySightTempWidth,
@@ -2067,6 +2079,11 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
         });
     }
 
+    /**
+     * Returns a template by name
+     * @param tempName Name of the template to get
+     * @returns Template object
+    */
     getTemplateByName(tempName: string): AutoR1Template {
         const template = this.templates.find((temp) => temp.name === tempName);
         if (!template) {
