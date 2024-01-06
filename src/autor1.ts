@@ -24,10 +24,23 @@ export const MUTE_GROUP_TITLE = 'MAIN MUTE';
 export enum AutoR1TemplateTitles {
     MAIN_OVERVIEW = 'Main Overview',
     MAIN_TITLE = "Main Title",
+    MAIN_DS10 = "Main DS10",
     MAIN_FALLBACK = "Main Fallback",
+    MAIN_ARRAYSIGHT = "Main ArraySight",
+    MAIN_ARRAYSIGHT_LR = "Main ArraySight LR",
+    MAIN_ARRAYSIGHT_FRAME = "Main ArraySight Frame",
+    GROUP = "Group",
+    GROUP_CPL2 = "Group CPL2",
+    GROUP_AP = "Group AP",
+    GROUP_LR = "Group LR",
+    GROUP_LR_AP = "Group LR AP",
+    GROUP_LR_CPL2 = "Group LR CPL2",
+    GROUP_AP_CPL2 = "Group AP CPL2",
+    GROUP_LR_AP_CPL2 = "Group LR AP CPL2",
     METERS_TITLE = "Meters Title",
     METERS_GROUP = "Meters Group",
     METER = "Meter",
+    THC = "THC",
     NAV_BUTTONS = "Nav Button",
 }
 
@@ -1528,13 +1541,13 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 TargetId: apGroupId
             }
             this.insertTemplate(
-                templateFile.getTemplateByName('THC'),
+                templateFile.getTemplateByName(AutoR1TemplateTitles.THC),
                 mainViewId,
                 posX,
                 posY,
                 thcTemplateOptions,
             )
-            posX += templateFile.getTemplateWidthHeight('THC').width + (METER_SPACING_X * 4)
+            posX += templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.THC).width + (METER_SPACING_X * 4)
         } else {
             posX += METER_SPACING_X * 4;
         }
@@ -1610,8 +1623,15 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     }
 
     private createMainViewMeters(templateFile: AutoR1TemplateFile, posX: number, posY: number, mainViewId: number) {
-        const { width: arraySightTempWidth, height: arraySightTempHeight } = templateFile.getTemplateWidthHeight('Main ArraySight Frame');
-        const { width: meterTempWidth, height: meterTempHeight } = templateFile.getTemplateWidthHeight('Group LR AP CPL2');
+        const {
+            width: arraySightTempWidth,
+            height: arraySightTempHeight
+        } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_ARRAYSIGHT_FRAME);
+
+        const {
+            width: meterTempWidth,
+            height: meterTempHeight
+        } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.GROUP_LR_AP_CPL2);
 
         // Wrap in transaction to speed up insertion
         const transaction = this.db.transaction((sourceGroups: SourceGroup[]) => {
@@ -1631,7 +1651,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                         const joinedId = this.getHighestJoinedID() + 1;
 
                         this.insertTemplate(
-                            templateFile.getTemplateByName('Main ArraySight Frame'),
+                            templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_ARRAYSIGHT_FRAME),
                             mainViewId,
                             posX,
                             posY - arraySightTempHeight - 10,
@@ -1641,7 +1661,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                         const ids = [sourceGroup.ArraySightId, sourceGroup.ArraySightIdR].filter((id) => id);
 
                         const arraySightTemplate = new TemporaryTemplate();
-                        arraySightTemplate.setName('Main ArraySight');
+                        arraySightTemplate.setName(AutoR1TemplateTitles.MAIN_ARRAYSIGHT);
                         arraySightTemplate.setLR(!!sourceGroup.ArraySightIdR);
                         arraySightTemplate.load(templateFile);
 
@@ -1691,8 +1711,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const { width: mainTempWidth, height: mainTempHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_OVERVIEW);
         const { width: mainFallbackWidth, height: mainFallbackHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_FALLBACK);
         const { width: _mainTitleTempWidth, height: mainTitleTempHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_TITLE);
-        const { width: meterTempWidth, height: meterTempHeight } = templateFile.getTemplateWidthHeight('Group LR AP CPL2');
-        const { width: arraySightTempWidth, height: arraySightTempHeight } = templateFile.getTemplateWidthHeight('Main ArraySight Frame');
+        const { width: meterTempWidth, height: meterTempHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.GROUP_LR_AP_CPL2);
+        const { width: arraySightTempWidth, height: arraySightTempHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_ARRAYSIGHT_FRAME);
 
         const METER_TEMP_BUFFER = 200;
         let posX = MAIN_VIEW_STARTX, posY = MAIN_VIEW_STARTY;
