@@ -1645,7 +1645,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                         return;
                     }
 
-                    const controls = AutoR1ProjectFile.configureMainViewMeterTemplate(templateFile, sourceGroup, channelGroup, commonJoinedId, posX, posY, mainViewId);
+                    const meterPosY = posY + arraySightTempHeight + 5;
+                    const controls = AutoR1ProjectFile.configureMainViewMeterTemplate(templateFile, sourceGroup, channelGroup, commonJoinedId, posX, meterPosY, mainViewId);
 
                     controls.forEach((control) => this.insertControl(control));
 
@@ -1656,7 +1657,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                             templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_ARRAYSIGHT_FRAME),
                             mainViewId,
                             posX,
-                            posY - arraySightTempHeight - 10,
+                            posY,
                             { joinedId }
                         );
 
@@ -1675,8 +1676,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                             this.insertTemplate(
                                 arraySightTemplate as any,
                                 mainViewId,
-                                posX + 5 + (i * 67),
-                                posY - arraySightTempHeight - 10 + 5,
+                                posX + 4 + (i * 67),
+                                posY + 3,
                                 arraySightTemplateOptions
                             );
                         })
@@ -1693,7 +1694,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                         templateFile.getTemplateByName(AutoR1TemplateTitles.NAV_BUTTONS),
                         mainViewId,
                         posX - 1, // R1 frames are to be 1px further to the left than expected
-                        posY - 1, // R1 frames are to be 1px higher than expected
+                        meterPosY - 1, // R1 frames are to be 1px higher than expected
                         navButtonTemplateOptions
                     )
 
@@ -1719,28 +1720,28 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const METER_TEMP_BUFFER = 200;
         let posX = MAIN_VIEW_STARTX, posY = MAIN_VIEW_STARTY;
 
-        const HRes = (
+        const V_RES = 1200;
+        const H_RES = (
             mainTempWidth
             + ((METER_SPACING_X + meterTempWidth) * this.getChannelMainGroupTotal())
-            + METER_TEMP_BUFFER
+            + METER_TEMP_BUFFER + 400
         );
 
-        const VRes = mainTitleTempHeight + Math.max(meterTempHeight, mainTempHeight + mainFallbackHeight) + 60 + posY;
         this.db.prepare(
             `INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);`
-        ).run(1000, MAIN_WINDOW_TITLE, null, 4, null, -1, HRes, VRes, 100, null, null, null, null);
+        ).run(1000, MAIN_WINDOW_TITLE, null, 4, null, -1, H_RES, V_RES, 100, null, null, null, null);
         const rtn = this.db.prepare(
             'SELECT max(ViewId) FROM Views'
         ).get() as { 'max(ViewId)': number };
 
-        const mainViewId = rtn['max(ViewId)'];
+        const MAIN_VIEW_ID = rtn['max(ViewId)'];
 
-        const { posX: overviewPosX, posY: overviewPosY } = this.createMainViewOverview(templateFile, posX, posY, mainViewId);
+        const { posX: overviewPosX, posY: overviewPosY } = this.createMainViewOverview(templateFile, posX, posY, MAIN_VIEW_ID);
 
         const hasArraySight = this.sourceGroups.some(srcGrp => srcGrp.ArraySightId);
-        let metersPosY = hasArraySight ? arraySightTempHeight - mainTitleTempHeight : overviewPosY;
+        let metersPosY = hasArraySight ? posY : overviewPosY;
 
-        this.createMainViewMeters(templateFile, overviewPosX, metersPosY, mainViewId);
+        this.createMainViewMeters(templateFile, overviewPosX, metersPosY, MAIN_VIEW_ID);
     }
 }
 
