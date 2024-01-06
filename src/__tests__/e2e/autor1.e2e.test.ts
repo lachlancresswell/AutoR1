@@ -5,6 +5,16 @@ import { AutoR1ProjectFile, AutoR1TemplateFile, FALLBACK_GROUP_TITLE, MAIN_WINDO
 import * as dbpr from '../../dbpr'
 import { PROJECT_INIT_AP, PROJECT_SUB_ARRAY, TEMPLATES, cleanupTest, setupTest } from '../setupTests';
 
+enum Positions {
+    // Frame surrounding meter
+    MAIN_METERS_FRAME_X = 483,
+    MAIN_METERS_FRAME_Y = 117,
+    // Meter itself
+    MAIN_METERS_METER_Y = 156,
+    // Mute buttons within meter
+    MAIN_METERS_MUTE_Y = 453,
+}
+
 
 describe('Mute Group', () => {
     let projectFile: AutoR1ProjectFile;
@@ -410,8 +420,8 @@ describe('Views and Controls', () => {
             // Arrange
             const controls = projectFile.getControlsByViewId(mainViewId).filter(control =>
                 control.Type === dbpr.ControlTypes.FRAME
-                && Math.round(control.PosX) >= 483
-                && Math.round(control.PosY) == 110
+                && Math.round(control.PosX) >= Positions.MAIN_METERS_FRAME_X
+                && Math.round(control.PosY) == Positions.MAIN_METERS_FRAME_Y
             );
 
             // Act
@@ -419,7 +429,7 @@ describe('Views and Controls', () => {
 
             // Assert
             controls.forEach((control, index) => {
-                expect(Math.round(control.PosX)).toBe(483 + (index * METER_SPACING_X) + (index * meterTempWidth))
+                expect(Math.round(control.PosX)).toBe(Positions.MAIN_METERS_FRAME_X + (index * METER_SPACING_X) + (index * meterTempWidth))
             });
         });
 
@@ -519,12 +529,9 @@ describe('Views and Controls', () => {
      * Addresses bug where mute controls were either not assigned, assigned to the same channel within a pair of controls or, were assigned to a parent or child of the neighbouring mute control
      */
         it('should correctly assign TargetId for mute controls', () => {
-            const muteControls = projectFile.getControlsByViewId(mainViewId).filter(control => (
-                control.Type === dbpr.ControlTypes.SWITCH
+            const muteControls = projectFile.getControlsByViewId(mainViewId).filter(control => control.Type === dbpr.ControlTypes.SWITCH
                 && control.TargetProperty === dbpr.TargetPropertyType.CONFIG_MUTE
-                && Math.round(control.PosY) === 403
-            ));
-
+                && Math.round(control.PosY) === Positions.MAIN_METERS_MUTE_Y);
             expect(muteControls.length).toBeTruthy();
 
             const allGroups = projectFile.getAllGroups();
@@ -558,11 +565,10 @@ describe('Views and Controls', () => {
 
         it('should correctly assign TargetId for meter controls', () => {
             // Act
-            const meterControls = projectFile.getControlsByViewId(mainViewId).filter(control => (
-                control.Type === dbpr.ControlTypes.METER
+            const meterControls = projectFile.getControlsByViewId(mainViewId).filter(control => control.Type === dbpr.ControlTypes.METER
                 && control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_GAIN_REDUCTION_HEADROOM
-                && Math.round(control.PosY) === 106
-            ));
+                && Math.round(control.PosY) === Positions.MAIN_METERS_METER_Y
+            );
 
             // Assert
             const discoveredMeterChannelTargetIDs: {
