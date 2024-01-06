@@ -771,3 +771,174 @@ describe('Project with only sub array', () => {
         expect(projectTitle.Font).toBe(templateTitle.Font);
     });
 });
+
+describe('Templates', () => {
+    let templateFile: AutoR1TemplateFile;
+    let fileId: number;
+
+    beforeAll(() => {
+        fileId = setupTest();
+        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+    });
+
+    it('should find Group template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.GROUP);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Group AP template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.GROUP_AP);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Group CPL2 template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.GROUP_CPL2);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Group LR template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.GROUP_LR);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Group AP CPL2 template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.GROUP_AP_CPL2);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Group LR AP template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.GROUP_LR_AP);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Group LR CPL2 template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.GROUP_LR_CPL2);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Group LR AP CPL2 template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.GROUP_LR_AP_CPL2);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Main ArraySight template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_ARRAYSIGHT);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Main ArraySigh Frame template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_ARRAYSIGHT_FRAME);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Main ArraySigh LR template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_ARRAYSIGHT_LR);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Main DS10 template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_DS10);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Main Fallback template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_FALLBACK);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Main Overview template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_OVERVIEW);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Main Title template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_TITLE);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Meter template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.METER);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Meters Group template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.METERS_GROUP);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Meters Title template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.METERS_TITLE);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find Nav Buttons template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.NAV_BUTTONS);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+    it('should find THC template', () => {
+        // Act
+        const rtn = templateFile.getTemplateByName(AutoR1TemplateTitles.THC);
+
+        // Assert
+        expect(rtn).toBeTruthy();
+    });
+
+})
