@@ -1145,7 +1145,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         ).get() as { Name: string };
 
         if (!subArrayGroup) {
-            throw new Error("No sub array group found");
+            console.debug("No sub array group found");
+            return;
         }
 
         const subArrayGroupName = subArrayGroup.Name;
@@ -1195,7 +1196,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
 
         if (!pId) {
-            throw new Error("No sub left group found");
+            console.debug("No sub left group found");
+            return;
         }
 
         let success = false;
