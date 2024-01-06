@@ -606,6 +606,21 @@ describe('Views and Controls', () => {
             });
         });
     })
+
+    it('should use the same group assignment for delay controls on meters as the actual source page', () => {
+        // Arrange
+        const allMainPageDelayControls = projectFile.db.prepare(`SELECT * FROM Controls WHERE Type = ? AND TargetProperty = ?`).all(dbpr.ControlTypes.DIGITAL, dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY) as dbpr.Control[];
+        expect(allMainPageDelayControls.length).toBeTruthy();
+
+        const allSourcePageDelayControls = projectFile.db.prepare(`SELECT * FROM Controls WHERE Type = ? AND TargetProperty = ? AND ViewId != ? AND ViewId != ?`).all(dbpr.ControlTypes.DIGITAL, dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY, mainViewId, meterViewId) as dbpr.Control[];
+        expect(allSourcePageDelayControls.length).toBeTruthy();
+
+        // Assert
+        allSourcePageDelayControls.forEach((sourceControl) => {
+            const mainPageControl = allMainPageDelayControls.find((control) => control.TargetId === sourceControl.TargetId);
+            expect(mainPageControl).toBeTruthy();
+        });
+    });
 });
 
 describe('Project with only sub array', () => {

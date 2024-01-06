@@ -90,6 +90,18 @@ describe('findControlsByViewId', () => {
         const viewId = 1;
         expect(() => projectFile.getControlsByViewId(viewId)).toThrow(`Could not find any controls with viewId ${viewId}`);
     });
+
+    it('should discover the groups under the default Master group', () => {
+        projectFile.sourceGroups.forEach((sourceGroup) => {
+            expect(sourceGroup.masterGroupId).toBeTruthy();
+        });
+    });
+
+    it('should discover the child groups under the default Master group', () => {
+        projectFile.sourceGroups.forEach((sourceGroup) => {
+            expect(sourceGroup.childGroupIds.length).toBeTruthy();
+        });
+    });
 });
 
 // SLOW

@@ -304,6 +304,8 @@ export class SourceGroup implements dbpr.SourceGroup {
     System: string;
     ViewId: number;
     xover: dbpr.Crossover;
+    masterGroupId: number = -1;
+    childGroupIds: number[] = [];
 
     channelGroups: ChannelGroup[] = [];
 
@@ -643,6 +645,41 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 }
                 console.debug(`Assigned ${rtn.length} channels to ${devGrp.name}`);
             });
+        });
+
+        // Get groups from under the 'Master' default R1 group
+        const masterGroupQuery = `SELECT SourceGroups.SourceGroupId, SourceGroups.Name, Groups.GroupId FROM SourceGroups
+        JOIN Groups
+         ON SourceGroups.name = Groups.Name 
+         /* Keep discovered groups that have 'Master' as parent */
+        AND ParentId = (SELECT GroupId FROM Groups WHERE Name = 'Master')
+        /* Skip right side of stereo groups */
+        AND OrderIndex != -1`;
+
+        const masterSourceGroups = this.db.prepare(masterGroupQuery).all() as { SourceGroupId: number, Name: string, GroupId: number }[];
+        masterSourceGroups.forEach((mstrGrp) => {
+            const sourceGroup = this.sourceGroups.find((srcGrp) => srcGrp.SourceGroupId === mstrGrp.SourceGroupId);
+            if (sourceGroup) {
+                sourceGroup.masterGroupId = mstrGrp.GroupId
+            }
+        });
+
+        // Get child groups of above 'Master' groups
+        const childGroupQuery = `SELECT DISTINCT G.GroupId, G.ParentId,G.Name
+        FROM Groups G
+        JOIN (
+            SELECT *
+            FROM Groups G1
+            JOIN SourceGroups SG ON G1.Name = SG.Name
+            WHERE G1.ParentId = 2
+        ) AS SubQuery ON G.ParentId = SubQuery.GroupId;`;
+
+        const childGroups = this.db.prepare(childGroupQuery).all() as { GroupId: number, Name: string, ParentId: number }[];
+        childGroups.forEach((childGroup) => {
+            const sourceGroup = this.sourceGroups.find((srcGrp) => srcGrp.masterGroupId === childGroup.ParentId);
+            if (sourceGroup) {
+                sourceGroup.childGroupIds.push(childGroup.GroupId)
+            }
         });
     }
 
@@ -1859,6 +1896,33 @@ export class AutoR1Control implements dbpr.Control {
                 this.DisplayName = channelGroup.name
             }
         } else if (this.isTypeDigital()) {
+
+            // Assign delay controls to default R1 groups
+            if (this.targetsDelay()) {
+                // Array types have sub groups 
+                if (sourceGroup.Type === dbpr.SourceGroupTypes.ARRAY) {
+                    // Array sources with both SUBs and TOPs need sub groups assigned correctly
+                    if (channelGroup.isSUBs() && sourceGroup.hasTOPs()) {
+                        this.TargetId = sourceGroup.childGroupIds[0];
+                    } else if (channelGroup.isTOPs() && sourceGroup.hasSUBs()) {
+                        this.TargetId = sourceGroup.childGroupIds[1];
+                    } else {
+                        // Array sources without both SUBs and TOPs only have a single sub group
+                        this.TargetId = sourceGroup.childGroupIds[0];
+                    }
+                } else {
+                    // Point sources with SUBs and TOPs have sub groups
+                    if (channelGroup.isSUBs() && sourceGroup.hasTOPs()) {
+                        this.TargetId = sourceGroup.childGroupIds[0];
+                    } else if (channelGroup.isTOPs() && sourceGroup.hasSUBs()) {
+                        this.TargetId = sourceGroup.childGroupIds[1];
+                    } else {
+                        // SUBarrays, point sources without both SUBs and TOPs and additional amplifiers do not have sub groups
+                        this.TargetId = sourceGroup.masterGroupId!;
+                    }
+                }
+            }
+
             if ((this.targetsDelay() || this.targetsLevel())
                 && (
                     channelGroup.name.toLowerCase().includes('fill')
