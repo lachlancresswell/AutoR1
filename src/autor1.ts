@@ -1283,16 +1283,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * @returns View object or undefined
      */
     private getMainView(): dbpr.View | undefined {
-        const stmt = this.db.prepare(`SELECT * from Views WHERE Name = ?`);
-        const view = stmt.get(MAIN_WINDOW_TITLE) as dbpr.View;
-
-        if (!view) {
-            console.log(`Could not find Auto R1 Meter view with name ${MAIN_WINDOW_TITLE}`);
-
-            return undefined;
-        }
-
-        return view;
+        return this.getViewByName(MAIN_WINDOW_TITLE);
     }
 
     /**
@@ -1300,11 +1291,27 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * @returns View object or undefined
      */
     private getMeterView(): dbpr.View | undefined {
+        return this.getViewByName(METER_WINDOW_TITLE);
+    }
+
+    /**
+     * Find the AutoR1 EQ View row
+     * @returns View object or undefined
+     */
+    private getEQView(): dbpr.View | undefined {
+        return this.getViewByName(EQ_WINDOW_TITLE);
+    }
+
+    /**
+     * Find a View row by name
+     * @returns View object or undefined
+     */
+    private getViewByName(name: string): dbpr.View | undefined {
         const stmt = this.db.prepare(`SELECT * from Views WHERE Name = ?`);
-        const view = stmt.get(METER_WINDOW_TITLE) as dbpr.View;
+        const view = stmt.get(name) as dbpr.View;
 
         if (!view) {
-            console.log(`Could not find Auto R1 Meter view with name ${METER_WINDOW_TITLE}`)
+            console.log(`Could not find view with name '${name}'`)
 
             return undefined;
         }

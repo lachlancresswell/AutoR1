@@ -1130,6 +1130,20 @@ describe('AutoR1ProjectFile', () => {
             expect(groupId).toBe(1)
         });
     })
+
+    describe('getViewByName', () => {
+        it('should return a view if one is found', () => {
+            // Arrange
+            const projectFile: any = new AutoR1ProjectFile('/path');
+            getObject = { View: 'myview' };
+
+            // Act
+            const rtn = projectFile.getViewByName();
+
+            // Assert
+            expect(rtn).toBeTruthy();
+        });
+    })
 })
 
 
