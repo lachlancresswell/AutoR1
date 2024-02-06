@@ -1,4 +1,3 @@
-import { readFileSync, existsSync } from 'fs';
 import * as SQLjs from 'sql.js';
 
 export type Crossover = '100hz' | 'Infra' | 'CUT';
@@ -536,7 +535,6 @@ export const getAllAsObjects = <T>(stmt: SQLjs.Statement, bindObj: any[] = []) =
 }
 
 export class SqlDbFile {
-    private f: string;
     public db: SQLjs.Database;
 
     /**
@@ -544,23 +542,14 @@ export class SqlDbFile {
      * @param path - Path to database file
      * @throws Will throw an error if the file does not exist.
      */
-    constructor(path: string, db: SQLjs.Database) {
-        if (!existsSync(path)) {
-            throw new Error("File does not exist - " + path);
-        }
-
-        this.f = path;
+    constructor(db: SQLjs.Database) {
         this.db = db;
     }
 
-    static async build(path: string) {
-        if (!existsSync(path)) {
-            throw new Error("File does not exist - " + path);
-        }
-        const fb = readFileSync(path);
+    static async build(fb: Buffer) {
         const sql: SQLjs.SqlJsStatic = (await SQLjs())
         const db = new sql.Database(fb)
-        return new SqlDbFile(path, db);
+        return new SqlDbFile(db);
     }
 
 
@@ -617,8 +606,8 @@ export class ProjectFile extends SqlDbFile {
     selectAllGroupsStmt: SQLjs.Statement;
     selectGroupWithIdStmt: SQLjs.Statement;
 
-    constructor(f: string, db: SQLjs.Database) {
-        super(f, db);  // Inherit from parent class
+    constructor(db: SQLjs.Database) {
+        super(db);  // Inherit from parent class
         this.insertControlStmt = this.db.prepare(insertControlQuery);
 
         this.insertGroupStmt = this.db.prepare(
@@ -633,20 +622,10 @@ export class ProjectFile extends SqlDbFile {
         }
     }
 
-    static async build(path: string) {
-        if (!existsSync(path)) {
-            throw new Error("File does not exist - " + path);
-        }
-
-        let fb: any;
-        try {
-            fb = readFileSync(path);
-        } catch (err) {
-            throw new Error("File does not exist - " + path);
-        }
+    static async build(fb: Buffer) {
         const sql: SQLjs.SqlJsStatic = (await SQLjs())
         const db = new sql.Database(fb)
-        return new ProjectFile(path, db);
+        return new ProjectFile(db);
     }
 
     /**
@@ -1146,8 +1125,8 @@ export interface Section {
 
 
 export class TemplateFile extends SqlDbFile {
-    constructor(f: string, db: SQLjs.Database) {
-        super(f, db);
+    constructor(db: SQLjs.Database) {
+        super(db);
 
         try {
             const templates = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`).run() as any as Section[];
@@ -1157,14 +1136,10 @@ export class TemplateFile extends SqlDbFile {
         }
     }
 
-    static async build(path: string) {
-        if (!existsSync(path)) {
-            throw new Error("File does not exist - " + path);
-        }
-        const fb = readFileSync(path);
+    static async build(fb: Buffer) {
         const sql: SQLjs.SqlJsStatic = (await SQLjs())
         const db = new sql.Database(fb)
-        return new TemplateFile(path, db);
+        return new TemplateFile(db);
     }
 
     /**

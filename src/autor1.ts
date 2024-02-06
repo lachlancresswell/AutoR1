@@ -1,6 +1,5 @@
 import { Database } from 'sql.js';
 import * as dbpr from './dbpr';
-import { readFileSync, existsSync } from 'fs';
 import * as SQLjs from 'sql.js';
 
 const NAV_BUTTON_X = 270;
@@ -568,24 +567,14 @@ class TemporaryTemplate {
 export class AutoR1ProjectFile extends dbpr.ProjectFile {
     public sourceGroups: SourceGroup[] = [];
 
-    constructor(f: string, db: Database) {
-        super(f, db);
+    constructor(db: Database) {
+        super(db);
     }
 
-    static async build(path: string) {
-        if (!existsSync(path)) {
-            throw new Error("File does not exist - " + path);
-        }
-
-        let fb: any;
-        try {
-            fb = readFileSync(path);
-        } catch (err) {
-            throw new Error("File does not exist - " + path);
-        }
+    static async build(fb: Buffer) {
         const sql: SQLjs.SqlJsStatic = (await SQLjs())
         const db = new sql.Database(fb)
-        return new AutoR1ProjectFile(path, db);
+        return new AutoR1ProjectFile(db);
     }
 
     public getSrcGrpInfo = () => {
@@ -2210,8 +2199,8 @@ export class AutoR1Template {
 export class AutoR1TemplateFile extends dbpr.TemplateFile {
     templates: AutoR1Template[] = [];
 
-    constructor(f: string, db: Database) {
-        super(f, db);
+    constructor(db: Database) {
+        super(db);
 
 
         const stmt = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`);
@@ -2229,20 +2218,10 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
         });
     }
 
-    static async build(path: string) {
-        if (!existsSync(path)) {
-            throw new Error("File does not exist - " + path);
-        }
-
-        let fb: any;
-        try {
-            fb = readFileSync(path);
-        } catch (err) {
-            throw new Error("File does not exist - " + path);
-        }
+    static async build(fb: Buffer) {
         const sql: SQLjs.SqlJsStatic = (await SQLjs())
         const db = new sql.Database(fb)
-        return new AutoR1TemplateFile(path, db);
+        return new AutoR1TemplateFile(db);
     }
 
     /**
