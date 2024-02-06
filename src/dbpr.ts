@@ -547,7 +547,9 @@ export class SqlDbFile {
     }
 
     static async build(fb: Buffer) {
-        const sql: SQLjs.SqlJsStatic = (await SQLjs())
+        const sql: SQLjs.SqlJsStatic = (await SQLjs({
+            locateFile: file => `https://sql.js.org/dist/${file}`
+        }))
         const db = new sql.Database(fb)
         return new SqlDbFile(db);
     }
@@ -1129,7 +1131,7 @@ export class TemplateFile extends SqlDbFile {
         super(db);
 
         try {
-            const templates = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`).run() as any as Section[];
+            const templates = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`).get({}) as any as Section[];
             console.log(`Found ${templates.length} templates in file.`);
         } catch (error) {
             throw new Error(`Could not find any templates in file.`);
