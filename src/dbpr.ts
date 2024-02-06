@@ -1,5 +1,5 @@
-import { existsSync } from 'fs';
-import * as Database from 'better-sqlite3';
+import { readFileSync, existsSync } from 'fs';
+import * as SQLjs from 'sql.js';
 
 export type Crossover = '100hz' | 'Infra' | 'CUT';
 
@@ -520,30 +520,56 @@ export interface Group {
     Flags: number;
 }
 
+export const getAllAsObjects = <T>(stmt: SQLjs.Statement, bindObj: any[] = []) => {
+    let rows: T[] = [];
+
+    stmt.bind(bindObj);
+
+    while (stmt.step()) {
+        const row = stmt.getAsObject() as T;
+        rows.push(row);
+    }
+
+    stmt.free();
+
+    return rows;
+}
+
 export class SqlDbFile {
     private f: string;
-    public db: Database.Database;
+    public db: SQLjs.Database;
 
     /**
      * Load existing SQL database file
      * @param path - Path to database file
      * @throws Will throw an error if the file does not exist.
      */
-    constructor(path: string) {
+    constructor(path: string, db: SQLjs.Database) {
         if (!existsSync(path)) {
             throw new Error("File does not exist - " + path);
         }
 
         this.f = path;
-        this.db = new Database(this.f);
+        this.db = db;
     }
+
+    static async build(path: string) {
+        if (!existsSync(path)) {
+            throw new Error("File does not exist - " + path);
+        }
+        const fb = readFileSync(path);
+        const sql: SQLjs.SqlJsStatic = (await SQLjs())
+        const db = new sql.Database(fb)
+        return new SqlDbFile(path, db);
+    }
+
 
     /**
      * Close the database connection. This can fail on Windows in some cases.
      */
     public close(): void {
         try {
-            this.db.pragma('journal_mode = DELETE');
+            this.db.run('journal_mode = DELETE');
         } catch (err) {
             // Ignored
         }
@@ -586,13 +612,13 @@ const insertControlQuery = `INSERT INTO Controls ('Type',
 
 
 export class ProjectFile extends SqlDbFile {
-    insertControlStmt: Database.Statement<unknown[]>
-    insertGroupStmt: Database.Statement<unknown[]>
-    selectAllGroupsStmt: Database.Statement<unknown[]>
-    selectGroupWithIdStmt: Database.Statement<unknown[]>
+    insertControlStmt: SQLjs.Statement;
+    insertGroupStmt: SQLjs.Statement;
+    selectAllGroupsStmt: SQLjs.Statement;
+    selectGroupWithIdStmt: SQLjs.Statement;
 
-    constructor(f: string) {
-        super(f);  // Inherit from parent class
+    constructor(f: string, db: SQLjs.Database) {
+        super(f, db);  // Inherit from parent class
         this.insertControlStmt = this.db.prepare(insertControlQuery);
 
         this.insertGroupStmt = this.db.prepare(
@@ -602,11 +628,25 @@ export class ProjectFile extends SqlDbFile {
         this.selectAllGroupsStmt = this.db.prepare('SELECT * FROM Groups ORDER BY GroupId DESC LIMIT 1;')
         this.selectGroupWithIdStmt = this.db.prepare('SELECT * FROM Groups WHERE GroupId = ?')
 
-        try {
-            this.getMasterGroupID();
-        } catch (err) {
+        if (!this.getMasterGroupID()) {
             throw (new Error("Project file is not initialised"));
         }
+    }
+
+    static async build(path: string) {
+        if (!existsSync(path)) {
+            throw new Error("File does not exist - " + path);
+        }
+
+        let fb: any;
+        try {
+            fb = readFileSync(path);
+        } catch (err) {
+            throw new Error("File does not exist - " + path);
+        }
+        const sql: SQLjs.SqlJsStatic = (await SQLjs())
+        const db = new sql.Database(fb)
+        return new ProjectFile(path, db);
     }
 
     /**
@@ -654,9 +694,9 @@ export class ProjectFile extends SqlDbFile {
             Flags,
         } = { ...defaults, ...groupObj };
 
-        this.insertGroupStmt.run(Name, ParentId, TargetId, TargetChannel, Type, Flags);
+        this.insertGroupStmt.run([Name, ParentId, TargetId, TargetChannel, Type, Flags]);
 
-        const rtn = this.selectAllGroupsStmt.get() as Group;
+        const rtn = this.selectAllGroupsStmt.getAsObject({}) as any as Group;
 
         return rtn.GroupId;
     }
@@ -709,19 +749,19 @@ export class ProjectFile extends SqlDbFile {
     public deleteGroup(groupID: number): void {
         // Remove all children first
         const childrenStmt = this.db.prepare('SELECT GroupId FROM Groups WHERE ParentId = ?');
-        const children = childrenStmt.all(groupID) as { GroupId: number }[];
+        const children = getAllAsObjects<{ GroupId: number }>(childrenStmt, [groupID]);
 
         if (!children.length) {
             console.debug(`Could not find any groups with ParentID ${groupID}`);
         } else {
             for (const child of children) {
-                this.deleteGroup((child).GroupId);
+                this.deleteGroup(child.GroupId);
             }
         }
 
         // Delete group
         const deleteStmt = this.db.prepare('DELETE FROM Groups WHERE GroupId = ?');
-        deleteStmt.run(groupID);
+        deleteStmt.run([groupID]);
     }
 
     /**
@@ -735,11 +775,12 @@ export class ProjectFile extends SqlDbFile {
      * console.log(masterId);
      * // => 1
      */
-    public getMasterGroupID(): number {
-        const stmt = this.db.prepare("SELECT GroupId FROM Groups WHERE ParentId = 1 AND Name = 'Master'");
-        const rtn = stmt.get() as { GroupId: number };
-        if (!rtn) {
-            throw new Error('Cannot find Master group');
+    public getMasterGroupID(): number | undefined {
+        const stmt = this.db.prepare("SELECT GroupId FROM Groups WHERE ParentId = ? AND Name = ?");
+        const rtn = stmt.getAsObject([1, 'Master']) as any as { GroupId: number };
+        if (!rtn || rtn.GroupId === undefined) {
+            console.warn('Cannot find Master group');
+            return undefined;
         }
         return rtn.GroupId;
     }
@@ -756,11 +797,11 @@ export class ProjectFile extends SqlDbFile {
      * console.log(sourceGroupName);
      * // => 'Unused channels'
      */
-    public getSourceGroupNameFromID(id: number): string {
+    public getSourceGroupNameFromID(id: number): string | undefined {
         const stmt = this.db.prepare('SELECT Name from SourceGroups WHERE SourceGroupId = ?');
-        const rtn = stmt.get(id) as { Name: string };
-        if (!rtn) {
-            throw new Error(`Could not find SourceGroup with id ${id}`);
+        const rtn = stmt.getAsObject([id]) as any as { Name: string };
+        if (!rtn || rtn.Name === undefined) {
+            return undefined;
         }
         return rtn.Name;
     }
@@ -768,8 +809,7 @@ export class ProjectFile extends SqlDbFile {
     /**
      * Get the controls from a view from the view ID
      * @param viewId ViewId
-     * @returns Array of controls
-     * @throws Will throw an error if the controls cannot be found.
+     * @returns Array of controls or undefined if no controls are found
      * 
      * @example
      * const p = new ProjectFile('path/to/project.dbpr');
@@ -777,13 +817,14 @@ export class ProjectFile extends SqlDbFile {
      * console.log(controls);
      * // => [{...}, {...}, ...]
      */
-    public getControlsByViewId(viewId: number): Control[] {
-        const query = `SELECT * FROM Controls WHERE ViewId = ${viewId}`;
+    public getControlsByViewId(viewId: number): Control[] | undefined {
+        const query = `SELECT * FROM Controls WHERE ViewId = ?`;
         const stmt = this.db.prepare(query);
-        const rtn = stmt.all() as Control[];
+        const rtn = getAllAsObjects<Control>(stmt, [viewId])
 
         if (!rtn || !rtn.length) {
-            throw new Error(`Could not find any controls with viewId ${viewId}`);
+            console.warn(`Could not find any controls with viewId ${viewId}`);
+            return undefined;
         }
 
         return rtn;
@@ -800,13 +841,14 @@ export class ProjectFile extends SqlDbFile {
      * console.log(controls);
      * // => [{...}, {...}, ...]
      */
-    public getControlsByJoinedId(joinedId: number): Control[] {
+    public getControlsByJoinedId(joinedId: number): Control[] | undefined {
         const query = `SELECT * FROM Controls WHERE JoinedId = ${joinedId}`;
         const stmt = this.db.prepare(query);
-        const rtn = stmt.all() as Control[];
+        const rtn = getAllAsObjects<Control>(stmt)
 
         if (!rtn || !rtn.length) {
-            throw new Error(`Could not find any controls with JoinedId ${joinedId}`);
+            console.warn(`Could not find any controls with JoinedId ${joinedId}`);
+            return undefined;
         }
 
         return rtn;
@@ -825,11 +867,12 @@ export class ProjectFile extends SqlDbFile {
      * console.log(sourceGroupId);
      * // => 1
      */
-    public getSourceGroupIDFromName(name: string): number {
+    public getSourceGroupIDFromName(name: string): number | undefined {
         const stmt = this.db.prepare('SELECT SourceGroupId from SourceGroups WHERE Name = ?');
-        const rtn = stmt.get(name) as { SourceGroupId: number };
-        if (!rtn) {
-            throw new Error(`Could not find SourceGroup with name ${name}`);
+        const rtn = stmt.getAsObject([name]) as any as { SourceGroupId: number };
+        if (!rtn || rtn.SourceGroupId === undefined) {
+            console.warn(`Could not find SourceGroup with name ${name}`);
+            return undefined;
         }
         return rtn.SourceGroupId;
     }
@@ -845,11 +888,13 @@ export class ProjectFile extends SqlDbFile {
      * console.log(nextJoinedId);
      * // => 1
      */
-    public getHighestJoinedID(): number {
+    public getHighestJoinedID(): number | undefined {
         const stmt = this.db.prepare('SELECT JoinedId from Controls ORDER BY JoinedId DESC LIMIT 1');
-        const rtn = stmt.get() as { JoinedId: number };
-        if (!rtn) {
-            throw new Error("Views have not been generated. Please run initial setup in R1 first.");
+
+        const rtn = stmt.getAsObject({}) as any as { JoinedId: number }
+        if (!rtn || rtn.JoinedId === undefined) {
+            console.warn("Views have not been generated. Please run initial setup in R1 first.");
+            return undefined;
         }
         return rtn.JoinedId;
     }
@@ -865,11 +910,13 @@ export class ProjectFile extends SqlDbFile {
      * console.log(highestGroupId);
      * // => 283
      */
-    public getHighestGroupID(): number {
+    public getHighestGroupID(): number | undefined {
         const stmt = this.db.prepare('SELECT max(GroupId) FROM Groups');
-        const rtn = stmt.get() as { 'max(GroupId)': number };
-        if (!rtn) {
-            throw new Error("Could not find any groups.");
+        // const wow = this.db.exec('SELECT max(GroupId) FROM Groups')
+        const rtn = stmt.getAsObject({}) as any as { 'max(GroupId)': number };
+        if (!rtn || rtn['max(GroupId)'] === undefined) {
+            console.warn("Could not find any groups.");
+            return undefined;
         }
         return rtn['max(GroupId)'];
     }
@@ -887,14 +934,14 @@ export class ProjectFile extends SqlDbFile {
      */
     public getGroupIdFromName(name: string): number | undefined {
         const stmt = this.db.prepare('SELECT GroupId FROM Groups WHERE Name = ?');
-        const rtn = stmt.get(name) as { GroupId: number }
+        const rtn = stmt.get([name]) as any as number[];
 
-        if (!rtn) {
+        if (!rtn || !rtn.length) {
             console.debug(`Could not find group with name ${name}`);
             return undefined;
         }
 
-        return rtn.GroupId
+        return rtn[0];
     }
 
     /**
@@ -910,8 +957,8 @@ export class ProjectFile extends SqlDbFile {
      */
     public getViewIdFromName(name: string): number | undefined {
         const stmt = this.db.prepare('SELECT ViewId FROM Views WHERE Name = ?');
-        const rtn = stmt.get(name) as { ViewId: number };
-        if (!rtn) {
+        const rtn = stmt.getAsObject([name]) as { ViewId: number };
+        if (!rtn || rtn.ViewId === undefined) {
             console.debug(`Could not find view with name ${name}`);
             return undefined;
         }
@@ -931,9 +978,10 @@ export class ProjectFile extends SqlDbFile {
     public getAllRemoteViews() {
         const query = `SELECT * FROM Views WHERE Type = 1000`;
         const stmt = this.db.prepare(query);
-        const rtn = stmt.all() as View[];
-        if (!rtn) {
-            throw new Error(`Could not find any views`);
+        const rtn = getAllAsObjects<View>(stmt);
+        if (!rtn || !rtn.length) {
+            console.warn(`Could not find any views`);
+            return undefined;
         }
         return rtn;
     }
@@ -951,9 +999,11 @@ export class ProjectFile extends SqlDbFile {
     public getAllGroups() {
         const query = `SELECT * FROM Groups`;
         const stmt = this.db.prepare(query);
-        const rtn = stmt.all() as Group[];
-        if (!rtn) {
-            throw new Error(`Could not find any groups`);
+
+        const rtn = getAllAsObjects<Group>(stmt)
+        if (!rtn || !rtn.length) {
+            console.warn(`Could not find any groups`);
+            return undefined;
         }
         return rtn;
     }
@@ -970,9 +1020,10 @@ export class ProjectFile extends SqlDbFile {
     public getAllControls() {
         const query = `SELECT * FROM Controls`;
         const stmt = this.db.prepare(query);
-        const rtn = stmt.all() as Control[];
-        if (!rtn) {
-            throw new Error(`Could not find any controls`);
+        const rtn = getAllAsObjects<Control>(stmt);
+        if (!rtn || !rtn.length) {
+            console.warn(`Could not find any controls`);
+            return undefined;
         }
         return rtn;
     }
@@ -986,11 +1037,12 @@ export class ProjectFile extends SqlDbFile {
      * const canId = p.getCanIdFromDeviceId(1);
      * console.log(canId); // => '1.01'
      */
-    public getCanIdFromDeviceId(deviceId: number): string {
+    public getCanIdFromDeviceId(deviceId: number): string | undefined {
         const stmt = this.db.prepare('SELECT RemoteIdSubnet, RemoteIdDevice FROM Devices WHERE DeviceId = ?');
-        const rtn = stmt.get(deviceId) as { RemoteIdSubnet: number, RemoteIdDevice: number };
-        if (!rtn) {
-            throw new Error(`Could not find device with id ${deviceId}`);
+        const rtn = stmt.getAsObject([deviceId]) as any as { RemoteIdSubnet: number, RemoteIdDevice: number };
+        if (!rtn || rtn.RemoteIdSubnet === undefined || rtn.RemoteIdDevice === undefined) {
+            console.warn(`Could not find device with id ${deviceId}`);
+            return undefined;
         }
         return `${rtn.RemoteIdSubnet}.${rtn.RemoteIdDevice < 9 ? `0${rtn.RemoteIdDevice}` : rtn.RemoteIdDevice}`;
     }
@@ -1042,7 +1094,7 @@ export class ProjectFile extends SqlDbFile {
      */
     public insertControl(control: Control) {
         try {
-            this.insertControlStmt.run(
+            this.insertControlStmt.run([
                 control.Type,
                 control.PosX,
                 control.PosY,
@@ -1074,7 +1126,7 @@ export class ProjectFile extends SqlDbFile {
                 control.Font,
                 control.Alignment,
                 control.Dimension || ' '
-            );
+            ]);
         } catch (e) {
             console.log(e);
         }
@@ -1094,15 +1146,25 @@ export interface Section {
 
 
 export class TemplateFile extends SqlDbFile {
-    constructor(f: string) {
-        super(f);
+    constructor(f: string, db: SQLjs.Database) {
+        super(f, db);
 
         try {
-            const templates = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`).all() as Section[];
+            const templates = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`).run() as any as Section[];
             console.log(`Found ${templates.length} templates in file.`);
         } catch (error) {
             throw new Error(`Could not find any templates in file.`);
         }
+    }
+
+    static async build(path: string) {
+        if (!existsSync(path)) {
+            throw new Error("File does not exist - " + path);
+        }
+        const fb = readFileSync(path);
+        const sql: SQLjs.SqlJsStatic = (await SQLjs())
+        const db = new sql.Database(fb)
+        return new TemplateFile(path, db);
     }
 
     /**
@@ -1117,14 +1179,15 @@ export class TemplateFile extends SqlDbFile {
      * console.log(controls);
      * // => [{...}, {...}, ...]
      */
-    getTemplateControlsByName(tempName: string): Control[] {
-        const section = this.db.prepare(`SELECT * FROM 'main'.'Sections' WHERE Name = ?`).get(tempName) as Section;
+    getTemplateControlsByName(tempName: string): Control[] | undefined {
+        const section = this.db.prepare(`SELECT * FROM 'main'.'Sections' WHERE Name = ?`).getAsObject([tempName]) as any as Section;
 
         if (!section) {
-            throw new Error(`Template ${tempName} not found.`);
+            console.warn(`Template ${tempName} not found.`);
+            return undefined;
         }
 
-        const controls = this.db.prepare(`SELECT * FROM Controls WHERE JoinedId = ${section.JoinedId} ORDER BY PosX ASC`).all() as Control[];
+        const controls = this.db.prepare(`SELECT * FROM Controls WHERE JoinedId = ${section.JoinedId} ORDER BY PosX ASC`).run() as any as Control[];
 
         return controls;
     }

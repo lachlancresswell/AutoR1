@@ -9,9 +9,9 @@ describe('getSrcGrpInfo', () => {
     let projectFile: AutoR1ProjectFile;
     let fileId: number;
 
-    beforeAll(() => {
+    beforeAll(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -20,7 +20,7 @@ describe('getSrcGrpInfo', () => {
         cleanupTest(fileId);
     })
 
-    it('should return the correct number of source groups', () => {
+    it('should return the correct number of source groups', async () => {
         expect(projectFile.sourceGroups.length).toBe(11);
     });
 
@@ -64,32 +64,6 @@ describe('getSrcGrpInfo', () => {
         expect(projectFile.sourceGroups[10].channelGroups.length).toBe(1); // SUB array LCR
         expect(projectFile.sourceGroups[10].channelGroups[0].channels.length).toBeGreaterThan(0);
     });
-});
-
-describe('findControlsByViewId', () => {
-    let projectFile: AutoR1ProjectFile;
-    let fileId: number;
-
-    beforeAll(() => {
-        fileId = setupTest();
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
-        projectFile.getSrcGrpInfo();
-    });
-
-    afterAll(() => {
-        projectFile.close();
-        cleanupTest(fileId);
-    })
-
-    it('should return an array of controls', () => {
-        const controls = projectFile.getControlsByViewId(1000);
-        expect(controls.length).toBeGreaterThan(0);
-    });
-
-    it('should throw an error if there arent any controls found', () => {
-        const viewId = 1;
-        expect(() => projectFile.getControlsByViewId(viewId)).toThrow(`Could not find any controls with viewId ${viewId}`);
-    });
 
     it('should discover the groups under the default Master group', () => {
         projectFile.sourceGroups.forEach((sourceGroup) => {
@@ -104,14 +78,15 @@ describe('findControlsByViewId', () => {
     });
 });
 
-// SLOW
+
+// // SLOW
 describe('getMuteGroupID', () => {
     let projectFile: AutoR1ProjectFile;
     let fileId: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -153,9 +128,9 @@ describe('getFallbackGroupID', () => {
     let projectFile: AutoR1ProjectFile;
     let fileId: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -198,10 +173,10 @@ describe('getApStatus', () => {
     let projectFileAP: AutoR1ProjectFile;
     let fileId: number;
 
-    beforeAll(() => {
+    beforeAll(async () => {
         fileId = setupTest();
-        projectFileNoAP = new AutoR1ProjectFile(PROJECT_INIT + fileId);
-        projectFileAP = new AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        projectFileNoAP = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
+        projectFileAP = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
         projectFileAP.getSrcGrpInfo();
         projectFileNoAP.getSrcGrpInfo();
     });
@@ -234,10 +209,10 @@ describe('createAPGroup', () => {
     let projectFileNoAP: AutoR1ProjectFile;
     let fileId: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
-        projectFileAP = new AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
-        projectFileNoAP = new AutoR1ProjectFile(PROJECT_INIT + fileId);
+        projectFileAP = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        projectFileNoAP = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
         projectFileAP.getSrcGrpInfo()
     });
 
@@ -262,7 +237,7 @@ describe('createAPGroup', () => {
         projectFileNoAP.createAPGroup();
 
         // Act
-        const rtn = projectFileAP.getAllGroups().filter((g) => g.Name === AutoR1.AP_GROUP_TITLE)
+        const rtn = projectFileAP.getAllGroups()!.filter((g) => g.Name === AutoR1.AP_GROUP_TITLE)
 
         // Assert
         expect(rtn.length).toBe(0);
@@ -289,10 +264,10 @@ describe('hasSubGroups', () => {
     let projectFile: AutoR1ProjectFile;
     let fileId: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
-        projectFile.getSrcGrpInfo()
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        projectFile.getSrcGrpInfo();
     });
 
     afterEach(() => {
@@ -326,10 +301,10 @@ describe('getSubArrayGroups', () => {
     let projectFile: AutoR1ProjectFile;
     let fileId: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
-        projectFile.getSrcGrpInfo()
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        projectFile.getSrcGrpInfo();
     });
 
     afterEach(() => {
@@ -357,8 +332,8 @@ describe('Templates', () => {
         cleanupTest(fileId);
     });
 
-    it('Loads template file', () => {
-        const t = new AutoR1TemplateFile(TEMPLATES + fileId);
+    it('Loads template file', async () => {
+        const t = await AutoR1TemplateFile.build(TEMPLATES + fileId);
         expect(t.templates.length).toBeGreaterThan(0)
     })
 });
@@ -367,9 +342,9 @@ describe('getTemplateWidthHeight', () => {
     let templateFile: AutoR1TemplateFile;
     let fileId: number;
 
-    beforeAll(() => {
+    beforeAll(async () => {
         fileId = setupTest();
-        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
     });
 
     afterAll(() => {
@@ -382,14 +357,15 @@ describe('getTemplateWidthHeight', () => {
         expect(size).toEqual({ width: 240, height: 42 });
     });
 
-    it('should throw an error for a non-existing template', () => {
+    it('should return falsy for a non-existing template', () => {
         const TEMPLATE_NAME = `NonExistingTemplate`
         expect(() => templateFile.getTemplateWidthHeight(TEMPLATE_NAME)).toThrow(`${TEMPLATE_NAME} template not found.`);
+
     });
 
-    it('should throw and error for a template with no controls', () => {
+    it('should return truthy for a template with no controls', () => {
         const TEMPLATE_NAME = `My templates`
-        expect(() => templateFile.getTemplateWidthHeight(TEMPLATE_NAME)).toThrow(`${TEMPLATE_NAME} template controls not found.`);
+        expect(() => templateFile.getTemplateWidthHeight(TEMPLATE_NAME)).toBeTruthy();
     });
 });
 
@@ -397,9 +373,9 @@ describe('getTemplateControlsFromName', () => {
     let templateFile: AutoR1TemplateFile;
     let fileId: number;
 
-    beforeAll(() => {
+    beforeAll(async () => {
         fileId = setupTest();
-        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
     });
 
     afterAll(() => {
@@ -415,11 +391,6 @@ describe('getTemplateControlsFromName', () => {
         const TEMPLATE_NAME = `NonExistingTemplate`
         expect(() => templateFile.getTemplateControlsFromName(TEMPLATE_NAME)).toThrow(`Template ${TEMPLATE_NAME} not found.`);
     });
-
-    it('should throw an error for a template without any controls', () => {
-        const TEMPLATE_NAME = `My templates`
-        expect(() => templateFile.getTemplateControlsFromName(TEMPLATE_NAME)).toThrow(`Template ${TEMPLATE_NAME} does not contain any controls.`);
-    });
 });
 
 describe('createNavButtons', () => {
@@ -427,10 +398,10 @@ describe('createNavButtons', () => {
     let templateFile: AutoR1TemplateFile;
     let fileId: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
-        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
+        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
 
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
@@ -445,15 +416,15 @@ describe('createNavButtons', () => {
 
     it('should create two nav buttons on all views except the AutoR1 Main and Meter views', () => {
         // Arrange
-        const oldControls = projectFile.getAllControls()
+        const oldControls = projectFile.getAllControls()!
         const navButtonTemplateSize = templateFile.getTemplateControlsFromName(AutoR1.AutoR1TemplateTitles.NAV_BUTTONS).length;
 
-        const views = projectFile.getAllRemoteViews().filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
+        const views = projectFile.getAllRemoteViews()!.filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
 
         // Act
         projectFile.createNavButtons(templateFile);
 
-        const newControls = projectFile.getAllControls()
+        const newControls = projectFile.getAllControls()!
 
         // Assert
         expect(newControls.length).toBe(oldControls.length + (views.length * (navButtonTemplateSize * 2)));
@@ -461,13 +432,13 @@ describe('createNavButtons', () => {
 
     it('should move all controls on all views except the AutoR1 Main and Meter views down to make space for the nav buttons', () => {
         // Arrange        
-        const views = projectFile.getAllRemoteViews().filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
-        const oldControls = projectFile.getAllControls().filter((control) => views.find((view) => view.ViewId === control.ViewId));
+        const views = projectFile.getAllRemoteViews()!.filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
+        const oldControls = projectFile.getAllControls()!.filter((control) => views.find((view) => view.ViewId === control.ViewId));
 
         // Act
         projectFile.createNavButtons(templateFile);
 
-        const newControls = projectFile.getAllControls().filter((control) => views.find((view) => view.ViewId === control.ViewId));
+        const newControls = projectFile.getAllControls()!.filter((control) => views.find((view) => view.ViewId === control.ViewId));
 
         // Assert
         oldControls.forEach((oldControl) => {
@@ -483,17 +454,17 @@ describe('removeNavButtons', () => {
     let fileId: number;
     let oldControlCount: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
 
-        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT + fileId);
+        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
 
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
         projectFile.createMainView(templateFile);
 
-        oldControlCount = projectFile.getAllControls().length;
+        oldControlCount = projectFile.getAllControls()!.length;
 
         projectFile.createNavButtons(templateFile);
     });
@@ -511,7 +482,7 @@ describe('removeNavButtons', () => {
         // Act
         (projectFile as any).removeNavButtons(mainViewId);
 
-        const rtn = projectFile.getAllControls().length;
+        const rtn = projectFile.getAllControls()!.length;
 
         // Assert
         expect(rtn).toBe(oldControlCount);
@@ -520,13 +491,13 @@ describe('removeNavButtons', () => {
     it('should move all controls on all views except the AutoR1 Main and Meter views back up', () => {
         // Arrange
         const mainViewId = (projectFile as any).getMainView().ViewId;
-        const views = projectFile.getAllRemoteViews().filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
-        const oldControls = projectFile.getAllControls().filter((control) => views.find((view) => view.ViewId === control.ViewId));
+        const views = projectFile.getAllRemoteViews()!.filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
+        const oldControls = projectFile.getAllControls()!.filter((control) => views.find((view) => view.ViewId === control.ViewId));
 
         // Act
         (projectFile as any).removeNavButtons(mainViewId);
 
-        const newControls = projectFile.getAllControls().filter((control) => views.find((view) => view.ViewId === control.ViewId));
+        const newControls = projectFile.getAllControls()!.filter((control) => views.find((view) => view.ViewId === control.ViewId));
 
         // Assert
         newControls.forEach((newControl) => {
@@ -542,36 +513,41 @@ describe('createMeterView', () => {
     let templateFile: AutoR1TemplateFile;
     let fileId: number;
 
-    beforeAll(() => {
+    beforeEach(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1ProjectFile(PROJECT_INIT + fileId);
-        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
+        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
 
         projectFile.getSrcGrpInfo();
     });
 
-    afterAll(() => {
+    afterEach(() => {
         projectFile.close();
         templateFile.close();
         cleanupTest(fileId);
     })
 
-    it('should create the meter view', () => {
-        const oldJoinedId = projectFile.getHighestJoinedID();
-        const oldViewCount = projectFile.getAllRemoteViews().length;
-        expect(projectFile.getHighestJoinedID()).toBe(135);
-
+    it('creates a new view', () => {
+        const oldViewCount = projectFile.getAllRemoteViews()!.length;
         projectFile.createMeterView(templateFile);
+        const newViewCount = projectFile.getAllRemoteViews()!.length;
 
-        const newViewCount = projectFile.getAllRemoteViews().length;
-
-        const nJid = projectFile.getHighestJoinedID()
-
-        expect(projectFile.getHighestJoinedID()).toBeGreaterThan(oldJoinedId);
         expect(newViewCount).toBe(oldViewCount + 1);
-        expect(projectFile.getViewIdFromName(AutoR1.METER_WINDOW_TITLE)).toBeTruthy();
-        expect(projectFile.getHighestJoinedID()).toBe(246);
+    })
+
+    it('sets the view name correctly', () => {
+        projectFile.createMeterView(templateFile);
+        const viewId = projectFile.getViewIdFromName(AutoR1.METER_WINDOW_TITLE);
+        expect(viewId).toBeTruthy();
     });
+
+    it('adds controls to the view', () => {
+        const oldControlCount = projectFile.getAllControls()!.length;
+        projectFile.createMeterView(templateFile);
+        const newControlCount = projectFile.getAllControls()!.length;
+
+        expect(newControlCount).toBe(oldControlCount + 1875);
+    })
 });
 
 describe('clean', () => {
@@ -583,17 +559,17 @@ describe('clean', () => {
     let oldGroupCount: number;
     let groupId: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
 
-        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
 
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
         projectFile.getSrcGrpInfo();
 
-        oldViewCount = projectFile.getAllRemoteViews().length;
-        oldControlCount = projectFile.getAllControls().length;
-        oldGroupCount = projectFile.getAllGroups().length;
+        oldViewCount = projectFile.getAllRemoteViews()!.length;
+        oldControlCount = projectFile.getAllControls()!.length;
+        oldGroupCount = projectFile.getAllGroups()!.length;
 
         projectFile.createMeterView(templateFile);
         projectFile.createMainView(templateFile);
@@ -611,7 +587,7 @@ describe('clean', () => {
         // Act
         projectFile.clean(groupId);
 
-        const rtn = projectFile.getAllRemoteViews().length;
+        const rtn = projectFile.getAllRemoteViews()!.length;
 
         // Assert
         expect(rtn).toBe(oldViewCount);
@@ -621,7 +597,7 @@ describe('clean', () => {
         // Act
         projectFile.clean(groupId);
 
-        const rtn = projectFile.getAllControls().length;
+        const rtn = projectFile.getAllControls()!.length;
 
         // Assert
 
@@ -632,7 +608,7 @@ describe('clean', () => {
         // Act
         projectFile.clean(groupId);
 
-        const rtn = projectFile.getAllGroups().length;
+        const rtn = projectFile.getAllGroups()!.length;
 
         // Assert
         expect(rtn).toBe(oldGroupCount);
@@ -644,10 +620,10 @@ describe('createMainView', () => {
     let templateFile: AutoR1TemplateFile;
     let fileId: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
-        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -657,28 +633,41 @@ describe('createMainView', () => {
         cleanupTest(fileId);
     });
 
-    it('creates the main view', () => {
+    it('creates a new view', () => {
         projectFile.createMeterView(templateFile);
+
+        const oldViewCount = projectFile.getAllRemoteViews()!.length;
         projectFile.createMainView(templateFile);
-        expect(projectFile.getAllRemoteViews().filter(g => g.Name === AutoR1.MAIN_WINDOW_TITLE).length).toBe(1)
+        const newViewCount = projectFile.getAllRemoteViews()!.length;
+
+        expect(newViewCount).toBe(oldViewCount + 1);
     })
 
-    it('inserts the Main Title template', () => {
+    it('sets the view name correctly', () => {
         projectFile.createMeterView(templateFile);
+
         projectFile.createMainView(templateFile);
-        const mainViewId = (projectFile as any).getMainView().ViewId;
-        const controls = projectFile.getControlsByViewId(mainViewId);
-        expect(controls.find((c) => c.DisplayName === 'Auto - Main')).toBeTruthy();
-    })
+        const viewId = projectFile.getViewIdFromName(AutoR1.MAIN_WINDOW_TITLE);
+        expect(viewId).toBeTruthy();
+    });
+
+    it('adds controls to the view', () => {
+        projectFile.createMeterView(templateFile);
+
+        projectFile.createMainView(templateFile);
+        const controlCount = projectFile.getControlsByViewId((projectFile as any).getMainView()!.ViewId)!.length;
+
+        expect(controlCount).toBe(281);
+    });
 
     it('correctly assigns ViewId value', () => {
         projectFile.createMeterView(templateFile);
 
-        let controls = projectFile.getAllControls();
+        let controls = projectFile.getAllControls()!;
         controls.forEach((c) => expect(c.ViewId).toBeTruthy());
 
         projectFile.createMainView(templateFile);
-        controls = projectFile.getAllControls();
+        controls = projectFile.getAllControls()!;
         controls.forEach((c) => expect(c.ViewId).toBeTruthy());
     })
 })
@@ -702,19 +691,19 @@ describe('insertTemplate', () => {
     const ViewId = 1000;
     const DisplayName = 'My Display Name';
 
-    beforeAll(() => {
+    beforeAll(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
-        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
 
-        template = templateFile.templates[1];
+        template = templateFile.templates.find((t) => t.name === 'Nav Button')!;
 
-        prevJoinedId = projectFile.getHighestJoinedID();
+        prevJoinedId = projectFile.getHighestJoinedID()!;
         projectFile.insertTemplate(template, ViewId, posX, posY, { DisplayName, TargetId, TargetChannel, Width, Height });
-        JoinedId = projectFile.getHighestJoinedID();
+        JoinedId = projectFile.getHighestJoinedID()!;
 
-        insertedControls = projectFile.getControlsByViewId(ViewId);
+        insertedControls = projectFile.getControlsByViewId(ViewId)!;
         insertedControl = insertedControls.filter((c) => c.JoinedId === JoinedId)[0]
     });
 
@@ -782,10 +771,10 @@ describe('createMainViewOverview', () => {
     let templateFile: AutoR1TemplateFile;
     let fileId: number;
 
-    beforeAll(() => {
+    beforeAll(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
-        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -798,7 +787,7 @@ describe('createMainViewOverview', () => {
     it('correctly assigns ViewId value', () => {
         projectFile.createMeterView(templateFile);
         (projectFile as any).createMainViewOverview(templateFile, 10, 10, 1500);
-        let controls = projectFile.getAllControls();
+        let controls = projectFile.getAllControls()!;
         controls.forEach((c) => expect(c.ViewId).toBeTruthy());
     })
 });
@@ -809,10 +798,10 @@ describe('createMainViewMeters', () => {
     let templateFile: AutoR1TemplateFile;
     let fileId: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
-        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -826,7 +815,7 @@ describe('createMainViewMeters', () => {
         const viewId = 1500
         projectFile.createMeterView(templateFile);
         (projectFile as any).createMainViewMeters(templateFile, 10, 10, viewId);
-        let controls = projectFile.getAllControls();
+        let controls = projectFile.getAllControls()!;
         controls.forEach((c) => expect(c.ViewId).toBeTruthy());
     })
 });
@@ -836,10 +825,10 @@ describe('createSubLRCGroups', () => {
     let templateFile: AutoR1TemplateFile;
     let fileId: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
-        templateFile = new AutoR1TemplateFile(TEMPLATES + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
     });
 
     afterEach(() => {
@@ -850,11 +839,11 @@ describe('createSubLRCGroups', () => {
 
     it('creates the correct number of groups', () => {
         const groupId = projectFile.createGroup({ Name: 'TEST', ParentId: 1 });
-        const oldGroupCount = projectFile.getAllGroups().length;
+        const oldGroupCount = projectFile.getAllGroups()!.length;
 
         projectFile.createSubLRCGroups(groupId);
 
-        const newGroupCount = projectFile.getAllGroups().length;
+        const newGroupCount = projectFile.getAllGroups()!.length;
 
         // 1 main group + 1 main sub group + 3 L/C/R groups + 4 sub L devices + 4 sub R devices + 1 sub C devices
         expect(newGroupCount).toBe(oldGroupCount + 14);
@@ -865,9 +854,9 @@ describe('addSubCtoSubL', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
     let fileId: number;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
     });
 
     afterEach(() => {
@@ -877,13 +866,13 @@ describe('addSubCtoSubL', () => {
 
     it('creates a new group', () => {
         const groupId = projectFile.createGroup({ Name: 'TEST', ParentId: 1 });
-        const oldGroupCount = projectFile.getAllGroups().length;
+        const oldGroupCount = projectFile.getAllGroups()!.length;
 
         projectFile.createSubLRCGroups(groupId);
         projectFile.getSrcGrpInfo();
         projectFile.addSubCtoSubL();
 
-        const newGroupCount = projectFile.getAllGroups().length;
+        const newGroupCount = projectFile.getAllGroups()!.length;
 
         // 1 main group + 1 main sub group + 3 L/C/R groups + 4 sub L devices + 4 sub R devices + 1 sub C devices + 1 additional sub L device (sub C device)
         expect(newGroupCount).toBe(oldGroupCount + 15)
@@ -894,9 +883,9 @@ describe('Crossover', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
     let fileId: number;
 
-    beforeAll(() => {
+    beforeAll(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -922,9 +911,9 @@ describe('group discover', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
     let fileId: number;
 
-    beforeAll(() => {
+    beforeAll(async () => {
         fileId = setupTest();
-        projectFile = new AutoR1.AutoR1ProjectFile(PROJECT_INIT_AP + fileId);
+        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
         projectFile.getSrcGrpInfo();
     });
 

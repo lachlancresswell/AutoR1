@@ -1,4 +1,7 @@
+import { Database } from 'sql.js';
 import * as dbpr from './dbpr';
+import { readFileSync, existsSync } from 'fs';
+import * as SQLjs from 'sql.js';
 
 const NAV_BUTTON_X = 270;
 export const NAV_BUTTON_Y = 15;
@@ -565,8 +568,24 @@ class TemporaryTemplate {
 export class AutoR1ProjectFile extends dbpr.ProjectFile {
     public sourceGroups: SourceGroup[] = [];
 
-    constructor(f: string) {
-        super(f);
+    constructor(f: string, db: Database) {
+        super(f, db);
+    }
+
+    static async build(path: string) {
+        if (!existsSync(path)) {
+            throw new Error("File does not exist - " + path);
+        }
+
+        let fb: any;
+        try {
+            fb = readFileSync(path);
+        } catch (err) {
+            throw new Error("File does not exist - " + path);
+        }
+        const sql: SQLjs.SqlJsStatic = (await SQLjs())
+        const db = new sql.Database(fb)
+        return new AutoR1ProjectFile(path, db);
     }
 
     public getSrcGrpInfo = () => {
@@ -626,7 +645,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const stmt = this.db.prepare(query);
 
-        let rtn = stmt.all() as AutoR1SourceGroupRow[];
+        let rtn = dbpr.getAllAsObjects<AutoR1SourceGroupRow>(stmt);
 
         if (!rtn || !rtn.length) {
             throw ('Could not find any source groups');
@@ -657,7 +676,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             srcGrp.channelGroups.forEach((devGrp) => {
                 const stmt = this.db.prepare(subQuery);
 
-                const rtn = stmt.all(devGrp.groupId) as Channel[];
+                const rtn = dbpr.getAllAsObjects<Channel>(stmt, [devGrp.groupId])
                 for (let row of rtn) {
                     devGrp.channels.push(row);
                 }
@@ -674,7 +693,9 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         /* Skip right side of stereo groups */
         AND OrderIndex != -1`;
 
-        const masterSourceGroups = this.db.prepare(masterGroupQuery).all() as { SourceGroupId: number, Name: string, GroupId: number }[];
+        const masterGroupQueryStmt = this.db.prepare(masterGroupQuery);
+        const masterSourceGroups = dbpr.getAllAsObjects<{ SourceGroupId: number, Name: string, GroupId: number }>(masterGroupQueryStmt);
+
         masterSourceGroups.forEach((mstrGrp) => {
             const sourceGroup = this.sourceGroups.find((srcGrp) => srcGrp.SourceGroupId === mstrGrp.SourceGroupId);
             if (sourceGroup) {
@@ -692,7 +713,9 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             WHERE G1.ParentId = 2
         ) AS SubQuery ON G.ParentId = SubQuery.GroupId;`;
 
-        const childGroups = this.db.prepare(childGroupQuery).all() as { GroupId: number, Name: string, ParentId: number }[];
+        const childGroupsStmt = this.db.prepare(childGroupQuery);
+        const childGroups = dbpr.getAllAsObjects<{ GroupId: number, Name: string, ParentId: number }>(childGroupsStmt);
+
         childGroups.forEach((childGroup) => {
             const sourceGroup = this.sourceGroups.find((srcGrp) => srcGrp.masterGroupId === childGroup.ParentId);
             if (sourceGroup) {
@@ -718,53 +741,54 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         } = options || {};
 
         // Increase global joined ID
-        if (!joinedId) joinedId = this.getHighestJoinedID() + 1;
+        const highestJoinedId = this.getHighestJoinedID();
+        if (!highestJoinedId) {
+            throw new Error("Could not find a joined ID");
+        }
+
+        if (!joinedId) joinedId = highestJoinedId + 1;
 
         if (!template.controls || template.controls.length < 1) {
             throw new Error("Template has no controls.");
         }
 
         // Wrap in transaction to speed up insertion
-        const transaction = this.db.transaction((templateControls: AutoR1Control[]) => {
-            for (const templateControl of templateControls) {
-                const control = Object.assign(new AutoR1Control(), templateControl);
+        for (const templateControl of template.controls) {
+            const control = Object.assign(new AutoR1Control(), templateControl);
 
-                // If item of type FRAME or BUTTON to swap views (TargetType is PAGE), 
-                // and a DisplayName has been provided, and we are not dealing with a fallback/regular button,
-                // then set the display name to the provided name
-                if ((control.isTypeFrame()
-                    || (control.isTypeSwitch()
-                        && control.TargetType === dbpr.TargetTypes.VIEW))
-                    && (control.DisplayName
-                        && control.DisplayName !== "Fallback"
-                        && control.DisplayName !== "Regular" && DisplayName)) {
-                    control.DisplayName = DisplayName;
-                }
-
-                // Set TargetChannel if required
-                if (Object.values({ ...dbpr.TargetPropertyTypeChannel, ...dbpr.TargetPropertyDisplayChannel, ...dbpr.TargetPropertyLedChannel, ...dbpr.TargetPropertyMeterChannel, ...dbpr.TargetPropertySwitchChannel, ...dbpr.TargetPropertyDigitalChannel, ...dbpr.TargetPropertyDisplayChannel }).includes(control.TargetProperty as dbpr.TargetPropertyType) && TargetChannel) {
-                    control.TargetChannel = TargetChannel;
-
-                    // Convert the digital input to a read-only display control for delay setting on a flown array
-                    if (control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY
-                        && options?.sourceGroupType === dbpr.SourceGroupTypes.ARRAY) {
-                        control.Type = dbpr.ControlTypes.DISPLAY;
-                    }
-                }
-
-                control.PosX = control.PosX + posX;
-                control.PosY = control.PosY + posY;
-                control.Width = Width || control.Width;
-                control.Height = Height || control.Height;
-                control.JoinedId = joinedId!;
-                control.TargetId = TargetId || control.TargetId;
-                control.ViewId = ViewId;
-
-                this.insertControl(control)
+            // If item of type FRAME or BUTTON to swap views (TargetType is PAGE), 
+            // and a DisplayName has been provided, and we are not dealing with a fallback/regular button,
+            // then set the display name to the provided name
+            if ((control.isTypeFrame()
+                || (control.isTypeSwitch()
+                    && control.TargetType === dbpr.TargetTypes.VIEW))
+                && (control.DisplayName
+                    && control.DisplayName !== "Fallback"
+                    && control.DisplayName !== "Regular" && DisplayName)) {
+                control.DisplayName = DisplayName;
             }
-        });
 
-        transaction(template.controls);
+            // Set TargetChannel if required
+            if (Object.values({ ...dbpr.TargetPropertyTypeChannel, ...dbpr.TargetPropertyDisplayChannel, ...dbpr.TargetPropertyLedChannel, ...dbpr.TargetPropertyMeterChannel, ...dbpr.TargetPropertySwitchChannel, ...dbpr.TargetPropertyDigitalChannel, ...dbpr.TargetPropertyDisplayChannel }).includes(control.TargetProperty as dbpr.TargetPropertyType) && TargetChannel) {
+                control.TargetChannel = TargetChannel;
+
+                // Convert the digital input to a read-only display control for delay setting on a flown array
+                if (control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY
+                    && options?.sourceGroupType === dbpr.SourceGroupTypes.ARRAY) {
+                    control.Type = dbpr.ControlTypes.DISPLAY;
+                }
+            }
+
+            control.PosX = control.PosX + posX;
+            control.PosY = control.PosY + posY;
+            control.Width = Width || control.Width;
+            control.Height = Height || control.Height;
+            control.JoinedId = joinedId!;
+            control.TargetId = TargetId || control.TargetId;
+            control.ViewId = ViewId;
+
+            this.insertControl(control)
+        }
     }
 
     /**
@@ -783,23 +807,20 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const mainGroup = this.createGroup(group);
 
         // Wrap in transaction to speed up insertion
-        const transaction = this.db.transaction((sourceGroups: SourceGroup[]) => {
-            sourceGroups.forEach((srcGrp) => {
-                srcGrp.channelGroups.forEach((chGrp) => {
-                    if (!chGrp.removeFromMute) {
-                        chGrp.channels.forEach((ch) => {
-                            this.addChannelToGroup({
-                                Name: ch.Name,
-                                ParentId: mainGroup,
-                                TargetId: ch.TargetId,
-                                TargetChannel: ch.TargetChannel,
-                            })
-                        });
-                    }
-                });
+        this.sourceGroups.forEach((srcGrp) => {
+            srcGrp.channelGroups.forEach((chGrp) => {
+                if (!chGrp.removeFromMute) {
+                    chGrp.channels.forEach((ch) => {
+                        this.addChannelToGroup({
+                            Name: ch.Name,
+                            ParentId: mainGroup,
+                            TargetId: ch.TargetId,
+                            TargetChannel: ch.TargetChannel,
+                        })
+                    });
+                }
             });
         });
-        transaction(this.sourceGroups)
     };
 
     /**
@@ -817,24 +838,20 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         });
 
         // Wrap in transaction to speed up insertion
-        const transaction = this.db.transaction((sourceGroups: SourceGroup[]) => {
-            sourceGroups.forEach((srcGrp) => {
-                srcGrp.channelGroups.forEach((chGrp) => {
-                    if (!chGrp.removeFromFallback) {
-                        chGrp.channels.forEach((ch) => {
-                            this.addChannelToGroup({
-                                Name: ch.Name,
-                                ParentId: mainGroup,
-                                TargetId: ch.TargetId,
-                                TargetChannel: ch.TargetChannel,
-                            })
-                        });
-                    }
-                });
+        this.sourceGroups.forEach((srcGrp) => {
+            srcGrp.channelGroups.forEach((chGrp) => {
+                if (!chGrp.removeFromFallback) {
+                    chGrp.channels.forEach((ch) => {
+                        this.addChannelToGroup({
+                            Name: ch.Name,
+                            ParentId: mainGroup,
+                            TargetId: ch.TargetId,
+                            TargetChannel: ch.TargetChannel,
+                        })
+                    });
+                }
             });
         });
-
-        transaction(this.sourceGroups);
     };
 
     /**
@@ -879,12 +896,16 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         // Remove anything to do with the AutoR1 Main view
         if (mainViewId) {
-            this.removeNavButtons(mainViewId!);
+            this.removeNavButtons(mainViewId);
 
-            this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?').run(mainViewId);
+            const ctrlStmt = this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?')
+            ctrlStmt.bind([mainViewId])
+            ctrlStmt.run();
             console.log(`Deleted ${MAIN_WINDOW_TITLE} controls.`);
 
-            this.db.prepare('DELETE FROM Views WHERE "Name" = ?').run(MAIN_WINDOW_TITLE);
+            const viewStmt = this.db.prepare('DELETE FROM Views WHERE "Name" = ?')
+            viewStmt.bind([MAIN_WINDOW_TITLE]);
+            viewStmt.run();
             console.log(`Deleted ${MAIN_WINDOW_TITLE} view.`);
         }
 
@@ -892,21 +913,25 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         // Remove anything to do with the AutoR1 Meter view
         if (meterViewId) {
-            this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?').run(meterViewId);
+            const ctrlStmt = this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?')
+            ctrlStmt.bind([meterViewId]);
+            ctrlStmt.run();
             console.log(`Deleted ${METER_WINDOW_TITLE} view controls.`);
 
-            this.db.prepare('DELETE FROM Views WHERE "Name" = ?').run(METER_WINDOW_TITLE);
+            const viewStmt = this.db.prepare('DELETE FROM Views WHERE "Name" = ?')
+            viewStmt.bind([METER_WINDOW_TITLE]);
+            viewStmt.run();
             console.log(`Deleted ${METER_WINDOW_TITLE} view.`);
         }
 
         const subArrayNameStmt = this.db.prepare("SELECT Name FROM SourceGroups WHERE Type = ?");
-        const subArrayName = subArrayNameStmt.get(dbpr.SourceGroupTypes.SUBARRAY) as { Name: string }
+        const subArrayName = subArrayNameStmt.getAsObject([dbpr.SourceGroupTypes.SUBARRAY]) as any as { Name: string }
 
         if (subArrayName) {
             const getGroupIdStmt = this.db.prepare('SELECT GroupId FROM Groups WHERE Name = ? AND ParentId = ?');
-            const groupId = getGroupIdStmt.get(subArrayName.Name, parentGroupId) as { GroupId: number };
+            const groupId = getGroupIdStmt.getAsObject([subArrayName.Name, parentGroupId]) as any as { GroupId: number };
 
-            if (groupId) {
+            if (groupId && groupId.GroupId) {
                 this.deleteGroup(groupId.GroupId);
             }
         }
@@ -943,7 +968,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const meterViewId = meterView.ViewId;
 
         const spacing = 25;
-        const views = this.getAllRemoteViews();
+        const views = this.getAllRemoteViews()!;
         const buttonWidth = templates.getTemplateWidthHeight(AutoR1TemplateTitles.NAV_BUTTONS).width
 
         const mainNavButtonTemplateOptions = {
@@ -963,7 +988,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
             if (vId !== mainViewId && vId !== meterViewId) {
 
-                increaseControlPosYByAmount.run(NAV_BUTTON_Y + NAV_BUTTON_SPACING, vId);
+                increaseControlPosYByAmount.run([NAV_BUTTON_Y + NAV_BUTTON_SPACING, vId]);
 
                 this.insertTemplate(
                     navButtonTemplate,
@@ -997,18 +1022,18 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const meterView = this.getMeterView();
         const meterViewId = meterView ? meterView.ViewId : undefined;
 
-        const controls = getControlsStmt.all(mainViewId, dbpr.TargetChannels.NONE) as { ViewId: number }[];
+        const controls = dbpr.getAllAsObjects<{ ViewId: number }>(getControlsStmt, [mainViewId, dbpr.TargetChannels.NONE]);
 
         // Move all controls below the nav buttons back up
         controls.forEach((control) => {
             const vId = control.ViewId;
             if (vId !== mainViewId && vId !== meterViewId) {
-                updateControlsStmt.run(NAV_BUTTON_Y + 20, vId);
+                updateControlsStmt.run([NAV_BUTTON_Y + 20, vId]);
             }
         });
 
-        deleteControlsStmt.run(mainViewId, dbpr.TargetChannels.NONE, mainViewId, meterViewId);
-        deleteControlsStmt.run(meterViewId, dbpr.TargetChannels.NONE, mainViewId, meterViewId);
+        deleteControlsStmt.run([mainViewId, dbpr.TargetChannels.NONE, mainViewId, meterViewId!]);
+        deleteControlsStmt.run([meterViewId!, dbpr.TargetChannels.NONE, mainViewId, meterViewId!]);
         console.log(`Deleted ${MAIN_WINDOW_TITLE} nav buttons.`);
     }
 
@@ -1040,26 +1065,23 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             Name: AP_GROUP_TITLE,
             ParentId: parentGroupId
         });
-        const apGroupId = this.getHighestGroupID();
+        const apGroupId = this.getHighestGroupID()!;
 
         // Wrap in transaction to speed up insertion
-        const transaction = this.db.transaction((apChannelGroups: Channel[]) => {
-            apChannelGroups.forEach((ch) => {
-                this.addChannelToGroup({
-                    Name: ch.Name,
-                    ParentId: apGroupId,
-                    TargetId: ch.TargetId,
-                    TargetChannel: ch.TargetChannel,
-                });
+        apChannelGroups.forEach((ch) => {
+            this.addChannelToGroup({
+                Name: ch.Name,
+                ParentId: apGroupId,
+                TargetId: ch.TargetId,
+                TargetChannel: ch.TargetChannel,
             });
-        })
-        transaction(apChannelGroups);
+        });
 
         return true;
     }
 
     public getAPGroup() {
-        return this.getAllGroups().find((group) => group.Name === AP_GROUP_TITLE);
+        return this.getAllGroups()!.find((group) => group.Name === AP_GROUP_TITLE);
     }
 
     public getChannelMainGroupTotal(): number {
@@ -1125,7 +1147,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
             const stmt = this.db.prepare(query);
 
-            let rtn = stmt.all() as Channel[]
+            let rtn = dbpr.getAllAsObjects<Channel>(stmt);
 
             if (rtn && rtn.length) {
                 subGroups.push(rtn);
@@ -1147,7 +1169,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     public createSubLRCGroups = (parentGroupId = MAIN_GROUP_ID): void => {
         const subArrayGroup = this.db.prepare(
             `SELECT Name FROM SourceGroups WHERE Type = ${dbpr.SourceGroupTypes.SUBARRAY}`
-        ).get() as { Name: string };
+        ).getAsObject({}) as { Name: string };
 
         if (!subArrayGroup) {
             console.debug("No sub array group found");
@@ -1171,23 +1193,20 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         let subArrayGroups = this.getSubArrayGroups();
 
         // Wrap in transaction to speed up insertion
-        const transaction = this.db.transaction((subArrayGroups: IterableIterator<[number, Channel[]]>) => {
-            for (const [idx, subArrayGroup] of subArrayGroups) {
-                this.createGroup({
-                    Name: `${subArrayGroupName}${suffix[idx]}`, ParentId: subGroupParentID
-                });
-                let pId = this.getHighestGroupID();
+        for (const [idx, subArrayGroup] of subArrayGroups.entries()) {
+            this.createGroup({
+                Name: `${subArrayGroupName}${suffix[idx]}`, ParentId: subGroupParentID
+            });
+            let pId = this.getHighestGroupID()!;
 
-                for (const subDevices of subArrayGroup) {
-                    this.addChannelToGroup({
-                        Name: subDevices.Name,
-                        ParentId: pId,
-                        TargetId: subDevices.TargetId, TargetChannel: subDevices.TargetChannel,
-                    });
-                }
+            for (const subDevices of subArrayGroup) {
+                this.addChannelToGroup({
+                    Name: subDevices.Name,
+                    ParentId: pId,
+                    TargetId: subDevices.TargetId, TargetChannel: subDevices.TargetChannel,
+                });
             }
-        })
-        transaction(subArrayGroups.entries());
+        }
     }
 
     public addSubCtoSubL = (): void => {
@@ -1243,16 +1262,16 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const stmt = this.db.prepare(
             `SELECT Name FROM SourceGroups WHERE Type = ${dbpr.SourceGroupTypes.SUBARRAY}`
         );
-        let rtn = stmt.get() as { Name: string };
+        let rtn = stmt.getAsObject({}) as { Name: string };
         let groupCount = 0;
         if (rtn) {
             let name = rtn.Name;
             let str = [" SUBs L", " SUBs R", " SUBs C"];
             for (const s of str) {
-                let q = `SELECT * FROM Groups WHERE Name = '${name}${s}'`;
+                let q = `SELECT * FROM Groups WHERE Name = ?`;
                 const stmt = this.db.prepare(q);
-                const rtn = stmt.get();
-                if (rtn) {
+                const rtn = stmt.getAsObject([`${name}${s}`]) as any as dbpr.Group;
+                if (rtn && rtn.GroupId) {
                     groupCount++;
                 }
             }
@@ -1308,7 +1327,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      */
     private getViewByName(name: string): dbpr.View | undefined {
         const stmt = this.db.prepare(`SELECT * from Views WHERE Name = ?`);
-        const view = stmt.get(name) as dbpr.View;
+        const view = stmt.getAsObject([name]) as any as dbpr.View;
 
         if (!view) {
             console.log(`Could not find view with name '${name}'`)
@@ -1343,7 +1362,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const VRes = titleH + meterGrpH + (spacingY * this.getChannelMeterGroupTotal()[1]) + 100;
 
         this.db.prepare(`INSERT INTO Views('Type','Name','Icon','Flags','HomeViewIndex','NaviBarIndex','HRes','VRes','ZoomLevel','ScalingFactor','ScalingPosX','ScalingPosY','ReferenceVenueObjectId') VALUES (1000,'${METER_WINDOW_TITLE}',NULL,4,NULL,-1,${HRes},${VRes},100,NULL,NULL,NULL,NULL);`).run();
-        const rtn = this.db.prepare(`SELECT max(ViewId) FROM Views`).get() as { 'max(ViewId)': number };
+        const rtn = this.db.prepare(`SELECT max(ViewId) FROM Views`).getAsObject({}) as { 'max(ViewId)': number };
         if (!rtn) {
             throw (Error(`Could not create Auto R1 Meter view`));
         }
@@ -1385,71 +1404,68 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const metersGroupHeight = templates.getTemplateWidthHeight(AutoR1TemplateTitles.METERS_GROUP).height
 
         // Wrap in transaction to speed up insertion
-        const transaction = this.db.transaction((sourceGroups: SourceGroup[]) => {
-            for (const srcGrp of sourceGroups) {
-                srcGrp.channelGroups.forEach((chGrp) => {
+        for (const srcGrp of this.sourceGroups) {
+            srcGrp.channelGroups.forEach((chGrp) => {
 
-                    // Skip TOPs and SUBs group if L/R groups are present
-                    if (chGrp.hasLorR() && !chGrp.isLorR()) {
-                        return;
-                    }
+                // Skip TOPs and SUBs group if L/R groups are present
+                if (chGrp.hasLorR() && !chGrp.isLorR()) {
+                    return;
+                }
 
-                    const joinedId = this.getHighestJoinedID() + 1;
-                    const metersGroupTemplateOptions: TemplateOptions = {
-                        DisplayName: chGrp.name,
-                        TargetId: chGrp.groupId,
-                        joinedId
+                const joinedId = this.getHighestJoinedID()! + 1;
+                const metersGroupTemplateOptions: TemplateOptions = {
+                    DisplayName: chGrp.name,
+                    TargetId: chGrp.groupId,
+                    joinedId
+                }
+                this.insertTemplate(
+                    metersGroupTemplate,
+                    meterViewId,
+                    posX,
+                    posY,
+                    metersGroupTemplateOptions,
+                );
+
+                const navButtonTemplateOptions: TemplateOptions = {
+                    DisplayName: chGrp.name,
+                    TargetId: srcGrp.ViewId,
+                    TargetChannel: dbpr.TargetChannels.NONE,
+                    Width: meterW + 2, // R1 frames are to be 2px wider than expected
+                    joinedId
+                }
+                this.insertTemplate(
+                    navButtonTemplate,
+                    meterViewId,
+                    posX - 1, // R1 frames are to be 1px further to the left than expected
+                    posY - 1, // R1 frames are to be 1px higher than expected
+                    navButtonTemplateOptions
+                )
+
+                posY += metersGroupHeight + 10;
+
+                for (const ch of chGrp.channels) {
+                    const DisplayName = `${ch.Name} - ${this.getCanIdFromDeviceId(ch.TargetId)} - ${['', 'A', 'B', 'C', 'D'][ch.TargetChannel]}`;
+                    const meterTemplateOptions: TemplateOptions = {
+                        DisplayName,
+                        TargetId: ch.TargetId,
+                        TargetChannel: ch.TargetChannel,
+                        sourceGroupType: srcGrp.Type
                     }
                     this.insertTemplate(
-                        metersGroupTemplate,
+                        meterTemplate,
                         meterViewId,
                         posX,
                         posY,
-                        metersGroupTemplateOptions,
+                        meterTemplateOptions
                     );
 
-                    const navButtonTemplateOptions: TemplateOptions = {
-                        DisplayName: chGrp.name,
-                        TargetId: srcGrp.ViewId,
-                        TargetChannel: dbpr.TargetChannels.NONE,
-                        Width: meterW + 2, // R1 frames are to be 2px wider than expected
-                        joinedId
-                    }
-                    this.insertTemplate(
-                        navButtonTemplate,
-                        meterViewId,
-                        posX - 1, // R1 frames are to be 1px further to the left than expected
-                        posY - 1, // R1 frames are to be 1px higher than expected
-                        navButtonTemplateOptions
-                    )
+                    posY += spacingY;
+                }
 
-                    posY += metersGroupHeight + 10;
-
-                    for (const ch of chGrp.channels) {
-                        const DisplayName = `${ch.Name} - ${this.getCanIdFromDeviceId(ch.TargetId)} - ${['', 'A', 'B', 'C', 'D'][ch.TargetChannel]}`;
-                        const meterTemplateOptions: TemplateOptions = {
-                            DisplayName,
-                            TargetId: ch.TargetId,
-                            TargetChannel: ch.TargetChannel,
-                            sourceGroupType: srcGrp.Type
-                        }
-                        this.insertTemplate(
-                            meterTemplate,
-                            meterViewId,
-                            posX,
-                            posY,
-                            meterTemplateOptions
-                        );
-
-                        posY += spacingY;
-                    }
-
-                    posX += spacingX;
-                    posY = startY;
-                });
-            }
-        });
-        transaction(this.sourceGroups);
+                posX += spacingX;
+                posY = startY;
+            });
+        }
     }
 
     /**
@@ -1471,8 +1487,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const query = `INSERT INTO Views('Type','Name','Icon','Flags','HomeViewIndex','NaviBarIndex','HRes','VRes','ZoomLevel','ScalingFactor','ScalingPosX','ScalingPosY','ReferenceVenueObjectId') VALUES (1000,?,NULL,4,NULL,-1,?,?,?,NULL,NULL,NULL,NULL);`;
 
-        this.db.prepare(query).run(EQ_WINDOW_TITLE, H_RES, V_RES, ZOOM_LEVEL);
-        const rtn = this.db.prepare(`SELECT max(ViewId) FROM Views`).get() as { 'max(ViewId)': number };
+        this.db.prepare(query).run([EQ_WINDOW_TITLE, H_RES, V_RES, ZOOM_LEVEL]);
+        const rtn = this.db.prepare(`SELECT max(ViewId) FROM Views`).getAsObject({}) as any as { 'max(ViewId)': number };
         if (!rtn) {
             throw (Error(`Could not create Auto R1 Meter view`));
         }
@@ -1567,7 +1583,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
 
         const updateQuery = `UPDATE Views SET VRes = ? WHERE ViewId = ?`
-        this.db.prepare(updateQuery).run(posY += BUFFER, eqViewId);
+        this.db.prepare(updateQuery).run([posY += BUFFER, eqViewId]);
     }
 
     /**
@@ -1652,9 +1668,9 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         /**
          * Configure the main mute switch
          */
-        const muteGroup = this.getAllGroups().find((group) => group.Name === MUTE_GROUP_TITLE);
+        const muteGroup = this.getAllGroups()!.find((group) => group.Name === MUTE_GROUP_TITLE);
         if (muteGroup) {
-            const mainMute = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND Type = ${dbpr.ControlTypes.SWITCH} AND DisplayName = ?`).get('Mute') as dbpr.Control;
+            const mainMute = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND Type = ${dbpr.ControlTypes.SWITCH} AND DisplayName = ?`).getAsObject(['Mute']) as any as dbpr.Control;
             this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${mainMute.ControlId}`).run();
             mainMute.TargetId = muteGroup.GroupId;
             this.insertControl(mainMute);
@@ -1663,9 +1679,9 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         /**
          * Configure the fallback indicator
          */
-        const fallbackGroup = this.getAllGroups().find((group) => group.Name === FALLBACK_GROUP_TITLE);
+        const fallbackGroup = this.getAllGroups()!.find((group) => group.Name === FALLBACK_GROUP_TITLE);
         if (fallbackGroup) {
-            const mainFallback = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ? AND Type = ? AND TargetProperty = ?`).get(mainViewId, dbpr.ControlTypes.LED, dbpr.TargetPropertyType.STATUS_INPUT_FALLBACK_ACTIVE) as dbpr.Control;
+            const mainFallback = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ? AND Type = ? AND TargetProperty = ?`).getAsObject([mainViewId, dbpr.ControlTypes.LED, dbpr.TargetPropertyType.STATUS_INPUT_FALLBACK_ACTIVE]) as any as dbpr.Control;
             this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${mainFallback.ControlId}`).run();
             mainFallback.TargetId = fallbackGroup.GroupId;
             this.insertControl(mainFallback);
@@ -1778,73 +1794,70 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.GROUP_LR_AP_CPL2);
 
         // Wrap in transaction to speed up insertion
-        const transaction = this.db.transaction((sourceGroups: SourceGroup[]) => {
-            sourceGroups.forEach((sourceGroup, srcGrpIndex) => {
-                sourceGroup.channelGroups.forEach((channelGroup, chGrpIndex) => {
-                    const commonJoinedId = this.getHighestJoinedID() + 1;
+        this.sourceGroups.forEach((sourceGroup, srcGrpIndex) => {
+            sourceGroup.channelGroups.forEach((channelGroup, chGrpIndex) => {
+                const commonJoinedId = this.getHighestJoinedID()! + 1;
 
-                    if (channelGroup.isLorR()) {  // TOP or SUB L/R/C Group
-                        return;
-                    }
+                if (channelGroup.isLorR()) {  // TOP or SUB L/R/C Group
+                    return;
+                }
 
-                    const meterPosY = posY + arraySightTempHeight + 5;
-                    const controls = AutoR1ProjectFile.configureMainViewMeterTemplate(templateFile, sourceGroup, channelGroup, commonJoinedId, posX, meterPosY, mainViewId);
+                const meterPosY = posY + arraySightTempHeight + 5;
+                const controls = AutoR1ProjectFile.configureMainViewMeterTemplate(templateFile, sourceGroup, channelGroup, commonJoinedId, posX, meterPosY, mainViewId);
 
-                    controls.forEach((control) => this.insertControl(control));
+                controls.forEach((control) => this.insertControl(control));
 
-                    if (sourceGroup.ArraySightId) {
-                        const joinedId = this.getHighestJoinedID() + 1;
+                if (sourceGroup.ArraySightId) {
+                    const joinedId = this.getHighestJoinedID()! + 1;
 
-                        this.insertTemplate(
-                            templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_ARRAYSIGHT_FRAME),
-                            mainViewId,
-                            posX,
-                            posY,
-                            { joinedId }
-                        );
-
-                        const ids = [sourceGroup.ArraySightId, sourceGroup.ArraySightIdR].filter((id) => id);
-
-                        const arraySightTemplate = new TemporaryTemplate();
-                        arraySightTemplate.setName(AutoR1TemplateTitles.MAIN_ARRAYSIGHT);
-                        arraySightTemplate.setLR(!!sourceGroup.ArraySightIdR);
-                        arraySightTemplate.load(templateFile);
-
-                        ids.forEach((TargetId, i) => {
-                            const arraySightTemplateOptions: TemplateOptions = {
-                                TargetId,
-                                joinedId
-                            }
-                            this.insertTemplate(
-                                arraySightTemplate as any,
-                                mainViewId,
-                                posX + 4 + (i * 67),
-                                posY + 3,
-                                arraySightTemplateOptions
-                            );
-                        })
-                    }
-
-                    const navButtonTemplateOptions: TemplateOptions = {
-                        DisplayName: channelGroup.name,
-                        TargetId: sourceGroup.ViewId,
-                        TargetChannel: dbpr.TargetChannels.NONE,
-                        joinedId: commonJoinedId,
-                        Width: templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.NAV_BUTTONS).width + 2, // R1 frames are to be 2px wider than expected
-                    }
                     this.insertTemplate(
-                        templateFile.getTemplateByName(AutoR1TemplateTitles.NAV_BUTTONS),
+                        templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_ARRAYSIGHT_FRAME),
                         mainViewId,
-                        posX - 1, // R1 frames are to be 1px further to the left than expected
-                        meterPosY - 1, // R1 frames are to be 1px higher than expected
-                        navButtonTemplateOptions
-                    )
+                        posX,
+                        posY,
+                        { joinedId }
+                    );
 
-                    posX += meterTempWidth + METER_SPACING_X;
-                });
-            })
-        });
-        transaction(this.sourceGroups);
+                    const ids = [sourceGroup.ArraySightId, sourceGroup.ArraySightIdR].filter((id) => id);
+
+                    const arraySightTemplate = new TemporaryTemplate();
+                    arraySightTemplate.setName(AutoR1TemplateTitles.MAIN_ARRAYSIGHT);
+                    arraySightTemplate.setLR(!!sourceGroup.ArraySightIdR);
+                    arraySightTemplate.load(templateFile);
+
+                    ids.forEach((TargetId, i) => {
+                        const arraySightTemplateOptions: TemplateOptions = {
+                            TargetId,
+                            joinedId
+                        }
+                        this.insertTemplate(
+                            arraySightTemplate as any,
+                            mainViewId,
+                            posX + 4 + (i * 67),
+                            posY + 3,
+                            arraySightTemplateOptions
+                        );
+                    })
+                }
+
+                const navButtonTemplateOptions: TemplateOptions = {
+                    DisplayName: channelGroup.name,
+                    TargetId: sourceGroup.ViewId,
+                    TargetChannel: dbpr.TargetChannels.NONE,
+                    joinedId: commonJoinedId,
+                    Width: templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.NAV_BUTTONS).width + 2, // R1 frames are to be 2px wider than expected
+                }
+                this.insertTemplate(
+                    templateFile.getTemplateByName(AutoR1TemplateTitles.NAV_BUTTONS),
+                    mainViewId,
+                    posX - 1, // R1 frames are to be 1px further to the left than expected
+                    meterPosY - 1, // R1 frames are to be 1px higher than expected
+                    navButtonTemplateOptions
+                )
+
+                posX += meterTempWidth + METER_SPACING_X;
+            });
+        })
     }
 
     /**
@@ -1871,10 +1884,10 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         this.db.prepare(
             `INSERT INTO Views("Type","Name","Icon","Flags","HomeViewIndex","NaviBarIndex","HRes","VRes","ZoomLevel","ScalingFactor","ScalingPosX","ScalingPosY","ReferenceVenueObjectId") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);`
-        ).run(1000, MAIN_WINDOW_TITLE, null, 4, null, -1, H_RES, V_RES, 100, null, null, null, null);
+        ).run([1000, MAIN_WINDOW_TITLE, null, 4, null, -1, H_RES, V_RES, 100, null, null, null, null]);
         const rtn = this.db.prepare(
             'SELECT max(ViewId) FROM Views'
-        ).get() as { 'max(ViewId)': number };
+        ).getAsObject({}) as any as { 'max(ViewId)': number };
 
         const MAIN_VIEW_ID = rtn['max(ViewId)'];
 
@@ -2197,20 +2210,39 @@ export class AutoR1Template {
 export class AutoR1TemplateFile extends dbpr.TemplateFile {
     templates: AutoR1Template[] = [];
 
-    constructor(f: string) {
-        super(f);
+    constructor(f: string, db: Database) {
+        super(f, db);
 
-        const templates = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`).all() as dbpr.Section[];
+
+        const stmt = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`);
+        const templates = dbpr.getAllAsObjects<dbpr.Section>(stmt);
 
         templates.filter(t => t.JoinedId > 0).forEach((template, index) => {
             const joinedId = template.JoinedId;
-            const controls = this.db.prepare(`SELECT * FROM Controls WHERE JoinedId = ${joinedId} ORDER BY PosX ASC`).all() as dbpr.Control[];
+            const stmt = this.db.prepare(`SELECT * FROM Controls WHERE JoinedId = ${joinedId} ORDER BY PosX ASC`);
+            const controls = dbpr.getAllAsObjects<dbpr.Control>(stmt);
 
             const { width, height } = this.getTemplateWidthHeight(template.Name);
 
             this.templates.push(new AutoR1Template(template, controls, width, height));
             console.debug(`Loaded template - ${index} / ${this.templates[this.templates.length - 1].name}`);
         });
+    }
+
+    static async build(path: string) {
+        if (!existsSync(path)) {
+            throw new Error("File does not exist - " + path);
+        }
+
+        let fb: any;
+        try {
+            fb = readFileSync(path);
+        } catch (err) {
+            throw new Error("File does not exist - " + path);
+        }
+        const sql: SQLjs.SqlJsStatic = (await SQLjs())
+        const db = new sql.Database(fb)
+        return new AutoR1TemplateFile(path, db);
     }
 
     /**
@@ -2260,9 +2292,9 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
     public getTemplateWidthHeight(templateName: string): { width: number, height: number } {
 
         let rtn = this.db.prepare(
-            `SELECT JoinedId FROM 'main'.'Sections' WHERE Name = '${templateName}'`
-        ).get() as { JoinedId: number };
-        if (!rtn) {
+            `SELECT JoinedId FROM 'main'.'Sections' WHERE Name = ?`
+        ).getAsObject([templateName]) as { JoinedId: number };
+        if (!rtn || !rtn.JoinedId) {
             throw (`${templateName} template not found.`);
         }
 
@@ -2271,7 +2303,7 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
             `SELECT PosX, PosY, Width, Height FROM Controls WHERE JoinedId = ${jId} `
         );
 
-        const templateControls = stmt.all() as { PosX: number, PosY: number, Width: number, Height: number }[];
+        const templateControls = dbpr.getAllAsObjects<{ PosX: number, PosY: number, Width: number, Height: number }>(stmt)
         if (!templateControls.length) {
             throw (`${templateName} template controls not found.`);
         }
