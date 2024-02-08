@@ -1,9 +1,37 @@
 // NOTE: Casts to any are used to access private methods
-
+import * as fs from 'fs';
 import { AutoR1ProjectFile, AutoR1Template, AutoR1TemplateFile } from '../../autor1';
 import * as AutoR1 from '../../autor1'
 import { Control } from '../../dbpr';
 import { setupTest, cleanupTest, PROJECT_INIT, PROJECT_INIT_AP, TEMPLATES } from '../setupTests';
+
+const loadProjectFile = (filePath: string) => {
+    return new Promise<AutoR1ProjectFile>((resolve, reject) => {
+        fs.readFile(filePath, async (err, data) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            const buffer = Buffer.from(new Uint8Array(data))
+            const project = await AutoR1ProjectFile.build(buffer);
+            resolve(project)
+        });
+    });
+}
+
+const loadTemplateFile = (filePath: string) => {
+    return new Promise<AutoR1TemplateFile>((resolve, reject) => {
+        fs.readFile(filePath, async (err, data) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            const buffer = Buffer.from(new Uint8Array(data))
+            const templates = await AutoR1TemplateFile.build(buffer);
+            resolve(templates)
+        });
+    });
+}
 
 describe('getSrcGrpInfo', () => {
     let projectFile: AutoR1ProjectFile;
@@ -11,7 +39,7 @@ describe('getSrcGrpInfo', () => {
 
     beforeAll(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -86,7 +114,7 @@ describe('getMuteGroupID', () => {
 
     beforeEach(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -130,7 +158,7 @@ describe('getFallbackGroupID', () => {
 
     beforeEach(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -175,8 +203,8 @@ describe('getApStatus', () => {
 
     beforeAll(async () => {
         fileId = setupTest();
-        projectFileNoAP = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
-        projectFileAP = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        projectFileNoAP = await loadProjectFile(PROJECT_INIT + fileId);
+        projectFileAP = await loadProjectFile(PROJECT_INIT_AP + fileId);
         projectFileAP.getSrcGrpInfo();
         projectFileNoAP.getSrcGrpInfo();
     });
@@ -211,8 +239,8 @@ describe('createAPGroup', () => {
 
     beforeEach(async () => {
         fileId = setupTest();
-        projectFileAP = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
-        projectFileNoAP = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
+        projectFileAP = await loadProjectFile(PROJECT_INIT_AP + fileId);
+        projectFileNoAP = await loadProjectFile(PROJECT_INIT + fileId);
         projectFileAP.getSrcGrpInfo()
     });
 
@@ -266,7 +294,7 @@ describe('hasSubGroups', () => {
 
     beforeEach(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT_AP + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -303,7 +331,7 @@ describe('getSubArrayGroups', () => {
 
     beforeEach(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT_AP + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -333,7 +361,7 @@ describe('Templates', () => {
     });
 
     it('Loads template file', async () => {
-        const t = await AutoR1TemplateFile.build(TEMPLATES + fileId);
+        const t = await loadTemplateFile(TEMPLATES + fileId);
         expect(t.templates.length).toBeGreaterThan(0)
     })
 });
@@ -344,7 +372,7 @@ describe('getTemplateWidthHeight', () => {
 
     beforeAll(async () => {
         fileId = setupTest();
-        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
     });
 
     afterAll(() => {
@@ -375,7 +403,7 @@ describe('getTemplateControlsFromName', () => {
 
     beforeAll(async () => {
         fileId = setupTest();
-        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
     });
 
     afterAll(() => {
@@ -400,8 +428,8 @@ describe('createNavButtons', () => {
 
     beforeEach(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
-        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
 
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
@@ -457,8 +485,8 @@ describe('removeNavButtons', () => {
     beforeEach(async () => {
         fileId = setupTest();
 
-        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT + fileId);
 
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
@@ -515,8 +543,8 @@ describe('createMeterView', () => {
 
     beforeEach(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
-        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
 
         projectFile.getSrcGrpInfo();
     });
@@ -562,19 +590,23 @@ describe('clean', () => {
     beforeEach(async () => {
         fileId = setupTest();
 
-        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
 
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT + fileId);
-        projectFile.getSrcGrpInfo();
+        projectFile = await loadProjectFile(PROJECT_INIT + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
 
         oldViewCount = projectFile.getAllRemoteViews()!.length;
         oldControlCount = projectFile.getAllControls()!.length;
         oldGroupCount = projectFile.getAllGroups()!.length;
 
+        projectFile.createSubLRCGroups(groupId);
+        projectFile.getSrcGrpInfo();
+        projectFile.createAPGroup();
         projectFile.createMeterView(templateFile);
         projectFile.createMainView(templateFile);
+        projectFile.createNavButtons(templateFile);
+        projectFile.addSubCtoSubL();
+        projectFile.createEqView(templateFile);
         groupId = projectFile.createGroup({ Name: 'TEST', ParentId: 1 });
-        projectFile.createSubLRCGroups(groupId);
     });
 
     afterEach(() => {
@@ -622,8 +654,8 @@ describe('createMainView', () => {
 
     beforeEach(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
-        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -693,8 +725,8 @@ describe('insertTemplate', () => {
 
     beforeAll(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
-        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
 
         template = templateFile.templates.find((t) => t.name === 'Nav Button')!;
@@ -773,8 +805,8 @@ describe('createMainViewOverview', () => {
 
     beforeAll(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
-        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -800,8 +832,8 @@ describe('createMainViewMeters', () => {
 
     beforeEach(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
-        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -827,8 +859,8 @@ describe('createSubLRCGroups', () => {
 
     beforeEach(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
-        templateFile = await AutoR1TemplateFile.build(TEMPLATES + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
     });
 
     afterEach(() => {
@@ -856,7 +888,7 @@ describe('addSubCtoSubL', () => {
 
     beforeEach(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT_AP + fileId);
     });
 
     afterEach(() => {
@@ -885,7 +917,7 @@ describe('Crossover', () => {
 
     beforeAll(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT_AP + fileId);
         projectFile.getSrcGrpInfo();
     });
 
@@ -913,7 +945,7 @@ describe('group discover', () => {
 
     beforeAll(async () => {
         fileId = setupTest();
-        projectFile = await AutoR1ProjectFile.build(PROJECT_INIT_AP + fileId);
+        projectFile = await loadProjectFile(PROJECT_INIT_AP + fileId);
         projectFile.getSrcGrpInfo();
     });
 
