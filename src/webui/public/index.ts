@@ -77,6 +77,7 @@ async function processFile() {
             const existingGroupId = projectFile.getGroupIdFromName(GROUP_NAME);
 
             if (existingGroupId) {
+                printToTerminal(`File has previously been processed with AutoR1. Removing previously created views, groups and controls`);
                 projectFile.clean(existingGroupId);
             }
 
