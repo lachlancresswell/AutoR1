@@ -1610,14 +1610,16 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const mainOverviewTemplate = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_OVERVIEW);
         const mainFallbackTemplate = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_FALLBACK);
+        const navButtonTemplate = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.NAV_BUTTONS);
 
         const meterView = this.getMeterView();
+        const eqView = this.getEQView();
 
-        if (!meterView) {
+        if (!meterView || !eqView) {
             throw new Error("Meter view not found");
         }
 
-        const navButtonTemplateOptions: TemplateOptions = {
+        const meterNavButtonTemplateOptions: TemplateOptions = {
             DisplayName: METER_WINDOW_TITLE,
             TargetId: meterView.ViewId,
             TargetChannel: dbpr.TargetChannels.NONE
@@ -1627,7 +1629,20 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             mainViewId,
             NAV_BUTTON_X,
             posY + NAV_BUTTON_Y,
-            navButtonTemplateOptions
+            meterNavButtonTemplateOptions
+        );
+
+        const eqNavButtonTemplateOptions: TemplateOptions = {
+            DisplayName: EQ_WINDOW_TITLE,
+            TargetId: meterView.ViewId,
+            TargetChannel: dbpr.TargetChannels.NONE
+        }
+        this.insertTemplate(
+            templateFile.getTemplateByName('Nav Button'),
+            mainViewId,
+            NAV_BUTTON_X + navButtonTemplate.width + 10,
+            posY + NAV_BUTTON_Y,
+            eqNavButtonTemplateOptions
         );
 
         this.insertTemplate(
