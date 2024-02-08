@@ -73,7 +73,6 @@ async function processFile() {
                 return;
             }
 
-            projectFile.getSrcGrpInfo();
 
             const existingGroupId = projectFile.getGroupIdFromName(GROUP_NAME);
 
