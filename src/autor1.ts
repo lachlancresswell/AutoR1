@@ -580,6 +580,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     public getSrcGrpInfo = () => {
         this.db.exec(`PRAGMA case_sensitive_like=ON;`);
 
+        if (this.sourceGroups.length) {
+            console.warn('getSrcGrpInfo has already been called.')
+            return;
+        }
+
         let query = `
         SELECT Views.ViewId, Views.Name, SourceGroups.SourceGroupId, NextSourceGroupId, SourceGroups.Type, ArrayProcessingEnable,
         ArraySightId, ArraySightIdR, System, mainGroup.GroupId as MainGroupId, mainGroup.Name as MainGroupName, topsGroup.GroupId as TopGroupId, topsGroup.Name as TopGroupName,
