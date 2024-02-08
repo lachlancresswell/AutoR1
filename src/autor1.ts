@@ -1906,7 +1906,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const hasArraySight = this.sourceGroups.some(srcGrp => srcGrp.ArraySightId);
 
-        this.createMainViewMeters(templateFile, overviewPosX, posY, MAIN_VIEW_ID);
+        this.createMainViewMeters(templateFile, overviewPosX, 67, MAIN_VIEW_ID);
     }
 }
 
