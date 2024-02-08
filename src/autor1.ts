@@ -913,6 +913,21 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             console.log(`Deleted ${METER_WINDOW_TITLE} view.`);
         }
 
+        const eqViewId = this.getViewIdFromName(EQ_WINDOW_TITLE);
+
+        // Remove anything to do with the AutoR1 EQ view
+        if (eqViewId) {
+            const ctrlStmt = this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?')
+            ctrlStmt.bind([eqViewId]);
+            ctrlStmt.run();
+            console.log(`Deleted ${EQ_WINDOW_TITLE} view controls.`);
+
+            const viewStmt = this.db.prepare('DELETE FROM Views WHERE "Name" = ?')
+            viewStmt.bind([EQ_WINDOW_TITLE]);
+            viewStmt.run();
+            console.log(`Deleted ${EQ_WINDOW_TITLE} view.`);
+        }
+
         const subArrayNameStmt = this.db.prepare("SELECT Name FROM SourceGroups WHERE Type = ?");
         const subArrayName = subArrayNameStmt.getAsObject([dbpr.SourceGroupTypes.SUBARRAY]) as any as { Name: string }
 
