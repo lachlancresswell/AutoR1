@@ -625,7 +625,9 @@ export class ProjectFile extends SqlDbFile {
     }
 
     static async build(fb: Buffer) {
-        const sql: SQLjs.SqlJsStatic = (await SQLjs())
+        const sql: SQLjs.SqlJsStatic = (await SQLjs({
+            locateFile: file => `https://sql.js.org/dist/${file}`
+        }))
         const db = new sql.Database(fb)
         return new ProjectFile(db);
     }
@@ -1139,7 +1141,9 @@ export class TemplateFile extends SqlDbFile {
     }
 
     static async build(fb: Buffer) {
-        const sql: SQLjs.SqlJsStatic = (await SQLjs())
+        const sql: SQLjs.SqlJsStatic = (await SQLjs({
+            locateFile: file => `https://sql.js.org/dist/${file}`
+        }))
         const db = new sql.Database(fb)
         return new TemplateFile(db);
     }
