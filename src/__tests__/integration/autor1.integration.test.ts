@@ -2,7 +2,7 @@
 import * as fs from 'fs';
 import { AutoR1ProjectFile, AutoR1Template, AutoR1TemplateFile } from '../../autor1';
 import * as AutoR1 from '../../autor1'
-import { Control } from '../../dbpr';
+import { Control, ControlTypes, TargetTypes } from '../../dbpr';
 import { setupTest, cleanupTest, PROJECT_INIT, PROJECT_INIT_AP, TEMPLATES } from '../setupTests';
 
 const loadProjectFile = (filePath: string) => {
@@ -433,6 +433,7 @@ describe('createNavButtons', () => {
 
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
+        projectFile.createEqView(templateFile);
         projectFile.createMainView(templateFile);
     });
 
@@ -472,6 +473,22 @@ describe('createNavButtons', () => {
         oldControls.forEach((oldControl) => {
             const newControl = newControls.find((control) => control.ControlId === oldControl.ControlId);
             expect(newControl!.PosY).toBeGreaterThan(oldControl.PosY);
+        });
+    });
+
+    it('should should correctly set the TargetId', () => {
+        // Arrange
+        const viewIds = projectFile.getAllRemoteViews()!.map((v) => v.ViewId);
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        const viewButtons = projectFile.getAllControls()!.filter((control) => control.Type === ControlTypes.SWITCH && control.TargetType === TargetTypes.VIEW);
+
+        // Assert
+        viewButtons.forEach((viewButton) => {
+            if (!viewButton.TargetId) debugger;
+            expect(viewIds.find(viewId => viewId === viewButton.TargetId)).toBeTruthy();
         });
     });
 });
