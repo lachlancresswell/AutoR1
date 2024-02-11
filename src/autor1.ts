@@ -1925,6 +1925,19 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         this.createMainViewMeters(templateFile, overviewPosX, 67, MAIN_VIEW_ID);
     }
+
+    createAll = (templates: AutoR1TemplateFile, groupName: string) => {
+        const parentId = this.createGroup({ Name: groupName });
+
+        this.createSubLRCGroups(parentId);
+        this.getSrcGrpInfo();
+        this.createAPGroup();
+        this.createMeterView(templates);
+        this.createEqView(templates);
+        this.createMainView(templates);
+        this.createNavButtons(templates);
+        this.addSubCtoSubL();
+    }
 }
 
 export class AutoR1Control implements dbpr.Control {
