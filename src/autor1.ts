@@ -1615,8 +1615,10 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const meterView = this.getMeterView();
         const eqView = this.getEQView();
 
-        if (!meterView || !eqView) {
+        if (!meterView) {
             throw new Error("Meter view not found");
+        } else if (!eqView) {
+            throw new Error("EQ view not found");
         }
 
         const meterNavButtonTemplateOptions: TemplateOptions = {
