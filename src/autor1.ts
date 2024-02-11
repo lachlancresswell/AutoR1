@@ -1340,7 +1340,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const stmt = this.db.prepare(`SELECT * from Views WHERE Name = ?`);
         const view = stmt.getAsObject([name]) as any as dbpr.View;
 
-        if (!view) {
+        if (!view || !view.ViewId) {
             console.log(`Could not find view with name '${name}'`)
 
             return undefined;
