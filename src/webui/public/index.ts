@@ -81,16 +81,7 @@ async function processFile() {
                 projectFile.clean(existingGroupId);
             }
 
-            const parentId = projectFile.createGroup({ Name: GROUP_NAME });
-
-            projectFile.createSubLRCGroups(parentId);
-            projectFile.getSrcGrpInfo();
-            projectFile.createAPGroup();
-            projectFile.createMeterView(templates);
-            projectFile.createMainView(templates);
-            projectFile.createNavButtons(templates);
-            projectFile.addSubCtoSubL();
-            projectFile.createEqView(templates);
+            projectFile.createAll(templates, GROUP_NAME)
 
             const link = downloadFile(projectFile, newAutoPath(selectedFile.name));
 
