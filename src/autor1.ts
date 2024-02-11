@@ -1634,7 +1634,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const eqNavButtonTemplateOptions: TemplateOptions = {
             DisplayName: EQ_WINDOW_TITLE,
-            TargetId: meterView.ViewId,
+            TargetId: eqView.ViewId,
             TargetChannel: dbpr.TargetChannels.NONE
         }
         this.insertTemplate(
