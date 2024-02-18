@@ -1,6 +1,14 @@
+/* eslint-disable import/no-webpack-loader-syntax */
+/* eslint-disable no-loop-func */
 import { Database } from 'sql.js';
 import * as dbpr from './dbpr';
-import * as SQLjs from 'sql.js';
+import SQLjs from 'sql.js';
+import initSqlJs from "sql.js";
+
+// Required to let webpack 4 know it needs to copy the wasm file to our assets
+// @ts-ignore
+// import sqlWasm from "!!file-loader?name=sql-wasm-[contenthash].wasm!sql.js/dist/sql-wasm.wasm";
+
 
 const NAV_BUTTON_X = 270;
 export const NAV_BUTTON_Y = 15;
@@ -21,8 +29,9 @@ export const NAV_BUTTON_SPACING = 20;
 
 export const MAIN_GROUP_ID = 1;
 
-export const FALLBACK_GROUP_TITLE = 'MAIN FALLBACK';
-export const MUTE_GROUP_TITLE = 'MAIN MUTE';
+export const FALLBACK_GROUP_TITLE = 'FALLBACK';
+export const MUTE_GROUP_TITLE = 'MUTE';
+export const DS_GROUP_TITLE = 'DS DATA';
 
 export enum AutoR1TemplateTitles {
     MAIN_OVERVIEW = 'Main Overview',
@@ -62,7 +71,7 @@ interface TemplateOptions {
     joinedId?: number,
     sourceGroupType?: dbpr.SourceGroupTypes;
 }
-interface Channel {
+export interface Channel {
     CabinetId: number;
     GroupId: number;
     Name: string;
@@ -90,6 +99,7 @@ export class ChannelGroup implements ChannelGroupInterface {
     centreGroup?: ChannelGroup;
     removeFromMute = false;
     removeFromFallback = false;
+    removeFromDs = false;
 
     constructor(options: ChannelGroupInterface) {
         this.groupId = options.groupId;
@@ -326,6 +336,9 @@ export class SourceGroup implements dbpr.SourceGroup {
     xover: dbpr.Crossover;
     masterGroupId: number = -1;
     childGroupIds: number[] = [];
+    mute: boolean = true;
+    fallback: boolean = true;
+    dsData: boolean = true;
 
     channelGroups: ChannelGroup[] = [];
 
@@ -557,7 +570,7 @@ class TemporaryTemplate {
 
     public load(templateFile: AutoR1TemplateFile) {
         if (!this.name) {
-            throw ('Template name not set');
+            throw (new Error('Template name not set'));
         }
         this._controls = templateFile.getTemplateControlsFromName(this.name);
     }
@@ -566,14 +579,24 @@ class TemporaryTemplate {
 
 export class AutoR1ProjectFile extends dbpr.ProjectFile {
     public sourceGroups: SourceGroup[] = [];
+    public additions: boolean = false;
 
     constructor(db: Database) {
         super(db);
+
+        if (this.getMainView()
+            || this.getMeterView()
+            || this.getEQView()
+            || this.getFallbackGroupID()
+            || this.getMuteGroupID()
+            || this.getDsGroupID()) {
+            this.additions = true;
+        }
     }
 
     static async build(fb: Buffer) {
         const sql: SQLjs.SqlJsStatic = (await SQLjs({
-            locateFile: file => `https://sql.js.org/dist/${file}`
+            // locateFile: file => `https://sql.js.org/dist/${file}`
         }))
         const db = new sql.Database(fb)
         return new AutoR1ProjectFile(db);
@@ -644,7 +667,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         let rtn = dbpr.getAllAsObjects<AutoR1SourceGroupRow>(stmt);
 
         if (!rtn || !rtn.length) {
-            throw ('Could not find any source groups');
+            throw (new Error('Could not find any source groups'));
         }
 
         for (let row of rtn) {
@@ -805,7 +828,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         // Wrap in transaction to speed up insertion
         this.sourceGroups.forEach((srcGrp) => {
             srcGrp.channelGroups.forEach((chGrp) => {
-                if (!chGrp.removeFromMute) {
+                if (srcGrp.mute) {
                     chGrp.channels.forEach((ch) => {
                         this.addChannelToGroup({
                             Name: ch.Name,
@@ -836,7 +859,38 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         // Wrap in transaction to speed up insertion
         this.sourceGroups.forEach((srcGrp) => {
             srcGrp.channelGroups.forEach((chGrp) => {
-                if (!chGrp.removeFromFallback) {
+                if (srcGrp.fallback) {
+                    chGrp.channels.forEach((ch) => {
+                        this.addChannelToGroup({
+                            Name: ch.Name,
+                            ParentId: mainGroup,
+                            TargetId: ch.TargetId,
+                            TargetChannel: ch.TargetChannel,
+                        })
+                    });
+                }
+            });
+        });
+    };
+
+    /**
+     * Creates a new group and inserts all channels except those with the removeFromDs flag set
+     * @param parentGroupId Group id to create the group under
+     * 
+     * @example
+     * const p = new ProjectFile(PROJECT_INIT)
+     * p.createMainDsGroup()
+     */
+    public createMainDsGroup(parentGroupId = MAIN_GROUP_ID): void {
+        const mainGroup = this.createGroup({
+            Name: DS_GROUP_TITLE,
+            ParentId: parentGroupId
+        });
+
+        // Wrap in transaction to speed up insertion
+        this.sourceGroups.forEach((srcGrp) => {
+            srcGrp.channelGroups.forEach((chGrp) => {
+                if (srcGrp.dsData) {
                     chGrp.channels.forEach((ch) => {
                         this.addChannelToGroup({
                             Name: ch.Name,
@@ -878,6 +932,21 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      */
     public getFallbackGroupID(): number | undefined {
         return this.getGroupIdFromName(FALLBACK_GROUP_TITLE);
+    }
+
+    /**
+     * Get the ID of the DS data group
+     * @returns GroupId of ds data group
+     * @throws Will throw an error if the ds data group cannot be found.
+     * 
+     * @example
+     * const p = new ProjectFile('path/to/project.dbpr');
+     * const dsGroupId = p.getDsGroupID();
+     * console.log(muteGroupId);
+     * // => 1
+     */
+    public getDsGroupID(): number | undefined {
+        return this.getGroupIdFromName(DS_GROUP_TITLE);
     }
 
     /**
@@ -1183,7 +1252,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         ).getAsObject({}) as { Name: string };
 
         if (!subArrayGroup) {
-            console.debug("No sub array group found");
+            console.warn("No sub array group found");
             return;
         }
 
@@ -1239,7 +1308,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         for (const srcGrp of this.sourceGroups) {
             for (const chGrp of srcGrp.channelGroups) {
-                if (chGrp.type == 'TYPE_SUBS_C') {
+                if (chGrp.type === 'TYPE_SUBS_C') {
                     for (const channel of chGrp.channels) {
                         this.addChannelToGroup({
                             Name: channel.Name,
@@ -1386,7 +1455,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const navButtonOptions: TemplateOptions = {
             DisplayName: MAIN_WINDOW_TITLE,
-            TargetId: meterViewId + 1,
+            TargetId: meterViewId + 2,
             TargetChannel: dbpr.TargetChannels.NONE
         }
         this.insertTemplate(
@@ -1688,7 +1757,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             mainViewId,
             posX + mainFallbackTemplate.width + 10,
             posY + mainOverviewTemplate.height + 10,
-            mainMainTemplateOptions
+            { TargetId: this.getDsGroupID() }
         )
 
         posX += mainOverviewTemplate.width + (METER_SPACING_X / 2);
@@ -1714,6 +1783,17 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             mainFallback.TargetId = fallbackGroup.GroupId;
             this.insertControl(mainFallback);
         }
+
+        /**
+         * Configure the DS data indicator
+         */
+        // const dsGroup = this.getAllGroups()!.find((group) => group.Name === DS_GROUP_TITLE);
+        // if (dsGroup) {
+        //     const mainDs = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ? AND Type = ? AND TargetProperty = ?`).getAsObject([mainViewId, dbpr.ControlTypes.LED, dbpr.TargetPropertyType.INPUT_DIGITAL_DS_DATA_PRI]) as any as dbpr.Control;
+        //     this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${mainDs.ControlId}`).run();
+        //     mainDs.TargetId = dsGroup.GroupId;
+        //     this.insertControl(mainDs);
+        // }
 
         const apGroupId = this.getAPGroup()?.GroupId;
 
@@ -1812,13 +1892,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      */
     private createMainViewMeters(templateFile: AutoR1TemplateFile, posX: number, posY: number, mainViewId: number) {
         const {
-            width: arraySightTempWidth,
             height: arraySightTempHeight
         } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_ARRAYSIGHT_FRAME);
 
         const {
-            width: meterTempWidth,
-            height: meterTempHeight
+            width: meterTempWidth
         } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.GROUP_LR_AP_CPL2);
 
         // Wrap in transaction to speed up insertion
@@ -1894,11 +1972,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      */
     public createMainView(templateFile: AutoR1TemplateFile) {
         // Get width + height of templates used
-        const { width: mainTempWidth, height: mainTempHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_OVERVIEW);
-        const { width: mainFallbackWidth, height: mainFallbackHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_FALLBACK);
-        const { width: _mainTitleTempWidth, height: mainTitleTempHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_TITLE);
-        const { width: meterTempWidth, height: meterTempHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.GROUP_LR_AP_CPL2);
-        const { width: arraySightTempWidth, height: arraySightTempHeight } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_ARRAYSIGHT_FRAME);
+        const { width: mainTempWidth } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_OVERVIEW);
+        const { width: meterTempWidth } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.GROUP_LR_AP_CPL2);
 
         const METER_TEMP_BUFFER = 200;
         let posX = MAIN_VIEW_STARTX, posY = MAIN_VIEW_STARTY;
@@ -1919,19 +1994,17 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const MAIN_VIEW_ID = rtn['max(ViewId)'];
 
-        const { posX: overviewPosX, posY: overviewPosY } = this.createMainViewOverview(templateFile, posX, posY, MAIN_VIEW_ID);
-
-        const hasArraySight = this.sourceGroups.some(srcGrp => srcGrp.ArraySightId);
+        const { posX: overviewPosX } = this.createMainViewOverview(templateFile, posX, posY, MAIN_VIEW_ID);
 
         this.createMainViewMeters(templateFile, overviewPosX, 67, MAIN_VIEW_ID);
     }
 
-    createAll = (templates: AutoR1TemplateFile, groupName: string) => {
-        const parentId = this.createGroup({ Name: groupName });
+    createAll = (templates: AutoR1TemplateFile, parentId: number) => {
 
-        this.createSubLRCGroups(parentId);
-        this.getSrcGrpInfo();
-        this.createAPGroup();
+        this.createAPGroup(parentId);
+        this.createMainFallbackGroup(parentId);
+        this.createMainMuteGroup(parentId);
+        this.createMainDsGroup(parentId);
         this.createMeterView(templates);
         this.createEqView(templates);
         this.createMainView(templates);
@@ -1978,6 +2051,7 @@ export class AutoR1Control implements dbpr.Control {
     constructor(row?: dbpr.Control) {
         if (row) {
             const { ViewId, Type, PosX, PosY, Width, Height, DisplayName, TargetId, TargetChannel, TargetProperty, ActionType, Alignment, ConfirmOffMsg, ConfirmOnMsg, ControlId, Dimension, Flags, Font, JoinedId, LabelAlignment, LabelColor, LabelFont, LimitMin, LimitMax, LineThickness, MainColor, PictureIdDay, PictureIdNight, SubColor, TargetRecord, TargetType, ThresholdValue, UniqueName } = row;
+            this.ViewId = ViewId;
             this.Type = Type;
             this.PosX = PosX;
             this.PosY = PosY;
@@ -2271,9 +2345,7 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
     }
 
     static async build(fb: Buffer) {
-        const sql: SQLjs.SqlJsStatic = (await SQLjs({
-            locateFile: file => `https://sql.js.org/dist/${file}`
-        }))
+        const sql = await initSqlJs({ locateFile: () => sqlWasm });
         const db = new sql.Database(fb)
         return new AutoR1TemplateFile(db);
     }
@@ -2306,12 +2378,12 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
                     // TODO: Need to create a deep copy, can this be done better?
                     return t.controls.map((control) => new AutoR1Control(control));
                 } else {
-                    throw (`Template ${tempName} does not contain any controls.`);
+                    throw (new Error(`Template ${tempName} does not contain any controls.`));
                 }
             }
         }
 
-        throw (`Template ${tempName} not found.`);
+        throw (new Error(`Template ${tempName} not found.`));
     }
 
     /**
@@ -2328,7 +2400,7 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
             `SELECT JoinedId FROM 'main'.'Sections' WHERE Name = ?`
         ).getAsObject([templateName]) as { JoinedId: number };
         if (!rtn || !rtn.JoinedId) {
-            throw (`${templateName} template not found.`);
+            throw (new Error(`${templateName} template not found.`));
         }
 
         let jId = rtn.JoinedId;
@@ -2338,7 +2410,7 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
 
         const templateControls = dbpr.getAllAsObjects<{ PosX: number, PosY: number, Width: number, Height: number }>(stmt)
         if (!templateControls.length) {
-            throw (`${templateName} template controls not found.`);
+            throw (new Error(`${templateName} template controls not found.`));
         }
 
         let maxWidth = 0;
