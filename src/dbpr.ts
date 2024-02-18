@@ -1,4 +1,4 @@
-import * as SQLjs from 'sql.js';
+import SQLjs, { Database } from 'sql.js';
 
 export type Crossover = '100hz' | 'Infra' | 'CUT';
 
@@ -440,7 +440,7 @@ export interface Control {
     Dimension: Uint8Array | null;
 }
 
-enum ViewTypes {
+export enum ViewTypes {
     UNKNOWN = 0,
     HOME_VIEW = 1,
     DEVICES_VIEW = 2,
@@ -519,6 +519,12 @@ export interface Group {
     Flags: number;
 }
 
+/**
+ * Gets all available rows from a statement as an array of objects
+ * @param stmt Statement to execute
+ * @param bindObj Object to bind to the statement
+ * @returns An array of objects
+ */
 export const getAllAsObjects = <T>(stmt: SQLjs.Statement, bindObj: any[] = []) => {
     let rows: T[] = [];
 
@@ -534,26 +540,26 @@ export const getAllAsObjects = <T>(stmt: SQLjs.Statement, bindObj: any[] = []) =
     return rows;
 }
 
+/**
+ * Load existing SQL database file
+ * @param fb - Database file in Buffer form
+ */
+const build = async <T>(fb: Buffer, cb: (db: Database) => T) => {
+    const sql: SQLjs.SqlJsStatic = (await SQLjs({
+        // locateFile: file => `https://sql.js.org/dist/${file}`
+    }))
+    const db = new sql.Database(fb)
+    return cb(db);
+}
+
 export class SqlDbFile {
     public db: SQLjs.Database;
 
-    /**
-     * Load existing SQL database file
-     * @param path - Path to database file
-     * @throws Will throw an error if the file does not exist.
-     */
+    static build = (fb: Buffer) => build<SqlDbFile>(fb, (db) => new SqlDbFile(db))
+
     constructor(db: SQLjs.Database) {
         this.db = db;
     }
-
-    static async build(fb: Buffer) {
-        const sql: SQLjs.SqlJsStatic = (await SQLjs({
-            locateFile: file => `https://sql.js.org/dist/${file}`
-        }))
-        const db = new sql.Database(fb)
-        return new SqlDbFile(db);
-    }
-
 
     /**
      * Close the database connection. This can fail on Windows in some cases.
@@ -576,6 +582,7 @@ const insertControlQuery = `INSERT INTO Controls ('Type',
                             'Height', 
                             'ViewId', 
                             'DisplayName', 
+                            'UniqueName', 
                             'JoinedId', 
                             'LimitMin',
                             'LimitMax', 
@@ -603,33 +610,14 @@ const insertControlQuery = `INSERT INTO Controls ('Type',
 
 
 export class ProjectFile extends SqlDbFile {
-    insertControlStmt: SQLjs.Statement;
-    insertGroupStmt: SQLjs.Statement;
-    selectAllGroupsStmt: SQLjs.Statement;
-    selectGroupWithIdStmt: SQLjs.Statement;
+    static build = (fb: Buffer) => build<ProjectFile>(fb, (db) => new ProjectFile(db))
 
     constructor(db: SQLjs.Database) {
-        super(db);  // Inherit from parent class
-        this.insertControlStmt = this.db.prepare(insertControlQuery);
-
-        this.insertGroupStmt = this.db.prepare(
-            `INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)
-             SELECT ?, ?, ?, ?, ?, ?`
-        )
-        this.selectAllGroupsStmt = this.db.prepare('SELECT * FROM Groups ORDER BY GroupId DESC LIMIT 1;')
-        this.selectGroupWithIdStmt = this.db.prepare('SELECT * FROM Groups WHERE GroupId = ?')
+        super(db);
 
         if (!this.getMasterGroupID()) {
             throw (new Error("Project file is not initialised"));
         }
-    }
-
-    static async build(fb: Buffer) {
-        const sql: SQLjs.SqlJsStatic = (await SQLjs({
-            locateFile: file => `https://sql.js.org/dist/${file}`
-        }))
-        const db = new sql.Database(fb)
-        return new ProjectFile(db);
     }
 
     /**
@@ -641,7 +629,7 @@ export class ProjectFile extends SqlDbFile {
      * @param Type The type of the new group. Defaults to 0.
      * @param Flags The flags of the new group. Defaults to 0.
      * @returns The GroupId of the newly created group.
-     * @throws Will throw an error if the parent group does not exist.
+     * @throws Will throw an error if the newly created group cannot be found
      * 
      * @example
      * const p = new ProjectFile('path/to/project.dbpr');
@@ -677,9 +665,18 @@ export class ProjectFile extends SqlDbFile {
             Flags,
         } = { ...defaults, ...groupObj };
 
-        this.insertGroupStmt.run([Name, ParentId, TargetId, TargetChannel, Type, Flags]);
+        const insertGroupStmt = this.db.prepare(
+            `INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)
+             SELECT ?, ?, ?, ?, ?, ?`
+        )
+        insertGroupStmt.run([Name, ParentId, TargetId, TargetChannel, Type, Flags]);
 
-        const rtn = this.selectAllGroupsStmt.getAsObject({}) as any as Group;
+        const selectAllGroupsStmt = this.db.prepare('SELECT * FROM Groups ORDER BY GroupId DESC LIMIT 1;')
+        const rtn = selectAllGroupsStmt.getAsObject({}) as any as Group;
+
+        if (!rtn || rtn.GroupId === undefined) {
+            throw new Error('Could not create group');
+        }
 
         return rtn.GroupId;
     }
@@ -717,7 +714,7 @@ export class ProjectFile extends SqlDbFile {
             Flags: 0,
         }
 
-        return this.createGroup({ ...groupObj, ...defaults });
+        return this.createGroup({ ...defaults, ...groupObj });
     }
 
     /**
@@ -749,8 +746,7 @@ export class ProjectFile extends SqlDbFile {
 
     /**
      * Get the ID of the master group
-     * @returns GroupId of master group
-     * @throws Will throw an error if the master group cannot be found.
+     * @returns GroupId of master group or undefined if not found
      * 
      * @example
      * const p = new ProjectFile('path/to/project.dbpr');
@@ -762,7 +758,7 @@ export class ProjectFile extends SqlDbFile {
         const stmt = this.db.prepare("SELECT GroupId FROM Groups WHERE ParentId = ? AND Name = ?");
         const rtn = stmt.getAsObject([1, 'Master']) as any as { GroupId: number };
         if (!rtn || rtn.GroupId === undefined) {
-            console.warn('Cannot find Master group');
+            console.error('Cannot find Master group');
             return undefined;
         }
         return rtn.GroupId;
@@ -771,8 +767,7 @@ export class ProjectFile extends SqlDbFile {
     /**
      * Get the name of a source group from its ID
      * @param id SourceGroupId
-     * @returns Name of source group
-     * @throws Will throw an error if the source group cannot be found.
+     * @returns Name of source group or undefined if not found
      * 
      * @example
      * const p = new ProjectFile('path/to/project.dbpr');
@@ -784,6 +779,7 @@ export class ProjectFile extends SqlDbFile {
         const stmt = this.db.prepare('SELECT Name from SourceGroups WHERE SourceGroupId = ?');
         const rtn = stmt.getAsObject([id]) as any as { Name: string };
         if (!rtn || rtn.Name === undefined) {
+            console.warn(`Could not find SourceGroup with ID ${id}`);
             return undefined;
         }
         return rtn.Name;
@@ -1076,43 +1072,41 @@ export class ProjectFile extends SqlDbFile {
      * // => [{...}, {...}, ...]
      */
     public insertControl(control: Control) {
-        try {
-            this.insertControlStmt.run([
-                control.Type,
-                control.PosX,
-                control.PosY,
-                control.Width,
-                control.Height,
-                control.ViewId,
-                control.DisplayName,
-                control.JoinedId,
-                control.LimitMin,
-                control.LimitMax,
-                control.MainColor,
-                control.SubColor,
-                control.LabelColor,
-                control.LabelFont,
-                control.LabelAlignment,
-                control.LineThickness,
-                control.ThresholdValue,
-                control.Flags,
-                control.ActionType,
-                control.TargetType,
-                control.TargetId,
-                control.TargetChannel,
-                control.TargetProperty,
-                control.TargetRecord,
-                control.ConfirmOnMsg,
-                control.ConfirmOffMsg,
-                control.PictureIdDay,
-                control.PictureIdNight,
-                control.Font,
-                control.Alignment,
-                control.Dimension || ' '
-            ]);
-        } catch (e) {
-            console.log(e);
-        }
+        const insertControlStmt = this.db.prepare(insertControlQuery);
+        insertControlStmt.run([
+            control.Type,
+            control.PosX,
+            control.PosY,
+            control.Width,
+            control.Height,
+            control.ViewId,
+            control.DisplayName,
+            control.UniqueName,
+            control.JoinedId,
+            control.LimitMin,
+            control.LimitMax,
+            control.MainColor,
+            control.SubColor,
+            control.LabelColor,
+            control.LabelFont,
+            control.LabelAlignment,
+            control.LineThickness,
+            control.ThresholdValue,
+            control.Flags,
+            control.ActionType,
+            control.TargetType,
+            control.TargetId,
+            control.TargetChannel,
+            control.TargetProperty,
+            control.TargetRecord,
+            control.ConfirmOnMsg,
+            control.ConfirmOffMsg,
+            control.PictureIdDay,
+            control.PictureIdNight,
+            control.Font,
+            control.Alignment,
+            control.Dimension || ' '
+        ]);
     }
 }
 
@@ -1131,22 +1125,13 @@ export interface Section {
 export class TemplateFile extends SqlDbFile {
     constructor(db: SQLjs.Database) {
         super(db);
-
-        try {
-            const templates = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`).get({}) as any as Section[];
-            console.log(`Found ${templates.length} templates in file.`);
-        } catch (error) {
-            throw new Error(`Could not find any templates in file.`);
-        }
+        const stmt = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`);
+        const templates = stmt.get({}) as any as Section[];
+        if (!templates) throw new Error(`Could not find any templates in file.`);
+        console.log(`Found ${templates.length} templates in file.`);
     }
 
-    static async build(fb: Buffer) {
-        const sql: SQLjs.SqlJsStatic = (await SQLjs({
-            locateFile: file => `https://sql.js.org/dist/${file}`
-        }))
-        const db = new sql.Database(fb)
-        return new TemplateFile(db);
-    }
+    static build = (fb: Buffer) => build<TemplateFile>(fb, (db) => new TemplateFile(db))
 
     /**
      * Get all controls from a template
