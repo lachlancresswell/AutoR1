@@ -1,0 +1,112 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+body {
+  font-family: monospace;
+  background: grey;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+#terminal-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1em;
+  width: 90%;
+  max-width: 40vw;
+  height: 30%;
+}
+
+#terminal {
+  border: 1px solid #ccc;
+  overflow: scroll;
+
+  width: 100%;
+  height: 100%;
+}
+
+#process-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1em;
+}
+
+#status {
+  display: none;
+}
+
+#footer {
+  font-size: 0.8em;
+  margin-top: 1em;
+}
+
+#mainButtons {
+  width: 100%;
+  max-width: 25vw;
+  display: flex;
+  justify-content: space-around;
+
+  margin: 1em;
+}
+
+#statusButtons {
+  display: flex;
+  justify-content: space-around;
+
+  margin: 1em;
+}
+
+#statusTable {
+  text-align: center;
+}
+
+#projectInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
