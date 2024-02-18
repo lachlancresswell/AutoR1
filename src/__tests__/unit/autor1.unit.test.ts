@@ -1,11 +1,28 @@
 /* eslint-disable */
-import { ChannelGroup, SourceGroup, AutoR1Control, AutoR1Template, AutoR1TemplateFile, AutoR1ProjectFile, AutoR1SourceGroupRow } from '../../autor1';
+import { ChannelGroup, SourceGroup, AutoR1ProjectFile, Channel } from '../../autor1';
 import * as DBPR from '../../dbpr';
-import { existsSync } from 'fs';
-import * as Database from 'better-sqlite3';
+import SQLjs from 'sql.js';
 
-jest.mock('fs');
-jest.mock('better-sqlite3');
+jest.mock('sql.js');
+
+const get = jest.fn();
+const getAsObject = jest.fn();
+const bind = jest.fn();
+const step = jest.fn();
+const run = jest.fn();
+const free = jest.fn();
+let prepare: jest.Mock;
+let Database: jest.Mock;
+
+beforeEach(() => {
+    jest.resetAllMocks();
+
+    prepare = jest.fn(() => ({ get, getAsObject, bind, step, free, run }));
+    Database = jest.fn(() => ({ prepare }));
+    (SQLjs as unknown as jest.Mock).mockReturnValue({
+        Database
+    });
+});
 
 const CONTROL = {
     ControlId: 1,
@@ -779,471 +796,312 @@ describe('SourceGroup', () => {
     });
 });
 
-
-describe('configureMainViewMeterTemplate', () => {
-    let sourceGroup: SourceGroup;
-    let channelGroup: ChannelGroup;
-    let control: AutoR1Control;
-
-    const joinedId = 1;
-    const TargetChannel = 2
-    const muteTargetId = 3
-    const TargetId = 4
-    const posX = 0
-    const posY = 0
-    const viewId = 1000;
-
-    beforeEach(() => {
-        sourceGroup = new SourceGroup({
-            SourceGroupId: 1,
-            Type: DBPR.SourceGroupTypes.ARRAY,
-            Name: 'test',
-            OrderIndex: 1,
-            RemarkableChangeDate: 0,
-            NextSourceGroupId: 0,
-            ArrayProcessingEnable: DBPR.ArrayProcessingFlag.DISABLED,
-            ArraySightId: 0,
-            ArraySightIdR: 0,
-            LinkMode: 0,
-            Symmetric: DBPR.SymmetricFlag.ENABLED,
-            Mounting: DBPR.MountingFlag.FLOWN,
-            RelativeDelay: null,
-            System: '',
-            ViewId: 0,
-            xover: 'CUT',
-            MainGroupId: -1,
-            MainGroupName: '',
-            SubGroupId: -1,
-            SubGroupName: '',
-            SubCGroupId: -1,
-            SubCGroupName: '',
-            SubLeftGroupId: -1,
-            SubLeftGroupName: '',
-            SubRightGroupId: -1,
-            SubRightGroupName: '',
-            TopGroupId: -1,
-            TopGroupName: '',
-            TopLeftGroupId: -1,
-            TopLeftGroupName: '',
-            TopRightGroupId: -1,
-            TopRightGroupName: '',
-        });
-
-        channelGroup = new ChannelGroup({
-            groupId: 1,
-            name: 'group1',
-            type: 'TYPE_SUBS_L',
-            channels: []
-        });
-
-        control = new AutoR1Control(CONTROL);
-    })
-
-    it('should set JoinedId and TargetID by default', () => {
-        // Arrange
-
-        // Act
-        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
-
-
-        // Assert
-        expect(control.JoinedId).toBe(joinedId);
-        expect(control.TargetId).toBe(TargetId);
-    });
-
-    it('should update the DisplayName if control is a CUT button', () => {
-        // Arrange
-        control.DisplayName = 'CUT'
-        sourceGroup.xover = 'xover' as any;
-
-        // Act
-        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
-
-        expect(control.DisplayName).toBe('xover');
-    });
-
-    it('should not update the DisplayName if control is not a CUT button', () => {
-        // Arrange
-        control.DisplayName = 'test'
-
-        // Act
-        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
-
-        expect(control.DisplayName).toBe('test');
-    });
-
-    it('should update the TargetChannel if control is a Meter', () => {
-        // Arrange
-        control.Type = DBPR.ControlTypes.METER
-
-        // Act
-        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
-
-        expect(control.TargetChannel).toBe(TargetChannel);
-    });
-
-    it('should not update the TargetChannel if control is not a', () => {
-        // Arrange
-        control.Type = DBPR.ControlTypes.DIGITAL
-
-        // Act
-        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
-
-        expect(control.TargetChannel).not.toBe(TargetChannel);
-    });
-
-    it('should update the TargetId if control is a Mute Switch', () => {
-        // Arrange
-        control.Type = DBPR.ControlTypes.SWITCH
-        control.TargetProperty = DBPR.TargetPropertyType.CONFIG_MUTE
-
-        // Act
-        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
-
-        expect(control.TargetId).toBe(muteTargetId);
-    });
-
-    it('should not update the TargetId if control is not a Mute Switch', () => {
-        // Arrange
-        control.Type = DBPR.ControlTypes.DISPLAY
-        control.TargetProperty = DBPR.TargetPropertyType.CHANNEL_ERROR
-
-        // Act
-        control.configureForMainView(joinedId, { TargetChannel, TargetId }, muteTargetId, sourceGroup, channelGroup, posX, posY, viewId);
-
-        expect(control.TargetId).not.toBe(muteTargetId);
-    });
-});
-
 describe('AutoR1ProjectFile', () => {
-    let databaseObject: any;
-    let getObject: any;
-    let prepare: jest.Mock;
-    let run: jest.Mock;
-    let transaction: jest.Mock;
+    describe('Build', () => {
+        it('should load a project file', async () => {
+            // Arrange
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
 
-    beforeEach(() => {
-        jest.resetAllMocks();
+            // Act
+            await AutoR1ProjectFile.build(true as any);
 
-        databaseObject = [];
-        getObject = [];
-
-        (existsSync as jest.Mock).mockReturnValue(true);
-        run = jest.fn();
-        prepare = jest.fn(() => {
-            return {
-                get: jest.fn(() => getObject),
-                all: jest.fn(() => databaseObject),
-                run
-            }
+            // Assert
+            expect(prepare).toHaveBeenCalled();
         });
 
-        transaction = jest.fn((cb) => {
-            return cb
-        });
-
-        (Database as any).mockImplementationOnce(() => {
-            return {
-                prepare,
-                transaction,
-                exec: jest.fn()
-            }
-        })
-    });
-
-    describe('constructor', () => {
-        it('should throw if project file is not initialised', () => {
-            getObject = undefined;
-            expect(() => new AutoR1ProjectFile('/path')).toThrow();
-        });
-
-        it('should not throw if project file is initialised', () => {
-            databaseObject = { GROUP_ID: 1 };
-            expect(() => new AutoR1ProjectFile('/path')).not.toThrow();
-        });
-    });
-
-    describe('getSrcGrpInfo', () => {
-        it('should throw if source group info is not found', () => {
-
-            const projectFile = new AutoR1ProjectFile('/path');
-            expect(() => projectFile.getSrcGrpInfo()).toThrow();
-        })
-
-        it('should get source group info', () => {
-            const row: AutoR1SourceGroupRow = {
-                SourceGroupId: 1,
-                Type: DBPR.SourceGroupTypes.ADDITIONAL_AMPLIFIER,
-                Name: 'Name',
-                OrderIndex: 1,
-                RemarkableChangeDate: 1,
-                NextSourceGroupId: 1,
-                ArrayProcessingEnable: DBPR.ArrayProcessingFlag.DISABLED,
-                ArraySightId: 1,
-                LinkMode: 1,
-                Symmetric: DBPR.SymmetricFlag.DISABLED,
-                Mounting: DBPR.MountingFlag.FLOWN,
-                RelativeDelay: null,
-                ArraySightIdR: 1,
-                MainGroupId: 1,
-                MainGroupName: 'string',
-
-                SubGroupId: 1,
-                SubGroupName: 'string',
-                SubCGroupId: 1,
-                SubCGroupName: 'string',
-                SubLeftGroupId: 1,
-                SubLeftGroupName: 'string',
-                SubRightGroupId: 1,
-                SubRightGroupName: 'string',
-                System: 'string',
-                TopGroupId: 1,
-                TopGroupName: 'string',
-                TopLeftGroupId: 1,
-                TopLeftGroupName: 'string',
-                TopRightGroupId: 1,
-                TopRightGroupName: 'string',
+        it('should set additions to true if any previous artifacts are found', async () => {
+            // Arrange
+            const View: DBPR.View = {
                 ViewId: 1,
-                xover: null,
+                Type: DBPR.ViewTypes.REMOTE_VIEW,
+                Name: 'name',
+                Icon: undefined,
+                Flags: 2,
+                HomeViewIndex: 3,
+                NaviBarIndex: 4,
+                HRes: 5,
+                VRes: 6,
+                ZoomLevel: 7,
+                ScalingFactor: 8,
+                ScalingPosX: 9,
+                ScalingPosY: 10,
+                ReferenceVenueObjectId: undefined,
             }
-            databaseObject = [row];
 
-            const projectFile = new AutoR1ProjectFile('/path');
-
-            expect(() => projectFile.getSrcGrpInfo()).not.toThrow();
-            expect(projectFile.sourceGroups.length).toBeGreaterThan(0);
-        })
-    });
-
-    describe('createMainMuteGroup', () => {
-        it('should create a main mute group and add the channels of all source groups within', () => {
-            // Arrange
-
-            const projectFile: any = new AutoR1ProjectFile('/path');
-
-            projectFile.sourceGroups = [
-                {
-                    channelGroups: [
-                        {
-                            channels: [
-                                { Name: 'Channel 1' },
-                                { Name: 'Channel 2' },
-                            ],
-                        },
-                        {
-                            channels: [
-                                { Name: 'Channel 3' },
-                            ],
-                            removeFromMute: true,
-                        },
-                        {
-                            channels: [
-                                { Name: 'Channel 4' },
-                            ],
-                            removeFromMute: false,
-                        },
-                    ],
-                },
-            ];
+            getAsObject.mockReturnValueOnce({ GroupId: 1 })
+                .mockReturnValueOnce(View);
 
             // Act
-            prepare.mockClear();
-            projectFile.createMainMuteGroup();
+            const projectFile = await AutoR1ProjectFile.build(true as any);
 
             // Assert
-            // 1 time for group creation, once for each channel with !removeFromMute
-            expect(run).toHaveBeenCalledTimes(4);
+            expect(projectFile.additions).toBeTruthy();
+        });
+
+        it('throw if the project file has not been initialised', async () => {
+            // Arrange
+            getAsObject.mockReturnValueOnce(undefined);
+
+            // Assert
+            await expect(() => AutoR1ProjectFile.build(true as any)).rejects.toThrowError();
         });
     });
 
-    describe('createMainFallbackGroup', () => {
-        it('should create a main fallback group with the correct channels', () => {
+    describe('getViewByName', () => {
+        it('should return a View object', async () => {
             // Arrange
-            const projectFile: any = new AutoR1ProjectFile('/path');
+            const View: DBPR.View = {
+                ViewId: 1,
+                Type: DBPR.ViewTypes.UNKNOWN,
+                Name: 'name',
+                Icon: undefined,
+                Flags: 2,
+                HomeViewIndex: 3,
+                NaviBarIndex: 4,
+                HRes: 5,
+                VRes: 6,
+                ZoomLevel: 7,
+                ScalingFactor: 8,
+                ScalingPosX: 9,
+                ScalingPosY: 10,
+                ReferenceVenueObjectId: undefined,
+            }
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            const projectFile = await AutoR1ProjectFile.build(true as any);
 
-            projectFile.sourceGroups = [
-                {
-                    channelGroups: [
-                        {
-                            channels: [
-                                { Name: 'Channel 1' },
-                                { Name: 'Channel 2' },
-                            ],
-                        },
-                        {
-                            channels: [
-                                { Name: 'Channel 3' },
-                            ],
-                            removeFromFallback: true,
-                        },
-                        {
-                            channels: [
-                                { Name: 'Channel 4' },
-                            ],
-                            removeFromFallback: false,
-                        },
-                    ],
-                },
-            ];
+            getAsObject.mockReturnValueOnce(View);
 
             // Act
-            prepare.mockClear();
-            projectFile.createMainFallbackGroup();
+            const view = (projectFile as any).getViewByName('name');
 
             // Assert
-            // Once for group creation, once for each channel with !removeFromFallback
-            expect(run).toHaveBeenCalledTimes(4);
+            expect(view).toMatchObject(View);
+        });
+
+        it('should return undefined if the view does not exist', async () => {
+            // Arrange
+            const View = undefined;
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            const projectFile = await AutoR1ProjectFile.build(true as any);
+
+            getAsObject.mockReturnValueOnce(View);
+
+            // Act
+            const view = (projectFile as any).getViewByName('name');
+
+            // Assert
+            expect(view).toBeUndefined();
+        });
+
+        it('should return undefined if the ViewId is undefined', async () => {
+            // Arrange
+            const View = { ViewId: undefined };
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            const projectFile = await AutoR1ProjectFile.build(true as any);
+
+            getAsObject.mockReturnValueOnce(View);
+
+            // Act
+            const view = (projectFile as any).getViewByName('name');
+
+            // Assert
+            expect(view).toBeUndefined();
+        });
+    });
+
+    describe('getMeterView', () => {
+        it('should return a view object', async () => {
+            // Arrange
+            const View: DBPR.View = {
+                ViewId: 1,
+                Type: DBPR.ViewTypes.REMOTE_VIEW,
+                Name: 'name',
+                Icon: undefined,
+                Flags: 2,
+                HomeViewIndex: 3,
+                NaviBarIndex: 4,
+                HRes: 5,
+                VRes: 6,
+                ZoomLevel: 7,
+                ScalingFactor: 8,
+                ScalingPosX: 9,
+                ScalingPosY: 10,
+                ReferenceVenueObjectId: undefined,
+            }
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            const projectFile = await AutoR1ProjectFile.build(true as any);
+
+            getAsObject.mockReturnValueOnce(View);
+
+            // Act
+            const view = (projectFile as any).getMeterView();
+
+            // Assert
+            expect(view).toMatchObject(View);
+        });
+    });
+
+    describe('getMainView', () => {
+        it('should return a view object', async () => {
+            // Arrange
+            const View: DBPR.View = {
+                ViewId: 1,
+                Type: DBPR.ViewTypes.REMOTE_VIEW,
+                Name: 'name',
+                Icon: undefined,
+                Flags: 2,
+                HomeViewIndex: 3,
+                NaviBarIndex: 4,
+                HRes: 5,
+                VRes: 6,
+                ZoomLevel: 7,
+                ScalingFactor: 8,
+                ScalingPosX: 9,
+                ScalingPosY: 10,
+                ReferenceVenueObjectId: undefined,
+            }
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            const projectFile = await AutoR1ProjectFile.build(true as any);
+
+            getAsObject.mockReturnValueOnce(View);
+
+            // Act
+            const view = (projectFile as any).getMainView();
+
+            // Assert
+            expect(view).toMatchObject(View);
+        });
+    });
+
+    describe('getEQView', () => {
+        it('should return a view object', async () => {
+            // Arrange
+            const View: DBPR.View = {
+                ViewId: 1,
+                Type: DBPR.ViewTypes.REMOTE_VIEW,
+                Name: 'name',
+                Icon: undefined,
+                Flags: 2,
+                HomeViewIndex: 3,
+                NaviBarIndex: 4,
+                HRes: 5,
+                VRes: 6,
+                ZoomLevel: 7,
+                ScalingFactor: 8,
+                ScalingPosX: 9,
+                ScalingPosY: 10,
+                ReferenceVenueObjectId: undefined,
+            }
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            const projectFile = await AutoR1ProjectFile.build(true as any);
+
+            getAsObject.mockReturnValueOnce(View);
+
+            // Act
+            const view = (projectFile as any).getEQView();
+
+            // Assert
+            expect(view).toMatchObject(View);
         });
     });
 
     describe('getFallbackGroupID', () => {
-        it('should throw if fallback group is not found', () => {
+        it('should return a GroupId', async () => {
             // Arrange
-            const projectFile: any = new AutoR1ProjectFile('/path');
-            getObject = undefined;
+            const GroupId = 1;
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            const projectFile = await AutoR1ProjectFile.build(true as any);
+
+            get.mockReturnValueOnce([GroupId]);
 
             // Act
-            const rtn = projectFile.getFallbackGroupID();
+            const groupId = (projectFile as any).getFallbackGroupID();
 
             // Assert
-            expect(rtn).toBeFalsy();
+            expect(groupId).toBe(GroupId);
         });
-
-        it('should not throw if fallback group is found', () => {
-            // Arrange
-            const projectFile: any = new AutoR1ProjectFile('/path');
-            getObject = { GroupId: 1 };
-
-            // Assert
-            expect(() => projectFile.getFallbackGroupID()).not.toThrow()
-        });
-
-        it('should return the fallback group id', () => {
-            // Arrange
-            const projectFile: any = new AutoR1ProjectFile('/path');
-            getObject = { GroupId: 1 };
-
-            // Act
-            const groupId = projectFile.getFallbackGroupID()
-
-            // Assert
-            expect(groupId).toBe(1)
-        });
-    })
-
-    describe('getViewByName', () => {
-        it('should return a view if one is found', () => {
-            // Arrange
-            const projectFile: any = new AutoR1ProjectFile('/path');
-            getObject = { View: 'myview' };
-
-            // Act
-            const rtn = projectFile.getViewByName();
-
-            // Assert
-            expect(rtn).toBeTruthy();
-        });
-    })
-})
-
-
-describe('AutoR1Template', () => {
-    const control = new AutoR1Control(CONTROL);
-    const section: DBPR.Section = {
-        Id: 1,
-        Name: 'testsection',
-        ParentId: 2,
-        JoinedId: 3,
-        Description: 'description',
-    }
-
-    describe('constructor', () => {
-
-        it('should create a new AutoR1Template and not throw', () => {
-            expect(() => new AutoR1Template(section, [control])).not.toThrow();
-        })
-
-        it('it should set the section values', () => {
-            const template = new AutoR1Template(section, [control]);
-            expect(template.id).toBe(section.Id);
-            expect(template.joinedId).toBe(section.JoinedId);
-            expect(template.parentId).toBe(section.ParentId);
-            expect(template.joinedId).toBe(section.JoinedId);
-        })
-
-        it('should load the provided controls', () => {
-            const template = new AutoR1Template(section, [control]);
-            expect(template.controls.length).toBeTruthy();
-        })
     });
 
-});
+    describe('getMuteGroupID', () => {
+        it('should return a GroupId', async () => {
+            // Arrange
+            const GroupId = 1;
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            const projectFile = await AutoR1ProjectFile.build(true as any);
 
-describe('AutoR1TemplateFile', () => {
-    let databaseObject: any;
-    let prepare: jest.Mock;
-    let templates: any[] | undefined;
+            get.mockReturnValueOnce([GroupId]);
 
-    beforeEach(() => {
-        jest.resetAllMocks();
+            // Act
+            const groupId = (projectFile as any).getMuteGroupID();
 
-        (existsSync as jest.Mock).mockReturnValue(true);
-        prepare = jest.fn(() => {
-            return {
-                get: jest.fn(() => databaseObject),
-                all: jest.fn(() => databaseObject),
-                run: jest.fn()
-            }
+            // Assert
+            expect(groupId).toBe(GroupId);
         });
-
-        (Database as any).mockImplementationOnce(() => {
-            return {
-                prepare: jest.fn().mockImplementation(() => {
-                    return {
-                        all: jest.fn().mockReturnValue(templates),
-                        get: jest.fn().mockReturnValue(templates)
-                    }
-                })
-            }
-        })
     });
 
+    describe('getDsGroupID', () => {
+        it('should return a GroupId', async () => {
+            // Arrange
+            const GroupId = 1;
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            const projectFile = await AutoR1ProjectFile.build(true as any);
 
-    describe('constructor', () => {
-        it('should create a new AutoR1TemplateFile and not throw', () => {
-            templates = [{}, {}, {}];
-            expect(() => new AutoR1TemplateFile('/path')).not.toThrow();
+            get.mockReturnValueOnce([GroupId]);
+
+            // Act
+            const groupId = (projectFile as any).getDsGroupID();
+
+            // Assert
+            expect(groupId).toBe(GroupId);
+        });
+    });
+
+    describe('createSubLRCGroups', () => {
+        it('should return early if a SUBarray group is not found', async () => {
+            // Arrange
+            const GroupId = 1;
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            const projectFile = await AutoR1ProjectFile.build(true as any);
+
+            get.mockReturnValueOnce([GroupId]);
+
+            const spy = jest.spyOn(console, 'warn');
+
+            // Act
+            (projectFile as any).createSubLRCGroups();
+
+            // Assert
+            expect(spy).toHaveBeenCalled();
         });
 
-        it('it should load the discovered templates', () => {
-            templates = [{}, {}, {}];
-            const templateFile = new AutoR1TemplateFile('/path');
-            expect(templateFile.templates.length).toBeGreaterThan(0);
-            expect(templateFile.templates.length).toBe(templates.length);
-        })
+        it('should create a Left, Right, and Center group', async () => {
+            // Arrange
+            const Name = 'sub array';
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            const projectFile = await AutoR1ProjectFile.build(true as any);
 
-        it('it should throw if template is not found', () => {
-            templates = [{}];
-            const templateFile = new AutoR1TemplateFile('/path');
-            expect(() => templateFile.getTemplateByName('test')).toThrow();
-        })
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            getAsObject.mockReturnValueOnce({ 'max(GroupId)': 1 });
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            getAsObject.mockReturnValueOnce({ 'max(GroupId)': 1 });
 
-        it('it should load the provided section', () => {
-            const section: DBPR.Section = {
-                Id: 1,
-                Name: 'testsection',
-                ParentId: 2,
-                JoinedId: 3,
-                Description: 'description',
+            step.mockReturnValueOnce(true);
+            step.mockReturnValueOnce(false);
+            const channel: Channel = {
+                CabinetId: 1,
+                GroupId: 2,
+                Name: 'name',
+                TargetChannel: 3,
+                TargetId: 4,
             }
+            getAsObject.mockReturnValueOnce(channel);
 
-            templates = [section];
-            const templateFile = new AutoR1TemplateFile('/path');
-            let template: any;
-            expect(() => template = templateFile.getTemplateByName('testsection')).not.toThrow();
-            expect(template!.id).toBe(templates[0].Id);
-            expect(template!.joinedId).toBe(templates[0].JoinedId);
-            expect(template!.name).toBe(templates[0].Name);
-        })
+            // Act
+            (projectFile as any).createSubLRCGroups();
+
+            // Assert
+            expect(prepare).toHaveBeenCalledTimes(3);
+        });
     });
 });
