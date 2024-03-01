@@ -723,17 +723,18 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         });
 
         // Get child groups of above 'Master' groups
+        const masterGroupId = this.getGroupIdFromName('Master')
         const childGroupQuery = `SELECT DISTINCT G.GroupId, G.ParentId,G.Name
         FROM Groups G
         JOIN (
             SELECT *
             FROM Groups G1
             JOIN SourceGroups SG ON G1.Name = SG.Name
-            WHERE G1.ParentId = 2
+            WHERE G1.ParentId = ?
         ) AS SubQuery ON G.ParentId = SubQuery.GroupId;`;
 
         const childGroupsStmt = this.db.prepare(childGroupQuery);
-        const childGroups = dbpr.getAllAsObjects<{ GroupId: number, Name: string, ParentId: number }>(childGroupsStmt);
+        const childGroups = dbpr.getAllAsObjects<{ GroupId: number, Name: string, ParentId: number }>(childGroupsStmt, [masterGroupId]);
 
         childGroups.forEach((childGroup) => {
             const sourceGroup = this.sourceGroups.find((srcGrp) => srcGrp.masterGroupId === childGroup.ParentId);
