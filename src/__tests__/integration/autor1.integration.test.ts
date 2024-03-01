@@ -507,6 +507,7 @@ describe('removeNavButtons', () => {
 
         projectFile.getSrcGrpInfo();
         projectFile.createMeterView(templateFile);
+        projectFile.createEqView(templateFile);
         projectFile.createMainView(templateFile);
 
         oldControlCount = projectFile.getAllControls()!.length;
@@ -619,10 +620,10 @@ describe('clean', () => {
         projectFile.getSrcGrpInfo();
         projectFile.createAPGroup();
         projectFile.createMeterView(templateFile);
+        projectFile.createEqView(templateFile);
         projectFile.createMainView(templateFile);
         projectFile.createNavButtons(templateFile);
         projectFile.addSubCtoSubL();
-        projectFile.createEqView(templateFile);
         groupId = projectFile.createGroup({ Name: 'TEST', ParentId: 1 });
     });
 
@@ -664,6 +665,34 @@ describe('clean', () => {
     });
 });
 
+describe('createEqView', () => {
+    let projectFile: AutoR1.AutoR1ProjectFile;
+    let templateFile: AutoR1TemplateFile;
+    let fileId: number;
+
+    beforeEach(async () => {
+        fileId = setupTest();
+        projectFile = await loadProjectFile(PROJECT_INIT_AP + fileId);
+        templateFile = await loadTemplateFile(TEMPLATES + fileId);
+        projectFile.getSrcGrpInfo();
+    });
+
+    afterEach(() => {
+        projectFile.close();
+        templateFile.close();
+        cleanupTest(fileId);
+    });
+
+    it('correctly assigns TargetId value for EQ controls', () => {
+        projectFile.createEqView(templateFile);
+        const viewId = (projectFile as any).getEQView().ViewId;
+
+        let controls = projectFile.getAllControls()!.filter((c) => c.ViewId === viewId).filter((c) => c.Type === ControlTypes.EQ);
+
+        controls.forEach((c) => expect(c.TargetId).toBeTruthy());
+    })
+});
+
 describe('createMainView', () => {
     let projectFile: AutoR1.AutoR1ProjectFile;
     let templateFile: AutoR1TemplateFile;
@@ -684,6 +713,7 @@ describe('createMainView', () => {
 
     it('creates a new view', () => {
         projectFile.createMeterView(templateFile);
+        projectFile.createEqView(templateFile);
 
         const oldViewCount = projectFile.getAllRemoteViews()!.length;
         projectFile.createMainView(templateFile);
@@ -694,6 +724,7 @@ describe('createMainView', () => {
 
     it('sets the view name correctly', () => {
         projectFile.createMeterView(templateFile);
+        projectFile.createEqView(templateFile);
 
         projectFile.createMainView(templateFile);
         const viewId = projectFile.getViewIdFromName(AutoR1.MAIN_WINDOW_TITLE);
@@ -702,15 +733,17 @@ describe('createMainView', () => {
 
     it('adds controls to the view', () => {
         projectFile.createMeterView(templateFile);
+        projectFile.createEqView(templateFile);
 
         projectFile.createMainView(templateFile);
         const controlCount = projectFile.getControlsByViewId((projectFile as any).getMainView()!.ViewId)!.length;
 
-        expect(controlCount).toBe(281);
+        expect(controlCount).toBe(282);
     });
 
     it('correctly assigns ViewId value', () => {
         projectFile.createMeterView(templateFile);
+        projectFile.createEqView(templateFile);
 
         let controls = projectFile.getAllControls()!;
         controls.forEach((c) => expect(c.ViewId).toBeTruthy());
@@ -821,6 +854,7 @@ describe('createMainViewOverview', () => {
 
     it('correctly assigns ViewId value', () => {
         projectFile.createMeterView(templateFile);
+        projectFile.createEqView(templateFile);
         (projectFile as any).createMainViewOverview(templateFile, 10, 10, 1500);
         let controls = projectFile.getAllControls()!;
         controls.forEach((c) => expect(c.ViewId).toBeTruthy());
