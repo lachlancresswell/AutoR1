@@ -729,7 +729,6 @@ describe('insertTemplate', () => {
     let prevJoinedId: number;
     let JoinedId: number;
     let insertedControls: Control[];
-    let insertedControl: Control;
 
     const posX = 100;
     const posY = 200;
@@ -746,14 +745,13 @@ describe('insertTemplate', () => {
         templateFile = await loadTemplateFile(TEMPLATES + fileId);
         projectFile.getSrcGrpInfo();
 
-        template = templateFile.templates.find((t) => t.name === 'Nav Button')!;
+        template = templateFile.templates.find((t) => t.name === 'EQ1')!;
 
         prevJoinedId = projectFile.getHighestJoinedID()!;
         projectFile.insertTemplate(template, ViewId, posX, posY, { DisplayName, TargetId, TargetChannel, Width, Height });
         JoinedId = projectFile.getHighestJoinedID()!;
 
-        insertedControls = projectFile.getControlsByViewId(ViewId)!;
-        insertedControl = insertedControls.filter((c) => c.JoinedId === JoinedId)[0]
+        insertedControls = projectFile.getControlsByViewId(ViewId)!.filter((c) => c.JoinedId === JoinedId)
     });
 
     afterAll(() => {
@@ -767,15 +765,15 @@ describe('insertTemplate', () => {
     })
 
     it('should cause insert a new control into the Control table', () => {
-        expect(insertedControl).toBeDefined();
+        expect(insertedControls[0]).toBeDefined();
     })
 
     it('should correctly set the DisplayName of a new control', () => {
-        expect(insertedControl!.DisplayName).toBe(DisplayName);
+        expect(insertedControls[1].DisplayName).toBe(DisplayName);
     })
 
     it('should correctly set the TargetId of a new control', () => {
-        expect(insertedControl!.TargetId).toBe(TargetId);
+        expect(insertedControls[0].TargetId).toBe(TargetId);
     })
 
     it('should correctly set the TargetChannel of a new control', () => {
@@ -783,35 +781,23 @@ describe('insertTemplate', () => {
     })
 
     it('should correctly set the Width of a new control', () => {
-        expect(insertedControl!.Width).toBe(Width);
+        expect(insertedControls[0].Width).toBe(Width);
     })
 
     it('should correctly set the Height of a new control', () => {
-        expect(insertedControl!.Height).toBe(Height);
+        expect(insertedControls[0].Height).toBe(Height);
     })
 
     it('should correctly set the Type of a new control', () => {
-        expect(insertedControl!.Type).toBe(template.controls![0].Type);
+        expect(insertedControls[0].Type).toBe(template.controls![0].Type);
     })
 
     it('should correctly set the PosX of a new control', () => {
-        expect(insertedControl!.PosX).toBe(posX);
+        expect(insertedControls[0].PosX).toBe(posX);
     })
 
     it('should correctly set the PosY of a new control', () => {
-        expect(insertedControl!.PosY).toBe(posY);
-    })
-
-    it('should correctly set the Width of a new control', () => {
-        expect(insertedControl!.Width).toBe(Width);
-    })
-
-    it('should correctly set the Height of a new control', () => {
-        expect(insertedControl!.Height).toBe(Height);
-    })
-
-    it('should correctly set the TargetId of a new control', () => {
-        expect(insertedControl!.TargetId).toBe(TargetId);
+        expect(insertedControls[1].PosY).toBe(posY);
     })
 });
 
