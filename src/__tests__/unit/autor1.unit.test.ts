@@ -1057,12 +1057,15 @@ describe('AutoR1ProjectFile', () => {
     });
 
     describe('createSubLRCGroups', () => {
+        let projectFile: AutoR1ProjectFile;
+        beforeEach(async () => {
+            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+            projectFile = await AutoR1ProjectFile.build(true as any);
+        });
+
         it('should return early if a SUBarray group is not found', async () => {
             // Arrange
             const GroupId = 1;
-            getAsObject.mockReturnValueOnce({ GroupId: 1 });
-            const projectFile = await AutoR1ProjectFile.build(true as any);
-
             get.mockReturnValueOnce([GroupId]);
 
             const spy = jest.spyOn(console, 'warn');
@@ -1077,15 +1080,23 @@ describe('AutoR1ProjectFile', () => {
         it('should create a Left, Right, and Center group', async () => {
             // Arrange
             const Name = 'sub array';
-            getAsObject.mockReturnValueOnce({ GroupId: 1 });
-            const projectFile = await AutoR1ProjectFile.build(true as any);
 
+            // Sub array group name
+            getAsObject.mockReturnValueOnce({ Name });
+
+            // Newly created parent sub group ID
             getAsObject.mockReturnValueOnce({ GroupId: 1 });
-            getAsObject.mockReturnValueOnce({ GroupId: 1 });
-            getAsObject.mockReturnValueOnce({ 'max(GroupId)': 1 });
-            getAsObject.mockReturnValueOnce({ GroupId: 1 });
+
+            // Newly created parent sub group ID
             getAsObject.mockReturnValueOnce({ 'max(GroupId)': 1 });
 
+            // Newly created child sub group ID
+            getAsObject.mockReturnValueOnce({ GroupId: 2 });
+
+            // Newly created child sub group ID
+            getAsObject.mockReturnValueOnce({ 'max(GroupId)': 1 });
+
+            // start getSubArrayGroups
             step.mockReturnValueOnce(true);
             step.mockReturnValueOnce(false);
             const channel: Channel = {
@@ -1096,12 +1107,20 @@ describe('AutoR1ProjectFile', () => {
                 TargetId: 4,
             }
             getAsObject.mockReturnValueOnce(channel);
+            // end
+
+            // L, R or C group
+            getAsObject.mockReturnValueOnce({ GroupId: 3 });
+
+            // Child or L, R or C group
+            getAsObject.mockReturnValueOnce({ GroupId: 4 });
+            getAsObject.mockReturnValueOnce({ GroupId: 5 });
 
             // Act
             (projectFile as any).createSubLRCGroups();
 
             // Assert
-            expect(prepare).toHaveBeenCalledTimes(3);
+            expect(run).toHaveBeenCalledTimes(4);
         });
     });
 });
