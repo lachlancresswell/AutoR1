@@ -1904,7 +1904,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * @param posY Y position to start inserting controls
      * @param mainViewId ID of the main view
      */
-    private createMainViewMeters(templateFile: AutoR1TemplateFile, posX: number, posY: number, mainViewId: number) {
+    private createMainViewMeters(templateFile: AutoR1TemplateFile, posX: number, posY: number, mainViewId: number, createArraySightControls = true) {
         const {
             height: arraySightTempHeight
         } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_ARRAYSIGHT_FRAME);
@@ -1927,7 +1927,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
                 controls.forEach((control) => this.insertControl(control));
 
-                if (sourceGroup.ArraySightId) {
+                if (sourceGroup.ArraySightId && createArraySightControls) {
                     const joinedId = this.getHighestJoinedID()! + 1;
 
                     this.insertTemplate(
@@ -1984,7 +1984,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * Create the main AutoR1 view within the project
      * @param templateFile Loaded .r2t template file
      */
-    public createMainView(templateFile: AutoR1TemplateFile) {
+    public createMainView(templateFile: AutoR1TemplateFile, createArraySightControls = true) {
         // Get width + height of templates used
         const { width: mainTempWidth } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_OVERVIEW);
         const { width: meterTempWidth } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.GROUP_LR_AP_CPL2);
@@ -2010,7 +2010,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const { posX: overviewPosX } = this.createMainViewOverview(templateFile, posX, posY, MAIN_VIEW_ID);
 
-        this.createMainViewMeters(templateFile, overviewPosX, 67, MAIN_VIEW_ID);
+        this.createMainViewMeters(templateFile, overviewPosX, 67, MAIN_VIEW_ID, createArraySightControls);
     }
 
     createAll = (templates: AutoR1TemplateFile, parentId: number) => {
