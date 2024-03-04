@@ -397,6 +397,9 @@ function App() {
       <div id="footer">
         All files are processed on your device. No files are uploaded.
       </div>
+      <div id="donations">
+        <a href="https://www.buymeacoffee.com/Lachlanc"><img alt="donation link" src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=Lachlanc&button_colour=FFDD00&font_colour=000000&font_family=Inter&outline_colour=000000&coffee_colour=ffffff" /></a>
+      </div>
     </div >
   );
 }
