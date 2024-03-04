@@ -2,8 +2,7 @@
 /* eslint-disable no-loop-func */
 import { Database } from 'sql.js';
 import * as dbpr from './dbpr';
-import SQLjs from 'sql.js';
-import initSqlJs from "sql.js";
+import { build } from './dbpr';
 
 // Required to let webpack 4 know it needs to copy the wasm file to our assets
 // @ts-ignore
@@ -594,13 +593,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         }
     }
 
-    static async build(fb: Buffer) {
-        const sql: SQLjs.SqlJsStatic = (await SQLjs({
-            // locateFile: file => `https://sql.js.org/dist/${file}`
-        }))
-        const db = new sql.Database(fb)
-        return new AutoR1ProjectFile(db);
-    }
+    static build = (fb: Buffer) => build<AutoR1ProjectFile>(fb, (db) => new AutoR1ProjectFile(db))
 
     public getSrcGrpInfo = () => {
         this.db.exec(`PRAGMA case_sensitive_like=ON;`);
@@ -2345,11 +2338,7 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
         });
     }
 
-    static async build(fb: Buffer) {
-        const sql = await initSqlJs({ locateFile: () => sqlWasm });
-        const db = new sql.Database(fb)
-        return new AutoR1TemplateFile(db);
-    }
+    static build = (fb: Buffer) => build<AutoR1TemplateFile>(fb, (db) => new AutoR1TemplateFile(db))
 
     /**
      * Returns a template by name
