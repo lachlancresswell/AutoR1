@@ -101,7 +101,7 @@ body {
   margin: 1em;
 }
 
-#statusTable {
+#sourceGroupTable {
   text-align: center;
 }
 
@@ -109,4 +109,21 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.option {
+  display: flex;
+  justify-content: space-between;
+
+  width: 100%;
+
+  margin: 1vh;
+}
+
+#donations {
+  margin: 1vw
+}
+
+#donations>a>img {
+  width: 22vw
 }
