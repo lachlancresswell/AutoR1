@@ -955,7 +955,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         // Remove anything to do with the AutoR1 Main view
         if (mainViewId) {
-            this.removeNavButtons(mainViewId);
+            this.removeNavButtons();
 
             const ctrlStmt = this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?')
             ctrlStmt.bind([mainViewId])
@@ -1144,27 +1144,39 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * @param proj R1 project file
      * @param mainViewId ViewId of the main view
      */
-    private removeNavButtons(mainViewId: number): void {
-        const getControlsStmt = this.db.prepare(`SELECT ViewId FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = ?`);
+    private removeNavButtons(): void {
+        const getControlsStmt = () => this.db.prepare(`SELECT ViewId FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = ? AND "TargetType" = ?`);
+        const deleteControlsStmt = () => this.db.prepare(`DELETE FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = ? AND "TargetType" = ?`);
         const updateControlsStmt = this.db.prepare('UPDATE Controls SET PosY = PosY - ? WHERE ViewId = ?');
-        const deleteControlsStmt = this.db.prepare(`DELETE FROM Controls WHERE "TargetId" = ? AND "TargetChannel" = ? AND "ViewId" != ? AND "ViewId" != ?`);
 
+        const mainView = this.getMainView();
         const meterView = this.getMeterView();
-        const meterViewId = meterView ? meterView.ViewId : undefined;
+        const eqView = this.getEQView();
 
-        const controls = dbpr.getAllAsObjects<{ ViewId: number }>(getControlsStmt, [mainViewId, dbpr.TargetChannels.NONE]);
+        let viewIdsWithNavButtons: number[] = []
+
+        if (mainView) {
+            viewIdsWithNavButtons = dbpr.getAllAsObjects<{ ViewId: number }>(getControlsStmt(), [mainView.ViewId, dbpr.TargetChannels.NONE, dbpr.TargetTypes.VIEW]).map((c) => c.ViewId).filter((vId) => vId !== mainView.ViewId);
+
+            deleteControlsStmt().run([mainView.ViewId, dbpr.TargetChannels.NONE, dbpr.TargetTypes.VIEW]);
+        }
+
+        if (meterView) {
+            viewIdsWithNavButtons = dbpr.getAllAsObjects<{ ViewId: number }>(getControlsStmt(), [meterView.ViewId, dbpr.TargetChannels.NONE, dbpr.TargetTypes.VIEW]).map((c) => c.ViewId).filter((vId) => vId !== meterView.ViewId);
+
+            deleteControlsStmt().run([meterView.ViewId, dbpr.TargetChannels.NONE, dbpr.TargetTypes.VIEW]);
+        }
+
+        if (eqView) {
+            viewIdsWithNavButtons = dbpr.getAllAsObjects<{ ViewId: number }>(getControlsStmt(), [eqView.ViewId, dbpr.TargetChannels.NONE, dbpr.TargetTypes.VIEW]).map((c) => c.ViewId).filter((vId) => vId !== eqView.ViewId);
+
+            deleteControlsStmt().run([eqView.ViewId, dbpr.TargetChannels.NONE, dbpr.TargetTypes.VIEW]);
+        }
 
         // Move all controls below the nav buttons back up
-        controls.forEach((control) => {
-            const vId = control.ViewId;
-            if (vId !== mainViewId && vId !== meterViewId) {
-                updateControlsStmt.run([NAV_BUTTON_Y + 20, vId]);
-            }
+        viewIdsWithNavButtons.forEach((vId) => {
+            updateControlsStmt.run([NAV_BUTTON_Y + 20, vId]);
         });
-
-        deleteControlsStmt.run([mainViewId, dbpr.TargetChannels.NONE, mainViewId, meterViewId!]);
-        deleteControlsStmt.run([meterViewId!, dbpr.TargetChannels.NONE, mainViewId, meterViewId!]);
-        console.log(`Deleted ${MAIN_WINDOW_TITLE} nav buttons.`);
     }
 
     /**
