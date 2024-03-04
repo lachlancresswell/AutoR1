@@ -432,9 +432,6 @@ describe('createNavButtons', () => {
         templateFile = await loadTemplateFile(TEMPLATES + fileId);
 
         projectFile.getSrcGrpInfo();
-        projectFile.createMeterView(templateFile);
-        projectFile.createEqView(templateFile);
-        projectFile.createMainView(templateFile);
     });
 
     afterEach(() => {
@@ -443,33 +440,43 @@ describe('createNavButtons', () => {
         cleanupTest(fileId);
     })
 
-    it('should create two nav buttons on all views except the AutoR1 Main and Meter views', () => {
+    it('should create three nav buttons on all views except the AutoR1 Main and Meter views', () => {
         // Arrange
+        projectFile.createMeterView(templateFile);
+        projectFile.createEqView(templateFile);
+        projectFile.createMainView(templateFile);
+
         const oldControls = projectFile.getAllControls()!
         const navButtonTemplateSize = templateFile.getTemplateControlsFromName(AutoR1.AutoR1TemplateTitles.NAV_BUTTONS).length;
 
-        const views = projectFile.getAllRemoteViews()!.filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
+        const views = projectFile.getAllRemoteViews()!.filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE && v.Name !== AutoR1.EQ_WINDOW_TITLE);
 
         // Act
         projectFile.createNavButtons(templateFile);
 
-        const newControls = projectFile.getAllControls()!
-
         // Assert
-        expect(newControls.length).toBe(oldControls.length + (views.length * (navButtonTemplateSize * 2)));
+        const newControls = projectFile.getAllControls()!
+        // Each default view has buttons to each AutoR1 view
+        const numControlsOnDefaultViews = views.length * (navButtonTemplateSize * 3);
+        // Each AutoR1 view has buttons to the other views
+        const numControlsOnAutoR1Views = (navButtonTemplateSize * (3 * 2));
+        expect(newControls.length).toBe(oldControls.length + numControlsOnDefaultViews + numControlsOnAutoR1Views);
     });
 
-    it('should move all controls on all views except the AutoR1 Main and Meter views down to make space for the nav buttons', () => {
+    it('should move all controls on all views except the AutoR1 crated views down to make space for the nav buttons', () => {
         // Arrange        
-        const views = projectFile.getAllRemoteViews()!.filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
+        projectFile.createMeterView(templateFile);
+        projectFile.createEqView(templateFile);
+        projectFile.createMainView(templateFile);
+        const views = projectFile.getAllRemoteViews()!.filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE && v.Name !== AutoR1.EQ_WINDOW_TITLE);
         const oldControls = projectFile.getAllControls()!.filter((control) => views.find((view) => view.ViewId === control.ViewId));
 
         // Act
         projectFile.createNavButtons(templateFile);
 
+        // Assert
         const newControls = projectFile.getAllControls()!.filter((control) => views.find((view) => view.ViewId === control.ViewId));
 
-        // Assert
         oldControls.forEach((oldControl) => {
             const newControl = newControls.find((control) => control.ControlId === oldControl.ControlId);
             expect(newControl!.PosY).toBeGreaterThan(oldControl.PosY);
@@ -478,18 +485,226 @@ describe('createNavButtons', () => {
 
     it('should should correctly set the TargetId', () => {
         // Arrange
+        projectFile.createMeterView(templateFile);
+        projectFile.createEqView(templateFile);
+        projectFile.createMainView(templateFile);
         const viewIds = projectFile.getAllRemoteViews()!.map((v) => v.ViewId);
 
         // Act
         projectFile.createNavButtons(templateFile);
 
+        // Assert
         const viewButtons = projectFile.getAllControls()!.filter((control) => control.Type === ControlTypes.SWITCH && control.TargetType === TargetTypes.VIEW);
 
-        // Assert
         viewButtons.forEach((viewButton) => {
             if (!viewButton.TargetId) debugger;
             expect(viewIds.find(viewId => viewId === viewButton.TargetId)).toBeTruthy();
         });
+    });
+
+    it('should NOT create the MAIN VIEW button on the METER VIEW if the MAIN VIEW does not exist', () => {
+        // Arrange
+        projectFile.createMeterView(templateFile);
+        const meterViewId = (projectFile as any).getMeterView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const mainViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === meterViewId
+            && control.Type === ControlTypes.SWITCH
+            && control.DisplayName === AutoR1.MAIN_WINDOW_TITLE
+        );
+        expect(mainViewButton).toBeFalsy();
+    });
+
+    it('should NOT create the EQ VIEW button on the METER VIEW if the EQ VIEW does not exist', () => {
+        // Arrange
+        projectFile.createMeterView(templateFile);
+        const meterViewId = (projectFile as any).getMeterView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const eqViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === meterViewId
+            && control.Type === ControlTypes.SWITCH
+            && control.DisplayName === AutoR1.EQ_WINDOW_TITLE
+        );
+        expect(eqViewButton).toBeFalsy();
+    });
+
+    it('should create the MAIN VIEW button on the METER VIEW if the MAIN VIEW exists', () => {
+        // Arrange
+        projectFile.createMainView(templateFile);
+        projectFile.createMeterView(templateFile);
+        const meterViewId = (projectFile as any).getMeterView().ViewId;
+        const mainViewId = (projectFile as any).getMainView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const mainViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === meterViewId
+            && control.Type === ControlTypes.SWITCH
+            && control.TargetType === TargetTypes.VIEW
+            && control.TargetId === mainViewId);
+        expect(mainViewButton).toBeTruthy();
+    });
+
+    it('should create the EQ VIEW button on the METER VIEW if the EQ VIEW exists', () => {
+        // Arrange
+        projectFile.createEqView(templateFile);
+        projectFile.createMeterView(templateFile);
+        const meterViewId = (projectFile as any).getMeterView().ViewId;
+        const eqViewId = (projectFile as any).getEQView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const eqViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === meterViewId
+            && control.Type === ControlTypes.SWITCH
+            && control.TargetType === TargetTypes.VIEW
+            && control.TargetId === eqViewId);
+        expect(eqViewButton).toBeTruthy();
+    });
+
+    it('should NOT create the METER VIEW button on the MAIN VIEW if the METER VIEW does not exist', () => {
+        // Arrange
+        projectFile.createMainView(templateFile);
+        const mainViewId = (projectFile as any).getMainView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const meterViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === mainViewId
+            && control.Type === ControlTypes.SWITCH
+            && control.TargetType === TargetTypes.VIEW
+            && control.DisplayName === AutoR1.METER_WINDOW_TITLE
+        );
+        expect(meterViewButton).toBeFalsy();
+    });
+
+    it('should NOT create the EQ VIEW button on the MAIN VIEW if the EQ VIEW does not exist', () => {
+        // Arrange
+        projectFile.createMainView(templateFile);
+        const mainViewId = (projectFile as any).getMainView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const eqViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === mainViewId
+            && control.Type === ControlTypes.SWITCH
+            && control.TargetType === TargetTypes.VIEW
+            && control.DisplayName === AutoR1.EQ_WINDOW_TITLE
+        );
+        expect(eqViewButton).toBeFalsy();
+    });
+
+    it('should create the METER VIEW button on the MAIN VIEW if the METER VIEW exists', () => {
+        // Arrange
+        projectFile.createMainView(templateFile);
+        projectFile.createMeterView(templateFile);
+        const meterViewId = (projectFile as any).getMeterView().ViewId;
+        const mainViewId = (projectFile as any).getMainView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const meterViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === mainViewId && control.TargetId === meterViewId);
+        expect(meterViewButton).toBeTruthy();
+    });
+
+    it('should create the EQ VIEW button on the MAIN VIEW if the EQ VIEW exists', () => {
+        // Arrange
+        projectFile.createMainView(templateFile);
+        projectFile.createEqView(templateFile);
+        const eqViewId = (projectFile as any).getEQView().ViewId;
+        const mainViewId = (projectFile as any).getMainView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const eqViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === mainViewId && control.TargetId === eqViewId);
+        expect(eqViewButton).toBeTruthy();
+    });
+
+    it('should NOT create the METER VIEW button on the EQ VIEW if the METER VIEW does not exist', () => {
+        // Arrange
+        projectFile.createEqView(templateFile);
+        const eqViewId = (projectFile as any).getEQView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const meterViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === eqViewId
+            && control.Type === ControlTypes.SWITCH
+            && control.TargetType === TargetTypes.VIEW
+            && control.DisplayName === AutoR1.METER_WINDOW_TITLE
+        );
+        expect(meterViewButton).toBeFalsy();
+    });
+
+    it('should NOT create the MAIN VIEW button on the EQ VIEW if the MAIN VIEW does not exist', () => {
+        // Arrange
+        projectFile.createEqView(templateFile);
+        const eqViewId = (projectFile as any).getEQView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const mainViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === eqViewId
+            && control.Type === ControlTypes.SWITCH
+            && control.TargetType === TargetTypes.VIEW
+            && control.DisplayName === AutoR1.MAIN_WINDOW_TITLE
+        );
+        expect(mainViewButton).toBeFalsy();
+    });
+
+    it('should create the METER VIEW button on the EQ VIEW if the METER VIEW exists', () => {
+        // Arrange
+        projectFile.createEqView(templateFile);
+        projectFile.createMeterView(templateFile);
+        const meterViewId = (projectFile as any).getMeterView().ViewId;
+        const eqViewId = (projectFile as any).getEQView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const meterViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === eqViewId
+            && control.Type === ControlTypes.SWITCH
+            && control.TargetType === TargetTypes.VIEW
+            && control.DisplayName === AutoR1.METER_WINDOW_TITLE
+            && control.TargetId === meterViewId
+        );
+        expect(meterViewButton).toBeTruthy();
+    });
+
+    it('should create the MAIN VIEW button on the EQ VIEW if the MAIN VIEW exists', () => {
+        // Arrange
+        projectFile.createEqView(templateFile);
+        projectFile.createMainView(templateFile);
+        const eqViewId = (projectFile as any).getEQView().ViewId;
+        const mainViewId = (projectFile as any).getMainView().ViewId;
+
+        // Act
+        projectFile.createNavButtons(templateFile);
+
+        // Assert
+        const mainViewButton = projectFile.getAllControls()!.find((control) => control.ViewId === eqViewId
+            && control.Type === ControlTypes.SWITCH
+            && control.TargetType === TargetTypes.VIEW
+            && control.DisplayName === AutoR1.MAIN_WINDOW_TITLE
+            && control.TargetId === mainViewId);
+        expect(mainViewButton).toBeTruthy();
     });
 });
 
@@ -522,11 +737,8 @@ describe('removeNavButtons', () => {
     });
 
     it('should remove all nav button controls', () => {
-        // Arrange
-        const mainViewId = (projectFile as any).getMainView().ViewId;
-
         // Act
-        (projectFile as any).removeNavButtons(mainViewId);
+        (projectFile as any).removeNavButtons();
 
         const rtn = projectFile.getAllControls()!.length;
 
@@ -537,7 +749,7 @@ describe('removeNavButtons', () => {
     it('should move all controls on all views except the AutoR1 Main and Meter views back up', () => {
         // Arrange
         const mainViewId = (projectFile as any).getMainView().ViewId;
-        const views = projectFile.getAllRemoteViews()!.filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE);
+        const views = projectFile.getAllRemoteViews()!.filter((v) => v.Name !== AutoR1.MAIN_WINDOW_TITLE && v.Name !== AutoR1.METER_WINDOW_TITLE && v.Name !== AutoR1.EQ_WINDOW_TITLE);
         const oldControls = projectFile.getAllControls()!.filter((control) => views.find((view) => view.ViewId === control.ViewId));
 
         // Act
@@ -592,7 +804,7 @@ describe('createMeterView', () => {
         projectFile.createMeterView(templateFile);
         const newControlCount = projectFile.getAllControls()!.length;
 
-        expect(newControlCount).toBe(oldControlCount + 1875);
+        expect(newControlCount).toBe(oldControlCount + 1874);
     })
 });
 
@@ -712,9 +924,6 @@ describe('createMainView', () => {
     });
 
     it('creates a new view', () => {
-        projectFile.createMeterView(templateFile);
-        projectFile.createEqView(templateFile);
-
         const oldViewCount = projectFile.getAllRemoteViews()!.length;
         projectFile.createMainView(templateFile);
         const newViewCount = projectFile.getAllRemoteViews()!.length;
@@ -723,28 +932,19 @@ describe('createMainView', () => {
     })
 
     it('sets the view name correctly', () => {
-        projectFile.createMeterView(templateFile);
-        projectFile.createEqView(templateFile);
-
         projectFile.createMainView(templateFile);
         const viewId = projectFile.getViewIdFromName(AutoR1.MAIN_WINDOW_TITLE);
         expect(viewId).toBeTruthy();
     });
 
     it('adds controls to the view', () => {
-        projectFile.createMeterView(templateFile);
-        projectFile.createEqView(templateFile);
-
         projectFile.createMainView(templateFile);
         const controlCount = projectFile.getControlsByViewId((projectFile as any).getMainView()!.ViewId)!.length;
 
-        expect(controlCount).toBe(282);
+        expect(controlCount).toBe(280);
     });
 
     it('correctly assigns ViewId value', () => {
-        projectFile.createMeterView(templateFile);
-        projectFile.createEqView(templateFile);
-
         let controls = projectFile.getAllControls()!;
         controls.forEach((c) => expect(c.ViewId).toBeTruthy());
 
@@ -853,8 +1053,6 @@ describe('createMainViewOverview', () => {
     });
 
     it('correctly assigns ViewId value', () => {
-        projectFile.createMeterView(templateFile);
-        projectFile.createEqView(templateFile);
         (projectFile as any).createMainViewOverview(templateFile, 10, 10, 1500);
         let controls = projectFile.getAllControls()!;
         controls.forEach((c) => expect(c.ViewId).toBeTruthy());
@@ -881,8 +1079,7 @@ describe('createMainViewMeters', () => {
     });
 
     it('correctly assigns ViewId value', () => {
-        const viewId = 1500
-        projectFile.createMeterView(templateFile);
+        const viewId = 1500;
         (projectFile as any).createMainViewMeters(templateFile, 10, 10, viewId);
         let controls = projectFile.getAllControls()!;
         controls.forEach((c) => expect(c.ViewId).toBeTruthy());
