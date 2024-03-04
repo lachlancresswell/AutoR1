@@ -46,7 +46,7 @@ const downloadFile = (projectFile: AutoR1.AutoR1ProjectFile, filename: string) =
  * @param status
  * @returns Processed project file
  */
-const processFile = async (fileBuffer: Buffer, status: Status[]) => {
+const processFile = async (fileBuffer: Buffer, status: SourceGroupStatus[], pagesStatus: PagesStatus, createArraySightControls: boolean) => {
   let projectFile: AutoR1.AutoR1ProjectFile;
   projectFile = await AutoR1.AutoR1ProjectFile.build(fileBuffer!);
 
@@ -65,15 +65,21 @@ const processFile = async (fileBuffer: Buffer, status: Status[]) => {
     projectFile.sourceGroups[i].dsData = row.ds;
   });
 
-  projectFile.createAll(templates, parentId!);
+  projectFile.createAll(templates, parentId!, pagesStatus, createArraySightControls);
 
   return projectFile;
 }
 
-interface Status {
+interface SourceGroupStatus {
   fallback: boolean;
   mute: boolean;
   ds: boolean;
+}
+
+interface PagesStatus {
+  main: boolean;
+  meter: boolean;
+  eq: boolean;
 }
 
 function App() {
@@ -81,9 +87,15 @@ function App() {
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const [terminal, setTerminal] = useState<string[]>(['Starting...']);
   const [fileName, setFileName] = useState<string | undefined>(undefined);
-  const [status, setStatus] = useState<Status[] | undefined>(undefined);
+  const [sourceGroupsStatus, setSourceGroupsStatus] = useState<SourceGroupStatus[] | undefined>(undefined);
+  const [pagesStatus, setPagesStatus] = useState<PagesStatus>({
+    main: true,
+    meter: true,
+    eq: true
+  });
   const [fileBuffer, setFileBuffer] = useState<Buffer | undefined>(undefined);
   const [isVisible, setIsVisible] = useState(false);
+  const [createArraySightControls, setCreateArraySightControls] = useState(true);
 
   useEffect(() => {
     fetch(TEMPLATES).then(response => {
@@ -105,7 +117,7 @@ function App() {
   useEffect(() => {
     if (projectFile) {
       const rows = projectFile.sourceGroups.map(sg => ({ fallback: sg.fallback, mute: sg.mute, ds: sg.dsData }));
-      setStatus(rows);
+      setSourceGroupsStatus(rows);
     }
   }, [projectFile]);
 
@@ -113,6 +125,19 @@ function App() {
     event.preventDefault();
     setIsDragOver(true);
   }
+
+  useEffect(() => {
+    const script = document.createElement('script');
+    const donateDiv = document.getElementById('donations')!;
+
+    script.src = "https://liberapay.com/Lachlan/widgets/button.js";
+
+    donateDiv.appendChild(script);
+
+    return () => {
+      donateDiv.removeChild(script);
+    }
+  }, []);
 
   const handleDragLeave = () => setIsDragOver(false);
 
@@ -162,7 +187,7 @@ function App() {
 
   const resetStatus = () => {
     const rows = projectFile!.sourceGroups.map(sg => ({ fallback: sg.fallback, mute: sg.mute, ds: sg.dsData }));
-    setStatus(rows);
+    setSourceGroupsStatus(rows);
   }
 
   const cleanFile = () => {
@@ -179,7 +204,7 @@ function App() {
   const clearFile = () => {
     setProjectFile(null);
     setFileName(undefined);
-    setStatus(undefined);
+    setSourceGroupsStatus(undefined);
     setFileBuffer(undefined);
 
     // Clear fileInput
@@ -187,7 +212,7 @@ function App() {
     fileInput.value = '';
   }
 
-  const statusHasChanged = () => status?.find((row, i) => !row.fallback || !row.mute || !row.ds);
+  const statusHasChanged = () => sourceGroupsStatus?.find((row, i) => !row.fallback || !row.mute || !row.ds);
 
   return (
     <div id="app">
@@ -214,7 +239,7 @@ function App() {
             Drop file here
           </div>)}
 
-        {projectFile && status && (
+        {projectFile && sourceGroupsStatus && (
           <div id="projectInfo">
             <div>
               <p>File name: {fileName}</p>
@@ -223,7 +248,7 @@ function App() {
             </div>
             <div id="mainButtons">
               <button onClick={async () => {
-                const projectFile = await processFile(fileBuffer!, status);
+                const projectFile = await processFile(fileBuffer!, sourceGroupsStatus, pagesStatus, createArraySightControls);
 
                 const link = downloadFile(projectFile, newAutoPath(fileName!));
 
@@ -246,63 +271,116 @@ function App() {
             </div>
             <div>
               {isVisible && (
-                <table id="statusTable">
-                  <thead>
-                    <tr>
-                      <th>Source Group</th>
-                      <th onClick={() => {
-                        const newStatus = [...status];
-                        newStatus.forEach(row => row.fallback = !row.fallback);
-                        setStatus(newStatus);
-                      }}>Fallback</th>
-                      <th onClick={() => {
-                        const newStatus = [...status];
-                        newStatus.forEach(row => row.mute = !row.mute);
-                        setStatus(newStatus);
-                      }}>Mute</th>
-                      <th onClick={() => {
-                        const newStatus = [...status];
-                        newStatus.forEach(row => row.ds = !row.ds);
-                        setStatus(newStatus);
-                      }}>DS Data</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <div>
+                  <div>
+                    <div>
+                      <div className='option'>
+                        <div>
+                          Create Main page
+                        </div>
+                        <div>
+                          <input type='checkbox' checked={pagesStatus.main} onChange={() => {
+                            setPagesStatus((oldStatus) => ({
+                              ...oldStatus,
+                              ...{ main: !oldStatus.main }
+                            }))
+                          }} />
+                        </div>
+                      </div>
+                      <div className='option'>
+                        <div>
+                          Create Meter page
+                        </div>
+                        <div>
+                          <input type='checkbox' checked={pagesStatus.meter} onChange={() => {
+                            setPagesStatus((oldStatus) => ({
+                              ...oldStatus,
+                              ...{ meter: !oldStatus.meter }
+                            }))
+                          }} />
+                        </div>
+                      </div>
+                      <div className='option'>
+                        <div>
+                          Create EQ page
+                        </div>
+                        <div>
+                          <input type='checkbox' checked={pagesStatus.eq} onChange={() => {
+                            setPagesStatus((oldStatus) => ({
+                              ...oldStatus,
+                              ...{ eq: !oldStatus.eq }
+                            }))
+                          }} />
+                        </div>
+                      </div>
+                      <div className='option'>
+                        <div>
+                          Create ArraySight controls
+                        </div>
+                        <div>
+                          <input type='checkbox' checked={createArraySightControls} onChange={() => { setCreateArraySightControls(!createArraySightControls) }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <table id="sourceGroupTable">
+                    <thead>
+                      <tr>
+                        <th>Source Group</th>
+                        <th onClick={() => {
+                          const newStatus = [...sourceGroupsStatus];
+                          newStatus.forEach(row => row.fallback = !row.fallback);
+                          setSourceGroupsStatus(newStatus);
+                        }}>Fallback</th>
+                        <th onClick={() => {
+                          const newStatus = [...sourceGroupsStatus];
+                          newStatus.forEach(row => row.mute = !row.mute);
+                          setSourceGroupsStatus(newStatus);
+                        }}>Mute</th>
+                        <th onClick={() => {
+                          const newStatus = [...sourceGroupsStatus];
+                          newStatus.forEach(row => row.ds = !row.ds);
+                          setSourceGroupsStatus(newStatus);
+                        }}>DS Data</th>
+                      </tr>
+                    </thead>
+                    <tbody>
 
-                    {
-                      status.map((row, i) => {
-                        return (
-                          <>
-                            <tr>
-                              <td onClick={() => {
-                                const newStatus = [...status];
-                                newStatus[i].fallback = !newStatus[i].fallback;
-                                newStatus[i].mute = !newStatus[i].mute;
-                                newStatus[i].ds = !newStatus[i].ds;
-                                setStatus(newStatus);
-                              }}>{projectFile.sourceGroups[i].Name}</td>
-                              <td><input type='checkbox' checked={row.fallback} onChange={() => {
-                                const newStatus = [...status];
-                                newStatus[i].fallback = !newStatus[i].fallback;
-                                setStatus(newStatus);
-                              }} /></td>
-                              <td><input type='checkbox' checked={row.mute} onChange={() => {
-                                const newStatus = [...status];
-                                newStatus[i].mute = !newStatus[i].mute;
-                                setStatus(newStatus);
-                              }} /></td>
-                              <td><input type='checkbox' checked={row.ds} onChange={() => {
-                                const newStatus = [...status];
-                                newStatus[i].ds = !newStatus[i].ds;
-                                setStatus(newStatus);
-                              }} /></td>
-                            </tr>
-                          </>
-                        )
-                      })
-                    }
-                  </tbody>
-                </table>
+                      {
+                        sourceGroupsStatus.map((row, i) => {
+                          return (
+                            <>
+                              <tr>
+                                <td onClick={() => {
+                                  const newStatus = [...sourceGroupsStatus];
+                                  newStatus[i].fallback = !newStatus[i].fallback;
+                                  newStatus[i].mute = !newStatus[i].mute;
+                                  newStatus[i].ds = !newStatus[i].ds;
+                                  setSourceGroupsStatus(newStatus);
+                                }}>{projectFile.sourceGroups[i].Name}</td>
+                                <td><input type='checkbox' checked={row.fallback} onChange={() => {
+                                  const newStatus = [...sourceGroupsStatus];
+                                  newStatus[i].fallback = !newStatus[i].fallback;
+                                  setSourceGroupsStatus(newStatus);
+                                }} /></td>
+                                <td><input type='checkbox' checked={row.mute} onChange={() => {
+                                  const newStatus = [...sourceGroupsStatus];
+                                  newStatus[i].mute = !newStatus[i].mute;
+                                  setSourceGroupsStatus(newStatus);
+                                }} /></td>
+                                <td><input type='checkbox' checked={row.ds} onChange={() => {
+                                  const newStatus = [...sourceGroupsStatus];
+                                  newStatus[i].ds = !newStatus[i].ds;
+                                  setSourceGroupsStatus(newStatus);
+                                }} /></td>
+                              </tr>
+                            </>
+                          )
+                        })
+                      }
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </div>

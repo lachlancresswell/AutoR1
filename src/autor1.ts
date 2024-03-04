@@ -86,6 +86,12 @@ interface ChannelGroupInterface {
     arraySightId?: number;
 }
 
+export interface PagesStatus {
+    main: boolean;
+    meter: boolean;
+    eq: boolean;
+}
+
 export class ChannelGroup implements ChannelGroupInterface {
     groupId: number;
     name: string;
@@ -2013,15 +2019,15 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         this.createMainViewMeters(templateFile, overviewPosX, 67, MAIN_VIEW_ID, createArraySightControls);
     }
 
-    createAll = (templates: AutoR1TemplateFile, parentId: number) => {
+    createAll = (templates: AutoR1TemplateFile, parentId: number, pagesStatus: PagesStatus = { main: true, meter: true, eq: true }, createArraySightControls = true) => {
 
         this.createAPGroup(parentId);
         this.createMainFallbackGroup(parentId);
         this.createMainMuteGroup(parentId);
         this.createMainDsGroup(parentId);
-        this.createMeterView(templates);
-        this.createEqView(templates);
-        this.createMainView(templates);
+        if (pagesStatus.main) this.createMainView(templates, createArraySightControls);
+        if (pagesStatus.meter) this.createMeterView(templates);
+        if (pagesStatus.eq) this.createEqView(templates);
         this.createNavButtons(templates);
         this.addSubCtoSubL();
     }
