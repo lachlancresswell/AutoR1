@@ -40,7 +40,8 @@
 
 body {
   font-family: monospace;
-  background: grey;
+  background: white;
+  font-size: 1.1em;
 }
 
 #app {
@@ -83,6 +84,9 @@ body {
 #footer {
   font-size: 0.8em;
   margin-top: 1em;
+
+  width: 40em;
+  text-align: center;
 }
 
 #mainButtons {
@@ -121,9 +125,19 @@ body {
 }
 
 #donations {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 18em;
+
   margin: 1vw
 }
 
 #donations>a>img {
-  width: 22vw
+  width: 8em;
+}
+
+button {
+  height: 2.5em;
+  font-size: 0.9em;
 }
