@@ -485,7 +485,7 @@ export class SourceGroup implements dbpr.SourceGroup {
      * // => true
      */
     public hasCPLv2() {
-        return this.System === 'GSL' || this.System === 'KSL' || this.System === 'XSL';
+        return this.System === 'GSL' || this.System === 'KSL' || this.System === 'XSL' && this.Type === dbpr.SourceGroupTypes.ARRAY;
     }
 
     /**
