@@ -171,9 +171,13 @@ function App() {
         setFileBuffer(Buffer.from(buffer));
         setFileName(droppedFile.name);
         setProjectFile(projectFile);
-      } catch (e) {
-        alert(`Cannot process ${droppedFile.name}. Project file has not been initialised. Open the project in R1, run the initial setup and save before using AutoR1.`)
-        setTerminal(terminal => [...terminal, `Cannot process ${droppedFile.name}. Project file has not been initialised. Open the project in R1, run the initial setup and save before using AutoR1.`]);
+      } catch (e: any) {
+        if (e.message === 'Project file has not been initialised.') {
+          alert(`Cannot process ${droppedFile.name}. Project file has not been initialised. Open the project in R1, run the initial setup and save before using AutoR1.`)
+          setTerminal(terminal => [...terminal, `Cannot process ${droppedFile.name}. Project file has not been initialised. Open the project in R1, run the initial setup and save before using AutoR1.`]);
+        } else {
+          alert(`AutoR1 has encountered an error while processing ${droppedFile.name}.`)
+        }
 
         clearFile();
         return;
