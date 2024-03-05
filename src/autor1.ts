@@ -1320,7 +1320,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             `SELECT Name FROM SourceGroups WHERE Type = ${dbpr.SourceGroupTypes.SUBARRAY}`
         ).getAsObject({}) as { Name: string };
 
-        if (!subArrayGroup) {
+        if (!subArrayGroup || !subArrayGroup.Name) {
             console.warn("No sub array group found");
             return;
         }
