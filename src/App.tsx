@@ -46,7 +46,7 @@ const downloadFile = (projectFile: AutoR1.AutoR1ProjectFile, filename: string) =
  * @param status
  * @returns Processed project file
  */
-const processFile = async (fileBuffer: Buffer, status: SourceGroupStatus[], pagesStatus: PagesStatus, createArraySightControls: boolean) => {
+const processFile = async (fileBuffer: Buffer, status: SourceGroupStatus[], options: AutoR1.ProjectOptions) => {
   let projectFile: AutoR1.AutoR1ProjectFile;
   projectFile = await AutoR1.AutoR1ProjectFile.build(fileBuffer!);
 
@@ -65,7 +65,7 @@ const processFile = async (fileBuffer: Buffer, status: SourceGroupStatus[], page
     projectFile.sourceGroups[i].dsData = row.ds;
   });
 
-  projectFile.createAll(templates, parentId!, pagesStatus, createArraySightControls);
+  projectFile.createAll(templates, parentId!, options);
 
   return projectFile;
 }
@@ -76,10 +76,13 @@ interface SourceGroupStatus {
   ds: boolean;
 }
 
-interface PagesStatus {
-  main: boolean;
-  meter: boolean;
-  eq: boolean;
+let deferredPrompt: any;
+
+const DEFAULT_OPTIONS: AutoR1.ProjectOptions = {
+  main: true,
+  meter: true,
+  eq: true,
+  arraySightControls: true
 }
 
 function App() {
@@ -88,14 +91,10 @@ function App() {
   const [terminal, setTerminal] = useState<string[]>(['Starting...']);
   const [fileName, setFileName] = useState<string | undefined>(undefined);
   const [sourceGroupsStatus, setSourceGroupsStatus] = useState<SourceGroupStatus[] | undefined>(undefined);
-  const [pagesStatus, setPagesStatus] = useState<PagesStatus>({
-    main: true,
-    meter: true,
-    eq: true
-  });
+  const [projectOptions, setProjectOptions] = useState<AutoR1.ProjectOptions>(DEFAULT_OPTIONS);
   const [fileBuffer, setFileBuffer] = useState<Buffer | undefined>(undefined);
   const [isVisible, setIsVisible] = useState(false);
-  const [createArraySightControls, setCreateArraySightControls] = useState(true);
+  const [installable, setInstallable] = useState(false);
 
   useEffect(() => {
     fetch(TEMPLATES).then(response => {
@@ -115,6 +114,22 @@ function App() {
   }, []);
 
   useEffect(() => {
+    window.addEventListener("beforeinstallprompt", (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      deferredPrompt = e;
+      // Update UI notify the user they can install the PWA
+      setInstallable(true);
+    });
+
+    window.addEventListener('appinstalled', () => {
+      // Log install to analytics
+      console.log('INSTALL: Success');
+    });
+  }, []);
+
+  useEffect(() => {
     if (projectFile) {
       const rows = projectFile.sourceGroups.map(sg => ({ fallback: sg.fallback, mute: sg.mute, ds: sg.dsData }));
       setSourceGroupsStatus(rows);
@@ -125,19 +140,6 @@ function App() {
     event.preventDefault();
     setIsDragOver(true);
   }
-
-  useEffect(() => {
-    const script = document.createElement('script');
-    const donateDiv = document.getElementById('donations')!;
-
-    script.src = "https://liberapay.com/Lachlan/widgets/button.js";
-
-    donateDiv.appendChild(script);
-
-    return () => {
-      donateDiv.removeChild(script);
-    }
-  }, []);
 
   const handleDragLeave = () => setIsDragOver(false);
 
@@ -181,6 +183,21 @@ function App() {
     reader.readAsArrayBuffer(droppedFile);
   }
 
+  const handleInstallClick = (e: any) => {
+    // Hide the app provided install promotion
+    setInstallable(false);
+    // Show the install prompt
+    deferredPrompt.prompt();
+    // Wait for the user to respond to the prompt
+    deferredPrompt.userChoice.then((choiceResult: any) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('User accepted the install prompt');
+      } else {
+        console.log('User dismissed the install prompt');
+      }
+    });
+  };
+
   const toggleVisibility = () => {
     setIsVisible(!isVisible);
   };
@@ -188,6 +205,7 @@ function App() {
   const resetStatus = () => {
     const rows = projectFile!.sourceGroups.map(sg => ({ fallback: sg.fallback, mute: sg.mute, ds: sg.dsData }));
     setSourceGroupsStatus(rows);
+    setProjectOptions(DEFAULT_OPTIONS);
   }
 
   const cleanFile = () => {
@@ -212,13 +230,18 @@ function App() {
     fileInput.value = '';
   }
 
-  const statusHasChanged = () => sourceGroupsStatus?.find((row, i) => !row.fallback || !row.mute || !row.ds);
+  const statusHasChanged = () => sourceGroupsStatus?.find((row, i) => !row.fallback || !row.mute || !row.ds) || projectOptions.main || projectOptions.meter || projectOptions.eq || projectOptions.arraySightControls;
 
   return (
     <div id="app">
       <div id="process-container">
         <h1>AutoR1 2.0 Beta</h1>
         <input type="file" id="fileInput" style={projectFile ? { display: 'none' } : { display: 'initial' }} onChange={handleDrop as any} />
+        {installable &&
+          <button className="install-button" onClick={handleInstallClick}>
+            INSTALL ME
+          </button>
+        }
       </div>
 
       <>
@@ -236,38 +259,38 @@ function App() {
               border: isDragOver ? '2px dashed blue' : '2px solid black'
             }}
           >
-            Drop file here
+            Drag + drop file here
           </div>)}
 
         {projectFile && sourceGroupsStatus && (
           <div id="projectInfo">
             <div>
               <p>File name: {fileName}</p>
-              <p>Initial setup performed: true</p>
+              <p>Initial setup performed: ✅</p>
               <p>Contains AutoR1 additions: {projectFile.additions ? '✅' : '❌'}</p>
             </div>
             <div id="mainButtons">
               <button onClick={async () => {
-                const projectFile = await processFile(fileBuffer!, sourceGroupsStatus, pagesStatus, createArraySightControls);
+                const projectFile = await processFile(fileBuffer!, sourceGroupsStatus, projectOptions);
 
                 const link = downloadFile(projectFile, newAutoPath(fileName!));
 
                 alert('Processed project has been downloaded.');
-              }}>Run</button>
+              }}>Run ▶️</button>
               {projectFile.additions && (<button onClick={() => {
                 cleanFile();
                 downloadFile(projectFile!, fileName!);
-              }}>Clean</button>)
+              }}>Clean 🧹</button>)
               }
               <button onClick={() => {
                 clearFile()
-              }}>Clear</button>
+              }}>Clear ⏮️</button>
             </div>
             <div id="statusButtons">
               <button onClick={toggleVisibility}>
-                {isVisible ? 'Hide Options' : 'Show Options'}
+                {isVisible ? 'Hide Options ⤴️' : 'Show Options ⤵️'}
               </button>
-              {isVisible && statusHasChanged() && (<button onClick={resetStatus}>Reset Options</button>)}
+              {isVisible && statusHasChanged() && (<button onClick={resetStatus}>Reset Options ⏪</button>)}
             </div>
             <div>
               {isVisible && (
@@ -279,8 +302,8 @@ function App() {
                           Create Main page
                         </div>
                         <div>
-                          <input type='checkbox' checked={pagesStatus.main} onChange={() => {
-                            setPagesStatus((oldStatus) => ({
+                          <input type='checkbox' checked={projectOptions.main} onChange={() => {
+                            setProjectOptions((oldStatus) => ({
                               ...oldStatus,
                               ...{ main: !oldStatus.main }
                             }))
@@ -292,8 +315,8 @@ function App() {
                           Create Meter page
                         </div>
                         <div>
-                          <input type='checkbox' checked={pagesStatus.meter} onChange={() => {
-                            setPagesStatus((oldStatus) => ({
+                          <input type='checkbox' checked={projectOptions.meter} onChange={() => {
+                            setProjectOptions((oldStatus) => ({
                               ...oldStatus,
                               ...{ meter: !oldStatus.meter }
                             }))
@@ -305,8 +328,8 @@ function App() {
                           Create EQ page
                         </div>
                         <div>
-                          <input type='checkbox' checked={pagesStatus.eq} onChange={() => {
-                            setPagesStatus((oldStatus) => ({
+                          <input type='checkbox' checked={projectOptions.eq} onChange={() => {
+                            setProjectOptions((oldStatus) => ({
                               ...oldStatus,
                               ...{ eq: !oldStatus.eq }
                             }))
@@ -318,7 +341,12 @@ function App() {
                           Create ArraySight controls
                         </div>
                         <div>
-                          <input type='checkbox' checked={createArraySightControls} onChange={() => { setCreateArraySightControls(!createArraySightControls) }} />
+                          <input type='checkbox' checked={projectOptions.arraySightControls} onChange={() => {
+                            setProjectOptions((oldStatus) => ({
+                              ...oldStatus,
+                              ...{ arraySightControls: !oldStatus.arraySightControls }
+                            }))
+                          }} />
                         </div>
                       </div>
                     </div>
@@ -395,10 +423,16 @@ function App() {
       </div> */}
 
       <div id="footer">
-        All files are processed on your device. No files are uploaded.
+        All files are processed on your device. No files are uploaded. An internet connection is not required once the page has loaded.
       </div>
       <div id="donations">
         <a href="https://www.buymeacoffee.com/Lachlanc"><img alt="donation link" src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=Lachlanc&button_colour=FFDD00&font_colour=000000&font_family=Inter&outline_colour=000000&coffee_colour=ffffff" /></a>
+        <form action="https://www.paypal.com/donate" method="post" target="_top">
+          <input type="hidden" name="hosted_button_id" value="RA2QUPH7AFK5J" />
+          <input type="image" src="https://www.paypalobjects.com/en_AU/i/btn/btn_donate_SM.gif" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
+          <img alt="" src="https://www.paypal.com/en_AU/i/scr/pixel.gif" width="1" height="1" />
+        </form>
+
       </div>
     </div >
   );
