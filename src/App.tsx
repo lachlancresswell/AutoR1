@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect, useState } from 'react';
 import { Buffer } from 'buffer';
 import * as AutoR1 from './autor1';
@@ -9,7 +8,6 @@ const GROUP_NAME = 'AutoR1'
 const SUFFIX = '_AUTO';
 
 let templates: AutoR1.AutoR1TemplateFile;
-const terminal = document.getElementById('terminal')!;
 
 /**
  * Creates a new path for the processed R1 project file
@@ -76,7 +74,6 @@ interface SourceGroupStatus {
   ds: boolean;
 }
 
-let deferredPrompt: any;
 
 const DEFAULT_OPTIONS: AutoR1.ProjectOptions = {
   main: true,
@@ -88,18 +85,15 @@ const DEFAULT_OPTIONS: AutoR1.ProjectOptions = {
 function App() {
   const [projectFile, setProjectFile] = useState<AutoR1.AutoR1ProjectFile | null>(null);
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
-  const [terminal, setTerminal] = useState<string[]>(['Starting...']);
   const [fileName, setFileName] = useState<string | undefined>(undefined);
   const [sourceGroupsStatus, setSourceGroupsStatus] = useState<SourceGroupStatus[] | undefined>(undefined);
   const [projectOptions, setProjectOptions] = useState<AutoR1.ProjectOptions>(DEFAULT_OPTIONS);
   const [fileBuffer, setFileBuffer] = useState<Buffer | undefined>(undefined);
   const [isVisible, setIsVisible] = useState(false);
-  const [installable, setInstallable] = useState(false);
 
   useEffect(() => {
     fetch(TEMPLATES).then(response => {
       if (!response.ok) {
-        setTerminal(terminal => [...terminal, 'Could not load templates.']);
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
@@ -107,26 +101,8 @@ function App() {
         const buffer = new Uint8Array(arrayBuffer)
 
         templates = await AutoR1.AutoR1TemplateFile.build(Buffer.from(buffer))
-
-        setTerminal(terminal => [...terminal, 'Templates loaded.']);
       });
     })
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener("beforeinstallprompt", (e) => {
-      // Prevent the mini-infobar from appearing on mobile
-      e.preventDefault();
-      // Stash the event so it can be triggered later.
-      deferredPrompt = e;
-      // Update UI notify the user they can install the PWA
-      setInstallable(true);
-    });
-
-    window.addEventListener('appinstalled', () => {
-      // Log install to analytics
-      console.log('INSTALL: Success');
-    });
   }, []);
 
   useEffect(() => {
@@ -155,8 +131,6 @@ function App() {
       const fileContent = event.target!.result! as ArrayBuffer;
       const buffer = new Uint8Array(fileContent);
 
-      setTerminal(terminal => [...terminal, `Loaded ${droppedFile.name}.`]);
-
       let projectFile: AutoR1.AutoR1ProjectFile;
       try {
         projectFile = await AutoR1.AutoR1ProjectFile.build(Buffer.from(buffer));
@@ -174,7 +148,6 @@ function App() {
       } catch (e: any) {
         if (e.message === 'Project file has not been initialised.') {
           alert(`Cannot process ${droppedFile.name}. Project file has not been initialised. Open the project in R1, run the initial setup and save before using AutoR1.`)
-          setTerminal(terminal => [...terminal, `Cannot process ${droppedFile.name}. Project file has not been initialised. Open the project in R1, run the initial setup and save before using AutoR1.`]);
         } else {
           alert(`AutoR1 has encountered an error while processing ${droppedFile.name}.`)
         }
@@ -187,21 +160,6 @@ function App() {
     reader.readAsArrayBuffer(droppedFile);
   }
 
-  const handleInstallClick = (e: any) => {
-    // Hide the app provided install promotion
-    setInstallable(false);
-    // Show the install prompt
-    deferredPrompt.prompt();
-    // Wait for the user to respond to the prompt
-    deferredPrompt.userChoice.then((choiceResult: any) => {
-      if (choiceResult.outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      } else {
-        console.log('User dismissed the install prompt');
-      }
-    });
-  };
-
   const toggleVisibility = () => {
     setIsVisible(!isVisible);
   };
@@ -213,13 +171,11 @@ function App() {
   }
 
   const cleanFile = () => {
-    if (projectFile?.additions) {
+    if (projectFile) {
       const id = projectFile.getGroupIdFromName(GROUP_NAME);
       projectFile.clean(id);
 
       return projectFile;
-    } else if (!projectFile?.additions) {
-      alert('Project file does not already have AutoR1 features.');
     }
   }
 
@@ -241,11 +197,6 @@ function App() {
       <div id="process-container">
         <h1>AutoR1 2.0 Beta</h1>
         <input type="file" id="fileInput" style={projectFile ? { display: 'none' } : { display: 'initial' }} onChange={handleDrop as any} />
-        {installable &&
-          <button className="install-button" onClick={handleInstallClick}>
-            INSTALL ME
-          </button>
-        }
       </div>
 
       <>
@@ -277,7 +228,7 @@ function App() {
               <button onClick={async () => {
                 const projectFile = await processFile(fileBuffer!, sourceGroupsStatus, projectOptions);
 
-                const link = downloadFile(projectFile, newAutoPath(fileName!));
+                downloadFile(projectFile, newAutoPath(fileName!));
 
                 alert('Processed project has been downloaded.');
               }}>Run ▶️</button>
@@ -418,13 +369,6 @@ function App() {
           </div>
         )}
       </>
-
-      {/* <div id="terminal-container">
-        <div>
-          Log
-        </div>
-        <div id="terminal">{terminal.map(t => <div>{t}</div>)}</div>
-      </div> */}
 
       <div id="footer">
         All files are processed on your device. No files are uploaded. An internet connection is not required once the page has loaded.
