@@ -85,7 +85,8 @@ body {
   font-size: 0.8em;
   margin-top: 1em;
 
-  width: 40em;
+  width: 30em;
+  max-width: 90%;
   text-align: center;
 }
 
