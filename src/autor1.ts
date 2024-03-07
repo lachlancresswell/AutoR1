@@ -1049,7 +1049,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         let eqViewPosY = 20;
 
         const insertNavButton = (TargetId: number, sourceViewId: number, DisplayName: string, posX: number, posY: number) => {
-            const navButtonTemplate = templates.getTemplateByName('Nav Button');
+            const navButtonTemplate = templates.getTemplateByName(AutoR1TemplateTitles.NAV_BUTTONS);
 
             const options: TemplateOptions = {
                 DisplayName,
@@ -1774,7 +1774,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         )
 
         this.insertTemplate(
-            templateFile.getTemplateByName('Main DS10'),
+            templateFile.getTemplateByName(AutoR1TemplateTitles.MAIN_DS10),
             mainViewId,
             posX + mainFallbackTemplate.width + 10,
             posY + mainOverviewTemplate.height + 10,
