@@ -2,31 +2,22 @@
   "name": "autor1-react",
   "version": "2.0.0",
   "private": true,
+  "homepage": "https://autor1.app",
   "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
     "@types/jest": "^27.5.2",
     "@types/node": "^16.18.80",
-    "@types/react": "^18.2.55",
-    "@types/react-dom": "^18.2.19",
+    "alpinejs": "^3.13.6",
     "browserify-fs": "^1.0.0",
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.0",
     "path-browserify": "^1.0.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1",
+    "process": "^0.11.10",
     "sql.js": "^1.10.2",
     "stream-browserify": "^3.0.0",
-    "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "typescript": "^4.9.5"
   },
   "scripts": {
-    "start": "craco start",
-    "build": "craco build",
-    "test": "craco test",
-    "eject": "craco eject"
+    "start": "webpack serve"
   },
   "eslintConfig": {
     "extends": [
@@ -47,12 +38,18 @@
     ]
   },
   "devDependencies": {
-    "@craco/craco": "^7.1.0",
+    "@types/alpinejs": "^3.13.6",
     "@types/sql.js": "^1.4.9",
+    "@types/tailwindcss": "^3.1.0",
+    "autoprefixer": "^10.4.18",
     "file-loader": "^6.2.0",
+    "html-webpack-plugin": "^5.6.0",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
     "ts-jest": "^29.1.2",
     "ts-loader": "^9.5.1",
     "webpack": "^5.90.1",
-    "webpack-cli": "^5.1.4"
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.2"
   }
 }

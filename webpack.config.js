@@ -1,42 +1,42 @@
+var webpack = require('webpack');
 const path = require('path');
-const webpack = require('webpack');
+
+const commitHash = require('child_process').execSync('git rev-parse --short HEAD').toString();
+
+const definePlugin = new webpack.DefinePlugin({
+    'process.env.VERSION': JSON.stringify(process.env.npm_package_version),
+    'process.env.COMMIT': JSON.stringify(commitHash),
+})
 
 module.exports = {
-    entry: './src/webui/public/index.ts',
-    devtool: 'inline-source-map',
+    entry: './src/index.ts',
+    target: 'web',
     module: {
         rules: [
             {
-                test: /\.tsx?$/,
+                test: /\.ts?$/,
                 use: 'ts-loader',
                 exclude: /node_modules/,
-            }
+            },
         ],
     },
+    mode: 'development',
+    devServer: {
+        hot: true,
+    },
     resolve: {
-        extensions: ['.tsx', '.ts', '.js'],
+        extensions: ['.ts', '.js'],
         fallback: {
-            "crypto": require.resolve("crypto-browserify"),
-            "stream": require.resolve("stream-browserify"),
-            "path": require.resolve("path-browserify"),
-            "buffer": require.resolve("buffer"),
-            "fs": false
+            fs: require.resolve("browserify-fs"), // or 'empty' if you prefer an empty module
+            crypto: require.resolve('crypto-browserify'),
+            stream: require.resolve('stream-browserify'),
+            util: false,
+            path: false,
         }
     },
     output: {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'dist'),
     },
-    plugins: [
-        // Work around for Buffer is undefined:
-        // https://github.com/webpack/changelog-v5/issues/10
-        new webpack.ProvidePlugin({
-            Buffer: ['buffer', 'Buffer'],
-        }),
-        new webpack.ProvidePlugin({
-            process: 'process/browser',
-        }),
-    ],
-
+    plugins: [require('tailwindcss'), require('autoprefixer'), definePlugin],
 };
-
