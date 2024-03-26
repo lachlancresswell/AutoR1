@@ -8,6 +8,10 @@ import { build } from './dbpr';
 // @ts-ignore
 // import sqlWasm from "!!file-loader?name=sql-wasm-[contenthash].wasm!sql.js/dist/sql-wasm.wasm";
 
+export enum INPUT_GAIN_TYPE {
+    ANALOG = 0,
+    DIGITAL = 1,
+}
 
 const NAV_BUTTON_X = 270;
 export const NAV_BUTTON_Y = 15;
@@ -91,6 +95,7 @@ export interface ProjectOptions {
     meter: boolean;
     eq: boolean;
     arraySightControls: boolean;
+    inputGainType: 0 | 1;
 }
 
 export class ChannelGroup implements ChannelGroupInterface {
@@ -1732,7 +1737,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * 
      * @throws Will throw an error if the meter view cannot be found
      */
-    private createMainViewOverview(templateFile: AutoR1TemplateFile, posX: number, posY: number, mainViewId: number) {
+    private createMainViewOverview(templateFile: AutoR1TemplateFile, posX: number, posY: number, mainViewId: number, inputGainType: 0 | 1) {
 
         const mainOverviewTemplate = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_OVERVIEW);
         const mainFallbackTemplate = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_FALLBACK);
@@ -1808,13 +1813,32 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         /**
          * Configure the DS data indicator
          */
-        // const dsGroup = this.getAllGroups()!.find((group) => group.Name === DS_GROUP_TITLE);
-        // if (dsGroup) {
-        //     const mainDs = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ? AND Type = ? AND TargetProperty = ?`).getAsObject([mainViewId, dbpr.ControlTypes.LED, dbpr.TargetPropertyType.INPUT_DIGITAL_DS_DATA_PRI]) as any as dbpr.Control;
-        //     this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${mainDs.ControlId}`).run();
-        //     mainDs.TargetId = dsGroup.GroupId;
-        //     this.insertControl(mainDs);
-        // }
+        const dsGroup = this.getAllGroups()!.find((group) => group.Name === DS_GROUP_TITLE);
+        if (dsGroup) {
+            const mainDs = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ? AND Type = ? AND TargetProperty = ?`).getAsObject([mainViewId, dbpr.ControlTypes.LED, dbpr.TargetPropertyType.INPUT_DIGITAL_DS_DATA_PRI]) as any as dbpr.Control;
+            this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${mainDs.ControlId}`).run();
+            mainDs.TargetId = dsGroup.GroupId;
+            this.insertControl(mainDs);
+        }
+
+        /**
+         * Configure the input gain type
+         */
+        const inputGainTitleStmt = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND Type = ${dbpr.ControlTypes.TEXT} AND DisplayName = ?`);
+        const inputGainTitleControl = inputGainTitleStmt.getAsObject(['Analog']) as any as dbpr.Control;
+        this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${inputGainTitleControl.ControlId}`).run();
+        const displayName = inputGainType ? 'Digital' : 'Analog';
+        inputGainTitleControl.DisplayName = displayName;
+        this.insertControl(inputGainTitleControl);
+
+        const inputGainControlsStmt = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND Type = ${dbpr.ControlTypes.DIGITAL} AND TargetProperty = ?`)
+        const inputGainControls = dbpr.getAllAsObjects(inputGainControlsStmt, [dbpr.TargetPropertyType.INPUT_ANALOG_GAIN]) as dbpr.Control[];
+        inputGainControls.forEach((control) => {
+            this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${control.ControlId}`).run();
+            const targetProperty = inputGainType ? dbpr.TargetPropertyType.INPUT_DIGITAL_GAIN : dbpr.TargetPropertyType.INPUT_ANALOG_GAIN;
+            control.TargetProperty = targetProperty;
+            this.insertControl(control);
+        });
 
         const apGroupId = this.getAPGroup()?.GroupId;
 
@@ -1991,7 +2015,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * Create the main AutoR1 view within the project
      * @param templateFile Loaded .r2t template file
      */
-    public createMainView(templateFile: AutoR1TemplateFile, createArraySightControls = true) {
+    public createMainView(templateFile: AutoR1TemplateFile, createArraySightControls = true, inputGainType: 0 | 1 = 0) {
         // Get width + height of templates used
         const { width: mainTempWidth } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.MAIN_OVERVIEW);
         const { width: meterTempWidth } = templateFile.getTemplateWidthHeight(AutoR1TemplateTitles.GROUP_LR_AP_CPL2);
@@ -2015,18 +2039,18 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
         const MAIN_VIEW_ID = rtn['max(ViewId)'];
 
-        const { posX: overviewPosX } = this.createMainViewOverview(templateFile, posX, posY, MAIN_VIEW_ID);
+        const { posX: overviewPosX } = this.createMainViewOverview(templateFile, posX, posY, MAIN_VIEW_ID, inputGainType);
 
         this.createMainViewMeters(templateFile, overviewPosX, 67, MAIN_VIEW_ID, createArraySightControls);
     }
 
-    createAll = (templates: AutoR1TemplateFile, parentId: number, options: ProjectOptions = { main: true, meter: true, eq: true, arraySightControls: true }) => {
+    createAll = (templates: AutoR1TemplateFile, parentId: number, options: ProjectOptions = { main: true, meter: true, eq: true, arraySightControls: true, inputGainType: INPUT_GAIN_TYPE.ANALOG }) => {
 
         this.createAPGroup(parentId);
         this.createMainFallbackGroup(parentId);
         this.createMainMuteGroup(parentId);
         this.createMainDsGroup(parentId);
-        if (options.main) this.createMainView(templates, options.arraySightControls);
+        if (options.main) this.createMainView(templates, options.arraySightControls, options.inputGainType);
         if (options.meter) this.createMeterView(templates);
         if (options.eq) this.createEqView(templates);
         this.createNavButtons(templates);
