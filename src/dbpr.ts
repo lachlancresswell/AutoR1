@@ -1,5 +1,10 @@
 import SQLjs, { Database } from 'sql.js';
 
+// @ts-ignore
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import sqlWasm from "!!file-loader?name=sql-wasm-[contenthash].wasm!sql.js/dist/sql-wasm.wasm";
+
+
 export type Crossover = '100hz' | 'Infra' | 'CUT';
 
 export const ARRAYCALC_SNAPSHOT = 1;  // Snapshot ID
@@ -544,9 +549,10 @@ export const getAllAsObjects = <T>(stmt: SQLjs.Statement, bindObj: any[] = []) =
  * Load existing SQL database file
  * @param fb - Database file in Buffer form
  */
-const build = async <T>(fb: Buffer, cb: (db: Database) => T) => {
+export const build = async <T>(fb: Buffer, cb: (db: Database) => T) => {
     const sql: SQLjs.SqlJsStatic = (await SQLjs({
         // locateFile: file => `https://sql.js.org/dist/${file}`
+        locateFile: () => sqlWasm
     }))
     const db = new sql.Database(fb)
     return cb(db);
@@ -616,7 +622,7 @@ export class ProjectFile extends SqlDbFile {
         super(db);
 
         if (!this.getMasterGroupID()) {
-            throw (new Error("Project file is not initialised"));
+            throw (new Error("Project file is not initialised. The project must be opened the project in R1 and have had all initial groups and views created."));
         }
     }
 
