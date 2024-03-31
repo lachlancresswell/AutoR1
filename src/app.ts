@@ -19,13 +19,13 @@ interface SourceGroupStatus {
     ds: boolean;
 }
 
-const DEFAULT_OPTIONS: AutoR1.ProjectOptions = {
+const DEFAULT_OPTIONS: AutoR1.ProjectOptions = Object.freeze({
     main: true,
     meter: true,
     eq: true,
     arraySightControls: true,
     inputGainType: DEFAULT_INPUT_GAIN_TYPE
-}
+});
 
 interface AppData {
     projectFile: AutoR1.AutoR1ProjectFile | undefined;
@@ -86,7 +86,7 @@ Alpine.data<AppData, unknown[]>('app', () => ({
     isDragOver: false,
     fileName: undefined,
     sourceGroupsStatus: undefined,
-    projectOptions: DEFAULT_OPTIONS,
+    projectOptions: { ...DEFAULT_OPTIONS },
     fileBuffer: undefined,
     isVisible: true,
 
@@ -112,7 +112,7 @@ Alpine.data<AppData, unknown[]>('app', () => ({
         if (this.projectFile) {
             this.sourceGroupsStatus = this.projectFile.sourceGroups.map(sg => ({ fallback: sg.fallback, mute: sg.mute, ds: sg.dsData }));
         }
-        this.projectOptions = DEFAULT_OPTIONS;
+        this.projectOptions = { ...DEFAULT_OPTIONS };
     },
 
     cleanFile() {
