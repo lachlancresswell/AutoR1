@@ -2,8 +2,7 @@ import SQLjs, { Database } from 'sql.js';
 
 // @ts-ignore
 // eslint-disable-next-line import/no-webpack-loader-syntax
-import sqlWasm from "!!file-loader?name=sql-wasm-[contenthash].wasm!sql.js/dist/sql-wasm.wasm";
-
+import sqlWasm from "!!url-loader?name=sql-wasm-[contenthash].wasm!sql.js/dist/sql-wasm.wasm";
 
 export type Crossover = '100hz' | 'Infra' | 'CUT';
 
@@ -552,7 +551,7 @@ export const getAllAsObjects = <T>(stmt: SQLjs.Statement, bindObj: any[] = []) =
 export const build = async <T>(fb: Buffer, cb: (db: Database) => T) => {
     const sql: SQLjs.SqlJsStatic = (await SQLjs({
         // locateFile: file => `https://sql.js.org/dist/${file}`
-        locateFile: () => sqlWasm
+        locateFile: () => sqlWasm as never
     }))
     const db = new sql.Database(fb)
     return cb(db);

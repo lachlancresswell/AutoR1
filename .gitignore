@@ -24,3 +24,5 @@ yarn-error.log*
 
 *.dbpr*
 *.r2t*
+
+bundle.js
