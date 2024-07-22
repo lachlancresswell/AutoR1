@@ -1,4 +1,3 @@
-/* eslint-disable import/no-webpack-loader-syntax */
 /* eslint-disable no-loop-func */
 import { Database } from 'sql.js';
 import * as dbpr from './dbpr';
@@ -934,7 +933,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * @example
      * const p = new ProjectFile('path/to/project.dbpr');
      * const dsGroupId = p.getDsGroupID();
-     * console.log(muteGroupId);
+     * console.log(dsGroupId);
      * // => 1
      */
     public getDsGroupID(): number | undefined {
@@ -1198,7 +1197,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
     * @param parentGroupId Group id to create the AP group under
     */
     public createAPGroup(parentGroupId = MAIN_GROUP_ID): boolean {
-        const apChannelGroups: Channel[] = [];
+        const apChannelGroups: Group[] = [];
 
         for (const srcGrp of this.sourceGroups) {
             if (srcGrp.hasArrayProcessingEnabled()) {
@@ -1295,7 +1294,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
             const stmt = this.db.prepare(query);
 
-            let rtn = dbpr.getAllAsObjects<Channel>(stmt);
+            let rtn = dbpr.getAllAsObjects<Group>(stmt);
 
             if (rtn && rtn.length) {
                 subGroups.push(rtn);
@@ -2395,7 +2394,7 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
 
     constructor(db: Database) {
         super(db);
-
+        
 
         const stmt = this.db.prepare(`SELECT * FROM 'main'.'Sections' ORDER BY JoinedId ASC`);
         const templates = dbpr.getAllAsObjects<dbpr.Section>(stmt);
@@ -2409,6 +2408,14 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
 
             this.templates.push(new AutoR1Template(template, controls, width, height));
             console.debug(`Loaded template - ${index} / ${this.templates[this.templates.length - 1].name}`);
+        });
+
+        const autoR1TemplateTitles = Object.values(AutoR1TemplateTitles);
+        const loadedTitles = this.templates.map(t => t.name);
+        loadedTitles.forEach((title) => {
+            if (!autoR1TemplateTitles.includes(title as AutoR1TemplateTitles)) {
+                throw (new Error(`Template ${title} not found in template file.`));
+            }
         });
     }
 

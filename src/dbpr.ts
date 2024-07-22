@@ -884,7 +884,6 @@ export class ProjectFile extends SqlDbFile {
      */
     public getHighestGroupID(): number | undefined {
         const stmt = this.db.prepare('SELECT max(GroupId) FROM Groups');
-        // const wow = this.db.exec('SELECT max(GroupId) FROM Groups')
         const rtn = stmt.getAsObject({}) as any as { 'max(GroupId)': number };
         if (!rtn || rtn['max(GroupId)'] === undefined) {
             console.warn("Could not find any groups.");
