@@ -31,6 +31,7 @@ export const MAIN_GROUP_ID = 1;
 export const FALLBACK_GROUP_TITLE = 'FALLBACK';
 export const MUTE_GROUP_TITLE = 'MUTE';
 export const DS_GROUP_TITLE = 'DS DATA';
+export const EQ_GROUP_TITLE = 'EQ';
 
 export enum AutoR1TemplateTitles {
     MAIN_OVERVIEW = 'Main Overview',
@@ -40,6 +41,7 @@ export enum AutoR1TemplateTitles {
     MAIN_ARRAYSIGHT = "Main ArraySight",
     MAIN_ARRAYSIGHT_LR = "Main ArraySight LR",
     MAIN_ARRAYSIGHT_FRAME = "Main ArraySight Frame",
+    MAIN_EQ = "Main EQ",
     GROUP = "Group",
     GROUP_CPL2 = "Group CPL2",
     GROUP_AP = "Group AP",
@@ -100,6 +102,7 @@ export class ChannelGroup implements ChannelGroupInterface {
     removeFromMute = false;
     removeFromFallback = false;
     removeFromDs = false;
+    removeFromEq = false;
 
     constructor(options: ChannelGroupInterface) {
         this.groupId = options.groupId;
@@ -339,6 +342,7 @@ export class SourceGroup implements dbpr.SourceGroup {
     mute: boolean = true;
     fallback: boolean = true;
     dsData: boolean = true;
+    eq: boolean = true;
 
     channelGroups: ChannelGroup[] = [];
 
@@ -589,7 +593,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             || this.getEQView()
             || this.getFallbackGroupID()
             || this.getMuteGroupID()
-            || this.getDsGroupID()) {
+            || this.getDsGroupID()
+            || this.getEqGroupID()) {
             this.additions = true;
         }
     }
@@ -773,12 +778,13 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             // If item of type FRAME or BUTTON to swap views (TargetType is PAGE), 
             // and a DisplayName has been provided, and we are not dealing with a fallback/regular button,
             // then set the display name to the provided name
-            if ((control.isTypeFrame()
+            if (((control.isTypeFrame()
                 || (control.isTypeSwitch()
                     && control.TargetType === dbpr.TargetTypes.VIEW))
                 && (control.DisplayName
                     && control.DisplayName !== "Fallback"
-                    && control.DisplayName !== "Regular" && DisplayName)) {
+                    && control.DisplayName !== "Regular" && DisplayName))
+                || ((control.isTypeEQ() || control.isTypeText()) && DisplayName)) {
                 control.DisplayName = DisplayName;
             }
 
@@ -882,21 +888,25 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             ParentId: parentGroupId
         });
 
-        // Wrap in transaction to speed up insertion
-        this.sourceGroups.forEach((srcGrp) => {
-            srcGrp.channelGroups.forEach((chGrp) => {
-                if (srcGrp.dsData) {
-                    chGrp.channels.forEach((ch) => {
-                        this.addChannelToGroup({
-                            Name: ch.Name,
-                            ParentId: mainGroup,
-                            TargetId: ch.TargetId,
-                            TargetChannel: ch.TargetChannel,
-                        })
-                    });
-                }
-            });
+    /**
+     * Creates a new group and inserts all channels except those with the removeFromEq flag set
+     * @param parentGroupId Group id to create the group under
+     * 
+     * @example
+     * const p = new ProjectFile(PROJECT_INIT)
+     * p.createMainEqGroup()
+     */
+    public createMainEqGroup(parentGroupId = MAIN_GROUP_ID): void {
+        const ParentId = this.createGroup({
+            Name: EQ_GROUP_TITLE,
+            ParentId: parentGroupId
         });
+
+        this.sourceGroups
+            .filter((srcGrp) => srcGrp.eq)
+            .forEach((srcGrp) => srcGrp.channelGroups
+                .forEach((chGrp) => chGrp.channels
+                    .forEach((ch) => this.addChannelToGroup({ ...ch, ParentId }))));
     };
 
     /**
@@ -942,6 +952,21 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      */
     public getDsGroupID(): number | undefined {
         return this.getGroupIdFromName(DS_GROUP_TITLE);
+    }
+
+    /**
+     * Get the ID of the EQ data group
+     * @returns GroupId of ds data group
+     * @throws Will throw an error if the ds data group cannot be found.
+     * 
+     * @example
+     * const p = new ProjectFile('path/to/project.dbpr');
+     * const eqGroupId = p.getEqGroupID();
+     * console.log(eqGroupId);
+     * // => 1
+     */
+    public getEqGroupID(): number | undefined {
+        return this.getGroupIdFromName(EQ_GROUP_TITLE);
     }
 
     /**
@@ -1605,11 +1630,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * @returns void
      */
     public createEqView(templateFile: AutoR1TemplateFile): void {
-        const H_RES = 2840;
+        const H_RES = 1750;
         const V_RES = 3500;
-        const BUFFER = 10;
+        const BUFFER = 20;
         const INITIAL_POS_X = 20;
-        const ZOOM_LEVEL = 50;
+        const ZOOM_LEVEL = 100;
 
         let posX = INITIAL_POS_X;
         let posY = 20;
@@ -1624,6 +1649,33 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             throw (Error(`Could not create Auto R1 Meter view`));
         }
         const eqViewId = rtn['max(ViewId)'];
+
+        let mainEqTemplate = templateFile.getTemplateByName(AutoR1TemplateTitles.EQ2);
+        let mainEqTitleTemplate = templateFile.getTemplateByName(AutoR1TemplateTitles.EQ2_TITLE);
+        this.insertTemplate(
+            mainEqTitleTemplate,
+            eqViewId,
+            posX,
+            posY,
+            { DisplayName: 'Main EQ' }
+        );
+
+        posY += mainEqTitleTemplate.height + BUFFER;
+
+        this.insertTemplate(
+            mainEqTemplate,
+            eqViewId,
+            posX,
+            posY,
+            {
+                DisplayName: 'Main EQ',
+                TargetId: this.getEqGroupID()
+            },
+        );
+
+        posX += BUFFER + eqTemplateWidth;
+        const eq1PosX = posX;
+        posY = 20
 
         let eqTemplate = templateFile.getTemplateByName(AutoR1TemplateTitles.EQ1);
         let eqTitleTemplate = templateFile.getTemplateByName(AutoR1TemplateTitles.EQ1_TITLE);
@@ -1700,8 +1752,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
                     index += 1;
                     posX += BUFFER + eqTemplateWidth;
-                    if (!(index % 5)) {
-                        posX = INITIAL_POS_X;
+                    if (!(index % (i ? 3 : 2))) {
+                        posX = i ? INITIAL_POS_X : eq1PosX;
                         posY += BUFFER + eqTemplateHeight;
                     }
                 })
@@ -2039,6 +2091,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         this.createMainFallbackGroup(parentId);
         this.createMainMuteGroup(parentId);
         this.createMainDsGroup(parentId);
+        this.createMainEqGroup(parentId);
         if (options.main) this.createMainView(templates, options.arraySightControls, options.inputGainType);
         if (options.meter) this.createMeterView(templates);
         if (options.eq) this.createEqView(templates);
@@ -2151,6 +2204,14 @@ export class AutoR1Control implements dbpr.Control {
 
     public isTypeFrame() {
         return this.Type === dbpr.ControlTypes.FRAME;
+    }
+
+    public isTypeEQ() {
+        return this.Type === dbpr.ControlTypes.EQ;
+    }
+
+    public isTypeText() {
+        return this.Type === dbpr.ControlTypes.TEXT;
     }
 
     public isTypeSwitch() {
