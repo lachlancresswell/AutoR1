@@ -819,28 +819,18 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * const p = new ProjectFile(PROJECT_INIT)
      * p.createMainGroup()
      */
-    public createMainMuteGroup(ParentId = MAIN_GROUP_ID): void {
+    public createMainMuteGroup(parentGroupId = MAIN_GROUP_ID): void {
         const group = {
             Name: MUTE_GROUP_TITLE,
-            ParentId
+            ParentId: parentGroupId
         }
-        const mainGroup = this.createGroup(group);
+        const ParentId = this.createGroup(group);
 
-        // Wrap in transaction to speed up insertion
-        this.sourceGroups.forEach((srcGrp) => {
-            srcGrp.channelGroups.forEach((chGrp) => {
-                if (srcGrp.mute) {
-                    chGrp.channels.forEach((ch) => {
-                        this.addChannelToGroup({
-                            Name: ch.Name,
-                            ParentId: mainGroup,
-                            TargetId: ch.TargetId,
-                            TargetChannel: ch.TargetChannel,
-                        })
-                    });
-                }
-            });
-        });
+        this.sourceGroups
+            .filter((srcGrp) => srcGrp.mute)
+            .forEach((srcGrp) => srcGrp.channelGroups
+                .forEach((chGrp) => chGrp.channels
+                    .forEach((ch) => this.addChannelToGroup({ ...ch, ParentId }))));
     };
 
     /**
@@ -852,26 +842,16 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * p.createMainGroup()
      */
     public createMainFallbackGroup(parentGroupId = MAIN_GROUP_ID): void {
-        const mainGroup = this.createGroup({
+        const ParentId = this.createGroup({
             Name: FALLBACK_GROUP_TITLE,
             ParentId: parentGroupId
         });
 
-        // Wrap in transaction to speed up insertion
-        this.sourceGroups.forEach((srcGrp) => {
-            srcGrp.channelGroups.forEach((chGrp) => {
-                if (srcGrp.fallback) {
-                    chGrp.channels.forEach((ch) => {
-                        this.addChannelToGroup({
-                            Name: ch.Name,
-                            ParentId: mainGroup,
-                            TargetId: ch.TargetId,
-                            TargetChannel: ch.TargetChannel,
-                        })
-                    });
-                }
-            });
-        });
+        this.sourceGroups
+            .filter((srcGrp) => srcGrp.fallback)
+            .forEach((srcGrp) => srcGrp.channelGroups
+                .forEach((chGrp) => chGrp.channels
+                    .forEach((ch) => this.addChannelToGroup({ ...ch, ParentId }))));
     };
 
     /**
@@ -883,10 +863,17 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * p.createMainDsGroup()
      */
     public createMainDsGroup(parentGroupId = MAIN_GROUP_ID): void {
-        const mainGroup = this.createGroup({
+        const ParentId = this.createGroup({
             Name: DS_GROUP_TITLE,
             ParentId: parentGroupId
         });
+
+        this.sourceGroups
+            .filter((srcGrp) => srcGrp.dsData)
+            .forEach((srcGrp) => srcGrp.channelGroups
+                .forEach((chGrp) => chGrp.channels
+                    .forEach((ch) => this.addChannelToGroup({ ...ch, ParentId }))));
+    };
 
     /**
      * Creates a new group and inserts all channels except those with the removeFromEq flag set
@@ -1236,14 +1223,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         const apGroupId = this.getHighestGroupID()!;
 
         // Wrap in transaction to speed up insertion
-        apChannelGroups.forEach((ch) => {
-            this.addChannelToGroup({
-                Name: ch.Name,
-                ParentId: apGroupId,
-                TargetId: ch.TargetId,
-                TargetChannel: ch.TargetChannel,
-            });
-        });
+        apChannelGroups.forEach((ch) => this.addChannelToGroup({ ...ch, ParentId: apGroupId }));
 
         return true;
     }
@@ -1367,13 +1347,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             });
             let pId = this.getHighestGroupID()!;
 
-            for (const subDevices of subArrayGroup) {
-                this.addChannelToGroup({
-                    Name: subDevices.Name,
-                    ParentId: pId,
-                    TargetId: subDevices.TargetId, TargetChannel: subDevices.TargetChannel,
-                });
-            }
+            subArrayGroup.forEach((subDevices) => this.addChannelToGroup({ ...subDevices, ParentId: pId }))
         }
     }
 
@@ -1399,9 +1373,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
                 if (chGrp.type === 'TYPE_SUBS_C') {
                     for (const channel of chGrp.channels) {
                         this.addChannelToGroup({
-                            Name: channel.Name,
+                            ...channel,
                             ParentId: pId,
-                            TargetId: channel.TargetId, TargetChannel: channel.TargetChannel,
                         });
                         success = true;
                     }
@@ -1832,33 +1805,33 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         /**
          * Configure the main mute switch
          */
-        const muteGroup = this.getAllGroups()!.find((group) => group.Name === MUTE_GROUP_TITLE);
+        const muteGroup = this.getMuteGroupID();
         if (muteGroup) {
             const mainMute = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ${mainViewId} AND Type = ${dbpr.ControlTypes.SWITCH} AND DisplayName = ?`).getAsObject(['Mute']) as any as dbpr.Control;
             this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${mainMute.ControlId}`).run();
-            mainMute.TargetId = muteGroup.GroupId;
+            mainMute.TargetId = muteGroup;
             this.insertControl(mainMute);
         }
 
         /**
          * Configure the fallback indicator
          */
-        const fallbackGroup = this.getAllGroups()!.find((group) => group.Name === FALLBACK_GROUP_TITLE);
+        const fallbackGroup = this.getFallbackGroupID();
         if (fallbackGroup) {
             const mainFallback = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ? AND Type = ? AND TargetProperty = ?`).getAsObject([mainViewId, dbpr.ControlTypes.LED, dbpr.TargetPropertyType.STATUS_INPUT_FALLBACK_ACTIVE]) as any as dbpr.Control;
             this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${mainFallback.ControlId}`).run();
-            mainFallback.TargetId = fallbackGroup.GroupId;
+            mainFallback.TargetId = fallbackGroup;
             this.insertControl(mainFallback);
         }
 
         /**
          * Configure the DS data indicator
          */
-        const dsGroup = this.getAllGroups()!.find((group) => group.Name === DS_GROUP_TITLE);
+        const dsGroup = this.getDsGroupID();
         if (dsGroup) {
             const mainDs = this.db.prepare(`SELECT * FROM Controls WHERE ViewId = ? AND Type = ? AND TargetProperty = ?`).getAsObject([mainViewId, dbpr.ControlTypes.LED, dbpr.TargetPropertyType.INPUT_DIGITAL_DS_DATA_PRI]) as any as dbpr.Control;
             this.db.prepare(`DELETE FROM Controls WHERE ControlId = ${mainDs.ControlId}`).run();
-            mainDs.TargetId = dsGroup.GroupId;
+            mainDs.TargetId = dsGroup;
             this.insertControl(mainDs);
         }
 
