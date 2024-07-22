@@ -645,15 +645,9 @@ export class ProjectFile extends SqlDbFile {
      * console.log(groupId);
      * // => 284
      */
-    public createGroup(groupObj: {
-        Name: string,
-        ParentId?: number,
-        TargetId?: number,
-        TargetChannel?: TargetChannels,
-        Type?: R1GroupsType,
-        Flags?: number,
-    }): number {
+    public createGroup(group: Partial<Group>): number {
         const defaults = {
+            Name: '',
             ParentId: MASTER_GROUP_ID,
             TargetId: 0,
             TargetChannel: TargetChannels.NONE,
@@ -668,7 +662,7 @@ export class ProjectFile extends SqlDbFile {
             TargetChannel,
             Type,
             Flags,
-        } = { ...defaults, ...groupObj };
+        } = { ...defaults, ...group };
 
         const insertGroupStmt = this.db.prepare(
             `INSERT INTO Groups (Name, ParentId, TargetId, TargetChannel, Type, Flags)
@@ -707,19 +701,13 @@ export class ProjectFile extends SqlDbFile {
      * console.log(groupId);
      * // => 284
      */
-    public addChannelToGroup(groupObj: {
-        Name: string,
-        ParentId: number,
-        TargetId: number,
-        TargetChannel: TargetChannels,
-        Flags?: number,
-    }): number {
+    public addChannelToGroup(channel: Group): number {
         const defaults = {
             Type: R1GroupsType.DEVICE,
             Flags: 0,
         }
 
-        return this.createGroup({ ...defaults, ...groupObj });
+        return this.createGroup({ ...defaults, ...channel });
     }
 
     /**

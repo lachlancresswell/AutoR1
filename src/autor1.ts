@@ -2,11 +2,7 @@
 /* eslint-disable no-loop-func */
 import { Database } from 'sql.js';
 import * as dbpr from './dbpr';
-import { build } from './dbpr';
-
-// Required to let webpack 4 know it needs to copy the wasm file to our assets
-// @ts-ignore
-// import sqlWasm from "!!file-loader?name=sql-wasm-[contenthash].wasm!sql.js/dist/sql-wasm.wasm";
+import { build, Group } from './dbpr';
 
 export enum INPUT_GAIN_TYPE {
     ANALOG = 0,
@@ -74,18 +70,11 @@ interface TemplateOptions {
     joinedId?: number,
     sourceGroupType?: dbpr.SourceGroupTypes;
 }
-export interface Channel {
-    CabinetId: number;
-    GroupId: number;
-    Name: string;
-    TargetChannel: number;
-    TargetId: number;
-}
 
 interface ChannelGroupInterface {
     groupId: number;
     name: string;
-    channels: Channel[];
+    channels: Group[];
     type: ChannelGroupTypes;
     arraySightId?: number;
 }
@@ -101,7 +90,7 @@ export interface ProjectOptions {
 export class ChannelGroup implements ChannelGroupInterface {
     groupId: number;
     name: string;
-    channels: Channel[];
+    channels: Group[];
     type: ChannelGroupTypes;
     arraySightId?: number;
     mainGroup?: ChannelGroup;
@@ -700,7 +689,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
             srcGrp.channelGroups.forEach((devGrp) => {
                 const stmt = this.db.prepare(subQuery);
 
-                const rtn = dbpr.getAllAsObjects<Channel>(stmt, [devGrp.groupId])
+                const rtn = dbpr.getAllAsObjects<Group>(stmt, [devGrp.groupId])
                 for (let row of rtn) {
                     devGrp.channels.push(row);
                 }
@@ -1275,7 +1264,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
      * @returns Array of channels
      */
     private getSubArrayGroups = () => {
-        let subGroups: Channel[][] = [];
+        let subGroups: Group[][] = [];
 
         // Order allows a specific order type to be returned from the database, allowing devices to be
         // order from stage right to stage left across all groups
