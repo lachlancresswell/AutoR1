@@ -2,6 +2,9 @@
 	"name": "autor1",
 	"version": "2.0.2",
 	"homepage": "https://autor1.app",
+	"scripts": {
+		"test": "vitest"
+	},
 	"workspaces": [
 		"browser",
 		"native"
@@ -13,7 +16,9 @@
 		"eslint-config-prettier": "^9.1.0",
 		"prettier": "3.3.3",
 		"prettier-plugin-svelte": "^3.2.6",
-		"prettier-plugin-tailwindcss": "^0.6.5"
+		"prettier-plugin-tailwindcss": "^0.6.5",
+		"vite": "^5.3.5",
+		"vitest": "^2.0.5"
 	},
 	"author": "Lachlan Cresswell",
 	"license": "GPL"
