@@ -1,0 +1,52 @@
+{
+	"applicationId": "ts.neutralino.svelte",
+	"version": "2.0.0",
+	"defaultMode": "window",
+	"documentRoot": "/frontend/dist",
+	"url": "/",
+	"enableServer": true,
+	"enableNativeAPI": true,
+	"nativeAllowList": [
+		"os.showOpenDialog",
+		"os.showSaveDialog",
+		"os.showNotification",
+		"os.getPath",
+		"filesystem.readBinaryFile",
+		"filesystem.writeBinaryFile",
+		"events.on",
+		"app.exit",
+		"debug.log"
+	],
+	"exportAuthInfo": false,
+	"logging": {
+		"writeToLogFile": false,
+		"enabled": true
+	},
+	"modes": {
+		"window": {
+			"title": "AutoR1",
+			"width": 100,
+			"height": 100,
+			"minWidth": 400,
+			"minHeight": 200,
+			"icon": "/frontend/public/favicon.png",
+			"exitProcessOnClose": true,
+			"useSavedState": false
+		}
+	},
+	"cli": {
+		"binaryName": "neu_svelte",
+		"resourcesPath": "/frontend/dist",
+		"extensionsPath": "/extensions/",
+		"binaryVersion": "5.1.0",
+		"clientVersion": "3.12.0",
+		"frontendLibrary": {
+			"buildCommand": "npm run neu:empty",
+			"patchFile": "/frontend/index.html",
+			"devUrl": "http://localhost:5183",
+			"devCommand": "npm run neu:empty",
+			"projectPath": "/",
+			"initCommand": "npm install"
+		}
+	}
+}
