@@ -1658,6 +1658,27 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 	}
 
 	/**
+	 * Create a view in the project
+	 * @param title Title for the view
+	 * @param HRes Horizontal size
+	 * @param VRes Vertical size
+	 * @returns ViewId of the new view
+	 */
+	public createView = (title = '', HRes = 1000, VRes = 1000) => {
+		this.db
+			.prepare(
+				`INSERT INTO Views('Type','Name','Icon','Flags','HomeViewIndex','NaviBarIndex','HRes','VRes','ZoomLevel','ScalingFactor','ScalingPosX','ScalingPosY','ReferenceVenueObjectId') VALUES (1000,'${title}',NULL,4,NULL,-1,${HRes},${VRes},100,NULL,NULL,NULL,NULL);`
+			)
+			.run();
+		const rtn = this.db.prepare(`SELECT max(ViewId) FROM Views`).getAsObject({}) as {
+			'max(ViewId)': number;
+		};
+		const viewId = rtn['max(ViewId)'];
+
+		return viewId;
+	};
+
+	/**
 	 * Creates the Meter vew and associated controls
 	 * @param templates AutoR1 template file containing the Meter view templates
 	 * @returns void
