@@ -70,7 +70,7 @@ type ChannelGroupTypes =
 	| 'TYPE_POINT_SUBS'
 	| 'TYPE_ADDITIONAL_AMPLIFIER';
 
-interface TemplateOptions {
+export interface TemplateOptions {
 	DisplayName?: string;
 	TargetId?: number;
 	TargetChannel?: number;

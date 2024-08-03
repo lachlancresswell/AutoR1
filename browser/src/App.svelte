@@ -1,25 +1,26 @@
-<!-- App.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Buffer } from 'buffer'
-	import * as AutoR1 from './autor1';
+	import * as AutoR1 from '@autor1/lib';
 	import { templateBase64 } from './template';
 	import {
 		downloadFile,
 		init,
 		alert,
 		openProjectDialog,
-		downloadTemplateFile
-	} from '../native/frontend/src/windows/main/neutrino';
+	} from '../../native/frontend/src/windows/main/neutrino';
 
 	const GROUP_NAME = 'AutoR1';
 	const DEFAULT_INPUT_GAIN_TYPE = AutoR1.INPUT_GAIN_TYPE.ANALOG;
+	const SUFFIX = '_AUTO';
+
+	const newAutoPath = (path: string) => path.substring(0, path.lastIndexOf('.')) + SUFFIX + '.dbpr';
 
 	const versionString = (window as any).NL_APPVERSION || '-2';
 	const commitString = (window as any).NL_COMMIT
 		? (window as any as { NL_COMMIT: string }).NL_COMMIT.substring(
 				(window as any as { NL_COMMIT: string }).NL_COMMIT.length - 5
-			) + (window as any).NL_CCOMMIT.substring((window as any).NL_CCOMMIT.length - 5)
+			) + (window as any).NL_CCOMMIT?.substring((window as any).NL_CCOMMIT.length - 5)
 		: '-1';
 
 	const DEFAULT_OPTIONS: AutoR1.ProjectOptions = {
@@ -92,7 +93,9 @@
 			const id = projectFile.getGroupIdFromName(GROUP_NAME);
 			projectFile.clean(id);
 
-			downloadFile(projectFile, newCleanPath(fileName!));
+			const arraybuff = projectFile.db.export();
+
+			downloadFile(arraybuff, newCleanPath(fileName!));
 
 			alert('Cleaned project has been downloaded.');
 		}
@@ -135,7 +138,9 @@
 
 		projectFile.createAll(templateFile!, parentId!, options);
 
-		downloadFile(projectFile, fileName);
+		const arraybuff = projectFile.db.export();
+
+		downloadFile(arraybuff, newAutoPath(fileName));
 
 		return projectFile;
 	};
@@ -247,7 +252,10 @@
 		customTemplateFileName = '';
 	};
 
-	const handleTemplateFileDownload = () => downloadTemplateFile(templateFile!);
+	const handleTemplateFileDownload = () => {
+		const arraybuff = templateFile!.db.export();
+		downloadFile(arraybuff, './templates.r2t')
+	};
 
 	const handleInputClick = async () => {
 		const file = await openProjectDialog();

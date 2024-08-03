@@ -1,13 +1,8 @@
 import * as Neutralino from '@neutralinojs/lib';
-import * as AutoR1 from '../../../../../src/autor1';
 
 export const init = () => {
 	setupAppClose();
 };
-
-const SUFFIX = '_AUTO';
-
-const newAutoPath = (path: string) => path.substring(0, path.lastIndexOf('.')) + SUFFIX + '.dbpr';
 
 // This function should be called when your app initializes
 function setupAppClose() {
@@ -39,33 +34,16 @@ export const openSaveDialog = () =>
 			})
 	);
 
-export const downloadFile = (projectFile: AutoR1.AutoR1ProjectFile, filename: string) => {
-	const arraybuff = projectFile.db.export();
-	const autoPath = newAutoPath(filename);
-	Neutralino.filesystem.writeBinaryFile(autoPath, arraybuff).then(
+export const downloadFile = (arraybuff: Uint8Array, filename: string) =>
+	Neutralino.filesystem.writeBinaryFile(filename, arraybuff).then(
 		() => {
-			console.log(`Processed folder saved to ${autoPath}.`);
-			alert(`Processed folder saved to ${autoPath}.`);
+			console.log(`Processed folder saved to ${filename}.`);
+			alert(`Processed folder saved to ${filename}.`);
 		},
 		(rej) => {
 			console.log(rej);
 		}
 	);
-};
-
-export const downloadTemplateFile = async (templates: AutoR1.AutoR1TemplateFile) => {
-	const arraybuff = templates!.db.export();
-
-	const path = (await Neutralino.os.getPath('downloads')) + '/templates.r2t';
-	Neutralino.filesystem.writeBinaryFile(path, arraybuff).then(
-		() => {
-			alert(`templates.r2t saved to your Downloads folder.`);
-		},
-		(rej) => {
-			console.log(rej);
-		}
-	);
-};
 
 export const openProjectDialog = () =>
 	new Promise<File>((res) =>

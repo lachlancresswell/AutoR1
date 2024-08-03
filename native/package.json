@@ -22,7 +22,7 @@
 	"devDependencies": {
 		"@expo/spawn-async": "^1.7.2",
 		"@neutralinojs/neu": "^10.1.0",
-		"@sveltejs/vite-plugin-svelte": "^3.0.2",
+		"@sveltejs/vite-plugin-svelte": "^4.0.0-next.5",
 		"@tsconfig/svelte": "^5.0.2",
 		"@types/signale": "^1.4.7",
 		"@types/sql.js": "^1.4.9",
@@ -46,6 +46,7 @@
 		"vite-plugin-html": "^3.2.2"
 	},
 	"dependencies": {
+		"@autor1/browser": "^0.0.0",
 		"@neutralinojs/lib": "^5.0.0",
 		"sql.js": "^1.11.0"
 	}

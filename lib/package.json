@@ -1,0 +1,19 @@
+{
+	"name": "@autor1/lib",
+	"version": "2.0.2",
+	"type": "module",
+	"main": "./src/autor1.ts",
+	"scripts": {
+		"test": "vitest"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.8.0",
+		"@types/sql.js": "^1.4.9",
+		"eslint": "^9.8.0",
+		"eslint-config-prettier": "^9.1.0",
+		"prettier": "3.3.3",
+		"prettier-plugin-svelte": "^3.2.6",
+		"vite": "^5.3.5",
+		"vitest": "^2.0.5"
+	}
+}

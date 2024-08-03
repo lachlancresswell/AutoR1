@@ -488,7 +488,7 @@ export interface View {
 	ViewId: number;
 	Type: ViewTypes;
 	Name: string;
-	Icon: never;
+	Icon: any;
 	Flags: number;
 	HomeViewIndex: number;
 	NaviBarIndex: number;
@@ -498,7 +498,7 @@ export interface View {
 	ScalingFactor: number | null;
 	ScalingPosX: number | null;
 	ScalingPosY: number | null;
-	ReferenceVenueObjectId: never;
+	ReferenceVenueObjectId: any;
 }
 
 /**
@@ -547,8 +547,9 @@ export const getAllAsObjects = <T>(stmt: SQLjs.Statement, bindObj: number[] | st
  * @param fb - Database file in Buffer form
  */
 export const build = async <T>(fb: Buffer, cb: (db: Database) => T) => {
+	console.log(__dirname);
 	const sql: SQLjs.SqlJsStatic = await SQLjs({
-		locateFile: (file: string) => `${file}`
+		locateFile: (file: string) => `${__dirname}/${file}`
 	});
 	const db = new sql.Database(fb);
 	return cb(db);

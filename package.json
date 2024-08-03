@@ -3,23 +3,15 @@
 	"version": "2.0.2",
 	"homepage": "https://autor1.app",
 	"scripts": {
+		"dev:native": "npm run dev -w native",
+		"dev:browser": "npm run dev -w browser",
 		"test": "vitest"
 	},
 	"workspaces": [
+		"lib",
 		"browser",
 		"native"
 	],
-	"devDependencies": {
-		"@eslint/js": "^9.8.0",
-		"@types/sql.js": "^1.4.9",
-		"eslint": "^9.8.0",
-		"eslint-config-prettier": "^9.1.0",
-		"prettier": "3.3.3",
-		"prettier-plugin-svelte": "^3.2.6",
-		"prettier-plugin-tailwindcss": "^0.6.5",
-		"vite": "^5.3.5",
-		"vitest": "^2.0.5"
-	},
 	"author": "Lachlan Cresswell",
 	"license": "GPL"
 }
