@@ -148,6 +148,8 @@ export const createViewFromTemplate = (
 
 	let curX = 0;
 	let curY = 0;
+	let viewWidth = 0;
+	let viewHeight = 0;
 
 	titles.forEach((title) => {
 		const { startX, startY, paddingX, paddingY, templates } = viewTemplate[title];
@@ -159,7 +161,7 @@ export const createViewFromTemplate = (
 		templates.forEach((template) => {
 			if (template.templates) {
 				formattedChannelGroups.forEach((channelGroup) => {
-					const { x, y } = handleViewTemplate(
+					const { x, y, maxX, maxY } = handleViewTemplate(
 						channelGroup,
 						projectFile,
 						templateFile,
@@ -172,9 +174,11 @@ export const createViewFromTemplate = (
 					);
 					curX = x;
 					curY = y;
+					viewWidth = maxX;
+					viewHeight = maxY;
 				});
 			} else {
-				const { x, y } = handleViewTemplate(
+				const { x, y, maxX, maxY } = handleViewTemplate(
 					undefined,
 					projectFile,
 					templateFile,
@@ -187,11 +191,13 @@ export const createViewFromTemplate = (
 				);
 				curX = x;
 				curY = y;
+				viewWidth = maxX;
+				viewHeight = maxY;
 			}
 		});
 	});
 
-	return { x: curX, y: curY };
+	return { x: curX, y: curY, width: viewWidth, height: viewHeight };
 };
 
 // TODO: this is pretty disgusting
