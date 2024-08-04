@@ -287,7 +287,6 @@
 						id="fileInput"
 						accept=".dbpr"
 						onchange={handleDrop}
-						onclick={handleInputClick}
 					/>
 					<div
 						class="flex h-48 cursor-pointer items-center justify-center border-2 border-solid border-slate-700 hover:border-slate-400"
