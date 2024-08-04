@@ -147,7 +147,7 @@
 
 	function handleDrop(event: Event) {
 		const [file] = (event.target as HTMLInputElement).files!;
-		loadProjectFile(file);
+		loadProjectFile(file).then((loadedfile) => projectFile = loadedfile)
 	}
 
 	function handleTemplateFileDrop(event: Event) {
