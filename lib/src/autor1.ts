@@ -2488,7 +2488,7 @@ export class AutoR1Control implements dbpr.Control {
 	ViewId = -1;
 	Width = 0;
 
-	constructor(row?: dbpr.Control) {
+	constructor(row?: Partial<dbpr.Control>) {
 		if (row) {
 			const {
 				ViewId,
@@ -2525,39 +2525,39 @@ export class AutoR1Control implements dbpr.Control {
 				ThresholdValue,
 				UniqueName
 			} = row;
-			this.ViewId = ViewId;
-			this.Type = Type;
-			this.PosX = PosX;
-			this.PosY = PosY;
-			this.Width = Width;
-			this.Height = Height;
-			this.DisplayName = DisplayName;
-			this.TargetId = TargetId;
-			this.TargetChannel = TargetChannel;
-			this.ActionType = ActionType;
-			this.Alignment = Alignment;
-			this.ConfirmOffMsg = ConfirmOffMsg;
-			this.ConfirmOnMsg = ConfirmOnMsg;
-			this.ControlId = ControlId;
-			this.Dimension = Dimension;
-			this.Flags = Flags;
-			this.Font = Font;
-			this.JoinedId = JoinedId;
-			this.LabelAlignment = LabelAlignment;
-			this.LabelColor = LabelColor;
-			this.LabelFont = LabelFont;
-			this.LimitMin = LimitMin;
-			this.LimitMax = LimitMax;
-			this.LineThickness = LineThickness;
-			this.MainColor = MainColor;
-			this.PictureIdDay = PictureIdDay;
-			this.PictureIdNight = PictureIdNight;
-			this.SubColor = SubColor;
-			this.TargetProperty = TargetProperty;
-			this.TargetRecord = TargetRecord;
-			this.TargetType = TargetType;
-			this.ThresholdValue = ThresholdValue;
-			this.UniqueName = UniqueName;
+			this.ViewId = ViewId ?? this.ViewId;
+			this.Type = Type ?? this.Type;
+			this.PosX = PosX ?? this.PosX;
+			this.PosY = PosY ?? this.PosY;
+			this.Width = Width ?? this.Width;
+			this.Height = Height ?? this.Height;
+			this.DisplayName = DisplayName ?? this.DisplayName;
+			this.TargetId = TargetId ?? this.TargetId;
+			this.TargetChannel = TargetChannel ?? this.TargetChannel;
+			this.ActionType = ActionType ?? this.ActionType;
+			this.Alignment = Alignment ?? this.Alignment;
+			this.ConfirmOffMsg = ConfirmOffMsg ?? this.ConfirmOffMsg;
+			this.ConfirmOnMsg = ConfirmOnMsg ?? this.ConfirmOnMsg;
+			this.ControlId = ControlId ?? this.ControlId;
+			this.Dimension = Dimension ?? this.Dimension;
+			this.Flags = Flags ?? this.Flags;
+			this.Font = Font ?? this.Font;
+			this.JoinedId = JoinedId ?? this.JoinedId;
+			this.LabelAlignment = LabelAlignment ?? this.LabelAlignment;
+			this.LabelColor = LabelColor ?? this.LabelColor;
+			this.LabelFont = LabelFont ?? this.LabelFont;
+			this.LimitMin = LimitMin ?? this.LimitMin;
+			this.LimitMax = LimitMax ?? this.LimitMax;
+			this.LineThickness = LineThickness ?? this.LineThickness;
+			this.MainColor = MainColor ?? this.MainColor;
+			this.PictureIdDay = PictureIdDay ?? this.PictureIdDay;
+			this.PictureIdNight = PictureIdNight ?? this.PictureIdNight;
+			this.SubColor = SubColor ?? this.SubColor;
+			this.TargetProperty = TargetProperty ?? this.TargetProperty;
+			this.TargetRecord = TargetRecord ?? this.TargetRecord;
+			this.TargetType = TargetType ?? this.TargetType;
+			this.ThresholdValue = ThresholdValue ?? this.ThresholdValue;
+			this.UniqueName = UniqueName ?? this.UniqueName;
 		}
 	}
 
