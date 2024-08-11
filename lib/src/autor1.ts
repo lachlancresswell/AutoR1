@@ -1658,6 +1658,23 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 	}
 
 	/**
+	 * Find a View row by id
+	 * @returns View object or undefined
+	 */
+	private getViewById(id: number): dbpr.View | undefined {
+		const stmt = this.db.prepare(`SELECT * from Views WHERE ViewId = ?`);
+		const view = stmt.getAsObject([id]) as unknown as dbpr.View;
+
+		if (!view || !view.ViewId) {
+			console.log(`Could not find view with name '${name}'`);
+
+			return undefined;
+		}
+
+		return view;
+	}
+
+	/**
 	 * Create a view in the project
 	 * @param title Title for the view
 	 * @param HRes Horizontal size
