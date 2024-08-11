@@ -2625,6 +2625,58 @@ export class AutoR1Control implements dbpr.Control {
 		return rtn;
 	}
 
+	public handleString(options: TemplateOptions) {
+		const { TargetId, TargetChannel, sourceGroup, channelGroup, channel } = options;
+
+		this.TargetId = TargetId ?? this.TargetId;
+		this.TargetChannel = TargetChannel ?? this.TargetChannel;
+
+		this.replaceDisplayName('%SourceGroupName%', sourceGroup?.Name);
+		this.replaceDisplayName('%ChannelGroupName%', channelGroup?.name);
+		this.replaceDisplayName('%ChannelName%', channel?.Name);
+
+		this.TargetId =
+			(this.displayNameIncludes('%SourceGroupPageTarget%') && options.sourceGroup?.ViewId) ||
+			this.TargetId;
+
+		this.TargetId =
+			(this.displayNameIncludes('%EqPageTarget%') &&
+				options.sourceGroup?.ViewId &&
+				options.sourceGroup?.ViewId + 1) ||
+			this.TargetId;
+
+		if (this.DisplayName?.includes('%Target_ChannelGroup') && options.sourceGroup) {
+			const matches = extractFromTargetString(this.DisplayName, 'Target_ChannelGroup');
+			this.DisplayName = matches.prefix + matches.suffix;
+
+			const side =
+				matches.lOrR === 'L'
+					? options.sourceGroup.channelGroups.find((ch) => ch.isLeft())
+					: matches.lOrR === 'R'
+						? options.sourceGroup.channelGroups.find((ch) => ch.isRight())
+						: matches.lOrR === 'TOPs'
+							? options.sourceGroup.channelGroups.find((ch) => ch.isTOPs())
+							: matches.lOrR === 'SUBs'
+								? options.sourceGroup.channelGroups.find((ch) => ch.isSUBs())
+								: undefined;
+
+			if (matches.channelNumber && side) {
+				this.TargetId = side.channels[matches.channelNumber - 1].TargetId || this.TargetId;
+				this.TargetChannel =
+					side.channels[matches.channelNumber - 1].TargetChannel || this.TargetChannel;
+			} else if (matches.channelNumber) {
+				this.TargetId =
+					options.sourceGroup.channelGroups[0].channels[matches.channelNumber - 1].TargetId ||
+					this.TargetId;
+				this.TargetChannel =
+					options.sourceGroup.channelGroups[0].channels[matches.channelNumber - 1].TargetChannel ||
+					this.TargetChannel;
+			} else {
+				this.TargetId = side?.groupId || this.TargetId;
+			}
+		}
+	}
+
 	/**
 	 * Determins whether a control will be displayed or not
 	 * @param channelGroup ChannelGroup control will be associated with
