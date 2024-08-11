@@ -77,7 +77,11 @@ export interface TemplateOptions {
 	Width?: number;
 	Height?: number;
 	joinedId?: number;
-	sourceGroupType?: dbpr.SourceGroupTypes;
+	sourceGroup?: SourceGroup;
+	channelGroup?: ChannelGroup;
+	channel?: Group;
+	sourceGroupType?: dbpr.SourceGroupTypes | ChannelGroupTypes;
+	strings?: { sourceGroupName?: string; channelGroupName?: string };
 }
 
 interface ChannelGroupInterface {
@@ -866,7 +870,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 		posY = 0,
 		options?: TemplateOptions
 	): void => {
-		const { DisplayName, TargetId, TargetChannel, Width, Height } = options || {};
+		const { Width, Height } = options || {};
 		let { joinedId } = options || {};
 
 		// Increase global joined ID
@@ -877,59 +881,21 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 
 		if (!joinedId) joinedId = highestJoinedId + 1;
 
-		if (!template.controls || template.controls.length < 1) {
-			throw new Error('Template has no controls.');
-		}
-
 		// Wrap in transaction to speed up insertion
 		for (const templateControl of template.controls) {
 			const control = Object.assign(new AutoR1Control(), templateControl);
 
-			// If item of type FRAME or BUTTON to swap views (TargetType is PAGE),
-			// and a DisplayName has been provided, and we are not dealing with a fallback/regular button,
-			// then set the display name to the provided name
-			if (
-				((control.isTypeFrame() ||
-					(control.isTypeSwitch() && control.TargetType === dbpr.TargetTypes.VIEW)) &&
-					control.DisplayName &&
-					control.DisplayName !== 'Fallback' &&
-					control.DisplayName !== 'Regular' &&
-					DisplayName) ||
-				((control.isTypeEQ() || control.isTypeText()) && DisplayName)
-			) {
-				control.DisplayName = DisplayName;
+			if (options?.sourceGroup && !control.isVisible(options?.sourceGroup)) {
+				continue;
 			}
 
-			// Set TargetChannel if required
-			if (
-				Object.values({
-					...dbpr.TargetPropertyTypeChannel,
-					...dbpr.TargetPropertyDisplayChannel,
-					...dbpr.TargetPropertyLedChannel,
-					...dbpr.TargetPropertyMeterChannel,
-					...dbpr.TargetPropertySwitchChannel,
-					...dbpr.TargetPropertyDigitalChannel,
-					...dbpr.TargetPropertyDisplayChannel
-				}).includes(control.TargetProperty as dbpr.TargetPropertyType) &&
-				TargetChannel
-			) {
-				control.TargetChannel = TargetChannel;
-
-				// Convert the digital input to a read-only display control for delay setting on a flown array
-				if (
-					control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY &&
-					options?.sourceGroupType === dbpr.SourceGroupTypes.ARRAY
-				) {
-					control.Type = dbpr.ControlTypes.DISPLAY;
-				}
-			}
+			if (options) control.handleString(options);
 
 			control.PosX = control.PosX + posX;
 			control.PosY = control.PosY + posY;
-			control.Width = Width || control.Width;
-			control.Height = Height || control.Height;
+			control.Width = Width ?? control.Width;
+			control.Height = Height ?? control.Height;
 			control.JoinedId = joinedId!;
-			control.TargetId = TargetId || control.TargetId;
 			control.ViewId = ViewId;
 
 			this.insertControl(control);

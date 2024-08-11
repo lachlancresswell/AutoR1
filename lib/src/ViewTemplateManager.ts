@@ -1,0 +1,322 @@
+import {
+	AutoR1ProjectFile,
+	AutoR1TemplateFile,
+	ChannelGroup,
+	SourceGroup,
+	TemplateOptions
+} from './autor1';
+import { Control, ControlTypes, Group, TargetTypes } from './dbpr';
+
+type TemplateType =
+	| 'SourceGroup'
+	| 'ChannelGroup'
+	| 'Channel'
+	| 'Mute'
+	| 'Fallback'
+	| 'DS'
+	| 'Master'
+	| 'AP';
+
+interface Position {
+	x: number;
+	y: number;
+}
+
+interface Propagation {
+	direction: 'horizontal' | 'vertical';
+	spacing: number;
+}
+
+interface TemplateControl extends Partial<Control> {
+	TargetType: TargetTypes;
+	Type: ControlTypes;
+	DisplayName: string;
+	Width: number;
+	Height: number;
+	Target: string;
+	propagation?: Propagation;
+	initialPosition: Position;
+	type?: TemplateType;
+}
+
+interface TemplateBase {
+	name: string;
+	type?: TemplateType;
+	DisplayName?: string;
+	propagation?: Propagation;
+}
+
+interface TopLevelTemplate extends TemplateBase {
+	initialPosition: Position;
+	children?: ChildTemplate[];
+}
+
+interface ChildTemplate extends TemplateBase {
+	relativePosition: Position;
+}
+
+export interface PageConfig {
+	name?: string;
+	paddingX?: number;
+	paddingY?: number;
+	templates?: TopLevelTemplate[];
+	controls?: TemplateControl[];
+}
+
+interface RenderedTemplate {
+	name: string;
+	type?: string;
+	position: Position;
+	options?: TemplateOptions;
+	additions?: { isLR: boolean; isAP: boolean; hasCPLv2: boolean };
+}
+
+interface ViewTemplateOptions {
+	DisplayName?: string;
+	TargetId?: number;
+	TargetChannel?: number;
+	sourceGroup?: SourceGroup;
+	channelGroup?: ChannelGroup;
+	channel?: Group;
+	sourceGroupType?: any;
+	children?: ViewTemplateOptions[];
+}
+
+export class ViewTemplateManager {
+	private config: PageConfig;
+	private renderedTemplates: RenderedTemplate[] = [];
+	public renderedControls: TemplateControl[] = [];
+	private projectFile: AutoR1ProjectFile;
+	private templateFile: AutoR1TemplateFile;
+
+	constructor(
+		config: PageConfig,
+		projectFile: AutoR1ProjectFile,
+		templateFile: AutoR1TemplateFile
+	) {
+		this.config = config;
+		this.projectFile = projectFile;
+		this.templateFile = templateFile;
+	}
+
+	public generateLayout(): RenderedTemplate[] {
+		this.renderedTemplates = [];
+		this.processTopLevelTemplates();
+		return this.renderedTemplates;
+	}
+
+	private processTopLevelTemplates(): void {
+		this.config.templates?.forEach((template) => {
+			this.processTemplate(template, template.initialPosition);
+		});
+
+		this.config.controls?.forEach((control) => {
+			this.processControl(control, control.initialPosition);
+		});
+	}
+
+	private processTemplate(
+		template: TopLevelTemplate | ChildTemplate,
+		basePosition: Position,
+		parent?: ViewTemplateOptions[],
+		parentTemplatePos?: { x: number; y: number }
+	): void {
+		const options = parent || (template.type ? this.configureOptionsForType(template.type) : [{}]);
+
+		let previousTemplatePos = parentTemplatePos;
+
+		options.forEach((option, index) => {
+			const position = this.calculatePosition(template, basePosition, previousTemplatePos);
+			const dimensions = this.templateFile.getTemplateWidthHeight(template.name);
+			previousTemplatePos = {
+				x: position.x + dimensions.width - basePosition.x,
+				y: position.y + dimensions.height - basePosition.y
+			};
+
+			const isLR = !!option.sourceGroup?.channelGroups.find((cg) => cg.isLeft() || cg.isRight());
+			const hasCPLv2 = !!option.sourceGroup?.hasCPLv2();
+			const isAP = !!option.sourceGroup?.ArrayProcessingEnable;
+
+			this.renderedTemplates.push({
+				name: template.name,
+				type: template.type,
+				position: position,
+				options: option,
+				additions: { isLR, hasCPLv2, isAP }
+			});
+
+			(template as TopLevelTemplate).children?.forEach((childTemplate) => {
+				const childBasePosition = {
+					x: position.x + (childTemplate.relativePosition?.x || 0),
+					y: position.y + (childTemplate.relativePosition?.y || 0)
+				};
+				this.processTemplate(
+					childTemplate,
+					childBasePosition,
+					(option as any).children || undefined,
+					previousTemplatePos
+				);
+			});
+		});
+	}
+
+	private processControl(
+		control: TemplateControl,
+		basePosition: Position,
+		parentTemplatePos?: { x: number; y: number }
+	): void {
+		const position = this.calculatePosition(control, basePosition, parentTemplatePos);
+
+		control.PosX = position.x;
+		control.PosY = position.y;
+
+		this.renderedControls.push(control);
+	}
+
+	private calculatePosition(
+		template: TemplateBase | TemplateControl,
+		basePosition: Position,
+		previousPos?: { x: number; y: number }
+	): Position {
+		if (!template.propagation) {
+			return basePosition;
+		}
+
+		const { x: prevX, y: prevY } = previousPos || { x: 0, y: 0 };
+
+		return {
+			x:
+				template.propagation.direction === 'horizontal'
+					? basePosition.x + prevX + template.propagation.spacing
+					: basePosition.x,
+			y:
+				template.propagation.direction === 'vertical'
+					? basePosition.y + prevY + template.propagation.spacing
+					: basePosition.y
+		};
+	}
+
+	private configureOptionsForType(
+		type: TemplateType,
+		parent?: SourceGroup | ChannelGroup
+	): ViewTemplateOptions[] {
+		const handleChannel = (
+			channel: Group,
+			channelGroup: ChannelGroup,
+			sourceGroup?: SourceGroup
+		) => {
+			const DisplayName = `${channel.Name} - ${this.projectFile.getCanIdFromDeviceId(
+				channel.TargetId
+			)} - ${['', 'A', 'B', 'C', 'D'][channel.TargetChannel]}`;
+			return {
+				DisplayName,
+				TargetId: channel.TargetId,
+				TargetChannel: channel.TargetChannel,
+				sourceGroup,
+				channelGroup,
+				channel,
+				sourceGroupType: channelGroup.type
+			};
+		};
+
+		const handleChannelGroup = (channelGroup: ChannelGroup, sourceGroup: SourceGroup) => {
+			const children = channelGroup.channels.map((channel) =>
+				handleChannel(channel, channelGroup, sourceGroup)
+			);
+
+			return {
+				DisplayName: channelGroup.name,
+				TargetId: channelGroup.groupId,
+				sourceGroup,
+				channelGroup,
+				children
+			};
+		};
+
+		switch (type) {
+			case 'SourceGroup':
+				return this.projectFile.sourceGroups.map((sourceGroup) => {
+					return {
+						DisplayName: sourceGroup.Name,
+						TargetId: sourceGroup.masterGroupId,
+						sourceGroup,
+						children: sourceGroup.channelGroups
+							.filter((channelGroup) =>
+								channelGroup.hasLorR() ? (channelGroup.isLorR() ? true : false) : true
+							)
+							.map((channelGroup) => handleChannelGroup(channelGroup, sourceGroup))
+							.flat()
+					};
+				});
+			case 'ChannelGroup':
+				if ((parent as SourceGroup)?.SourceGroupId) {
+					const sourceGroup = parent as SourceGroup;
+					return sourceGroup.channelGroups
+						.filter((channelGroup) =>
+							channelGroup.hasLorR() ? (channelGroup.isLorR() ? true : false) : true
+						)
+						.map((channelGroup) => handleChannelGroup(channelGroup, sourceGroup))
+						.flat();
+				} else {
+					return this.projectFile.sourceGroups
+						.map((sourceGroup) =>
+							sourceGroup.channelGroups
+								.filter((channelGroup) =>
+									channelGroup.hasLorR() ? (channelGroup.isLorR() ? true : false) : true
+								)
+								.map((channelGroup) => {
+									const children = channelGroup.channels.map((channel) =>
+										handleChannel(channel, channelGroup, sourceGroup)
+									);
+
+									return {
+										DisplayName: channelGroup.name,
+										TargetId: channelGroup.groupId,
+										sourceGroup,
+										channelGroup,
+										children
+									};
+								})
+						)
+						.flat();
+				}
+			case 'Channel':
+				const channelGroup = parent as ChannelGroup;
+				return channelGroup.channels.map((channel) => handleChannel(channel, channelGroup));
+			case 'Mute':
+				return [
+					{
+						DisplayName: 'Mute',
+						TargetId: this.projectFile.getMuteGroupID() || this.projectFile.getMasterGroupID()!
+					}
+				];
+			case 'Fallback':
+				return [
+					{
+						DisplayName: 'Fallback',
+						TargetId: this.projectFile.getFallbackGroupID() || this.projectFile.getMasterGroupID()!
+					}
+				];
+			case 'DS':
+				return [
+					{
+						DisplayName: 'DS',
+						TargetId: this.projectFile.getDsGroupID() || this.projectFile.getMasterGroupID()!
+					}
+				];
+			case 'AP':
+				const TargetId =
+					this.projectFile.getAPGroup()?.GroupId || this.projectFile.getMasterGroupID();
+				return [
+					{
+						DisplayName: 'AP',
+						TargetId
+					}
+				];
+			case 'Master':
+				return [{ DisplayName: 'Master', TargetId: this.projectFile.getMasterGroupID()! }];
+			default:
+				return [];
+		}
+	}
+}
