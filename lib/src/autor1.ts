@@ -1696,6 +1696,32 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 	};
 
 	/**
+	 * Update the Name, HRes and VRes of a view.
+	 * @param viewId ID of view to update
+	 * @param values Values to update. All are optional.
+	 */
+	public updateView = (
+		viewId: number,
+		values: {
+			[key: string]: string | number | undefined;
+			Name?: string;
+			HRes?: number;
+			VRes?: number;
+		}
+	) => {
+		Object.keys(values).forEach((key) => {
+			const val = values[key];
+
+			if (val) {
+				const str = `UPDATE Views SET ${key} = ${val} WHERE ViewId = ${viewId}`;
+				const stmt = this.db.prepare(str);
+				stmt.run();
+			}
+		});
+	};
+
+
+	/**
 	 * Creates the Meter vew and associated controls
 	 * @param templates AutoR1 template file containing the Meter view templates
 	 * @returns void
