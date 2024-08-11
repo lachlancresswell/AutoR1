@@ -2253,7 +2253,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 			const meterChannelCallback = () => (meterChannelIndex += 1);
 			const muteChannelCallback = () => (muteChannelIndex += 1);
 
-			if (control.isVisible(channelGroup, sourceGroup)) {
+			if (control.isVisible(sourceGroup)) {
 				control.configureForMainView(
 					commonJoinedId,
 					meterTarget,
@@ -2679,12 +2679,15 @@ export class AutoR1Control implements dbpr.Control {
 
 	/**
 	 * Determins whether a control will be displayed or not
-	 * @param channelGroup ChannelGroup control will be associated with
 	 * @param sourceGroup SourceGroup control will be associated with
 	 * @returns True if will be visible, false if not
 	 */
-	public isVisible(channelGroup: ChannelGroup, sourceGroup: SourceGroup) {
-		if (this.isTypeDigital() && this.targetsCPL() && !channelGroup.hasCPL()) {
+	public isVisible(sourceGroup: SourceGroup) {
+		if (
+			this.isTypeDigital() &&
+			this.targetsCPL() &&
+			!sourceGroup.channelGroups.find((cg) => cg.hasCPL())
+		) {
 			// Skip CPL
 			return false;
 		} else if (this.targetsLoadMatchEnable() && !sourceGroup.hasLoadMatch()) {
@@ -2782,7 +2785,7 @@ export class AutoR1Control implements dbpr.Control {
 			}
 		}
 
-		if (this.isVisible(channelGroup, sourceGroup)) {
+		if (this.isVisible(sourceGroup)) {
 			this.PosX = this.PosX + posX;
 			this.PosY = this.PosY + posY;
 			this.ViewId = viewId;
@@ -2873,7 +2876,7 @@ export class AutoR1Template {
 				}
 			}
 
-			if (control.isVisible(channelGroup, sourceGroup)) {
+			if (control.isVisible(sourceGroup)) {
 				control.PosX = control.PosX + posX;
 				control.PosY = control.PosY + posY;
 				control.ViewId = viewId;
