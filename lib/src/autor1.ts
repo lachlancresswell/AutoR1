@@ -96,6 +96,42 @@ export interface ProjectOptions {
 	inputGainType: 0 | 1;
 }
 
+/**
+ *
+ * @param input String to extract values from.
+ * @param matchString String inside the input to look for.
+ * @returns Obejct containing L/R/TOPs/SUBs as a string if it is found with the matched string, the prefix and, the suffix.
+ */
+const extractFromTargetString = (
+	input: string,
+	matchString: string = 'Target_ChannelGroup'
+): {
+	lOrR: string;
+	channelNumber: number | null;
+	prefix: string;
+	suffix: string;
+} => {
+	// Escape special regex characters in the matchString
+	const escapedMatchString = matchString.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+	// Updated regex to support 'TOP', 'SUB', or a single letter
+	const regex = new RegExp(
+		`^(.*)%${escapedMatchString}(?:_((?:TOPs|SUBs|[A-Z])))?(?:_(\\d+))?%(.*)$`
+	);
+	const match = input.match(regex);
+
+	if (match) {
+		return {
+			prefix: match[1],
+			lOrR: match[2],
+			channelNumber: match[3] ? parseInt(match[3]) : null,
+			suffix: match[4]
+		};
+	} else {
+		throw new Error("Input string doesn't match the expected pattern");
+	}
+};
+
 export class ChannelGroup implements ChannelGroupInterface {
 	groupId: number;
 	name: string;
