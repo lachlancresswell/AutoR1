@@ -2619,6 +2619,12 @@ export class AutoR1Control implements dbpr.Control {
 		}
 	}
 
+	private displayNameIncludes(pattern: string) {
+		const rtn = this.DisplayName?.includes(pattern) ?? false;
+		if (rtn) this.replaceDisplayName(pattern, '');
+		return rtn;
+	}
+
 	/**
 	 * Determins whether a control will be displayed or not
 	 * @param channelGroup ChannelGroup control will be associated with
