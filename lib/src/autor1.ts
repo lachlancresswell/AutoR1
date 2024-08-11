@@ -1720,6 +1720,18 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 		});
 	};
 
+	/**
+	 * Gets the size of a view based on the furthest coordinates containing a control.
+	 * @param viewId ID of view to evaluate.
+	 * @returns The furthest coordinates containing a control.
+	 */
+	public getFurthestPointsFromView(viewId: number) {
+		const str = `SELECT MAX(PosX + width) AS maxX, MAX(PosY + height) AS maxY FROM Controls WHERE ViewId = ${viewId}`;
+		const stmt = this.db.prepare(str);
+		const rtn = stmt.getAsObject({ viewId }) as { maxX: number; maxY: number };
+
+		return rtn;
+	}
 
 	/**
 	 * Creates the Meter vew and associated controls
