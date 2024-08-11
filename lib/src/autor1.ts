@@ -2871,6 +2871,54 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
 	}
 
 	/**
+	 * Takes an array of strings and returns the name of the template that matches
+	 * closes. The first string in the array takes precedent for determining the
+	 * matching template. The template which contains the most number of string is
+	 * returned.
+	 * @param strings An array of strings to search for.
+	 * @returns Name of the closest matching template.
+	 */
+	getTemplateWithStrings(strings: string[]): AutoR1Template {
+		function findBestMatch(candidates: string[], targetWords: string[]): string {
+			const primaryTarget = targetWords[0];
+			let bestMatch = '';
+			let maxMatchCount = 0;
+			let hasPrimaryTarget = false;
+
+			for (const candidate of candidates) {
+				const containsPrimaryTarget = candidate.includes(primaryTarget);
+				const words = candidate.split(' ');
+				const matchCount = targetWords.filter((target) => words.includes(target)).length;
+
+				// If this candidate contains the primary target and we haven't found one before,
+				// or if it contains the primary target and has a higher match count
+				if (containsPrimaryTarget && (!hasPrimaryTarget || matchCount > maxMatchCount)) {
+					maxMatchCount = matchCount;
+					bestMatch = candidate;
+					hasPrimaryTarget = true;
+				}
+				// If we haven't found any candidate with the primary target yet
+				else if (!hasPrimaryTarget && matchCount > maxMatchCount) {
+					maxMatchCount = matchCount;
+					bestMatch = candidate;
+				}
+			}
+
+			return bestMatch;
+		}
+
+		const names = this.templates.map((t) => t.name);
+
+		const templateName = findBestMatch(names, strings);
+
+		const template = this.templates.find((temp) => temp.name === templateName);
+		if (!template) {
+			throw new Error(`Template ${templateName} not found.`);
+		}
+		return template;
+	}
+
+	/**
 	 * Returns the controls of a template by name
 	 * @param templates File containing the templates
 	 * @param tempName Name of the template to get the controls of
