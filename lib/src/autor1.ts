@@ -2600,6 +2600,7 @@ export class AutoR1Control implements dbpr.Control {
 		this.replaceDisplayName('%SourceGroupName%', sourceGroup?.Name);
 		this.replaceDisplayName('%ChannelGroupName%', channelGroup?.name);
 		this.replaceDisplayName('%ChannelName%', channel?.Name);
+		this.replaceDisplayName('%xover%', sourceGroup?.xover);
 
 		this.TargetId =
 			(this.displayNameIncludes('%SourceGroupPageTarget%') && options.sourceGroup?.ViewId) ||
