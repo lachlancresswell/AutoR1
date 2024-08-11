@@ -2613,6 +2613,12 @@ export class AutoR1Control implements dbpr.Control {
 		return this.TargetProperty === dbpr.TargetPropertyType.CONFIG_LEVEL;
 	}
 
+	private replaceDisplayName(pattern: string, replacement: string | undefined): void {
+		if (this.DisplayName?.includes(pattern) && (replacement || replacement === '')) {
+			this.DisplayName = this.DisplayName.replace(pattern, replacement);
+		}
+	}
+
 	/**
 	 * Determins whether a control will be displayed or not
 	 * @param channelGroup ChannelGroup control will be associated with
