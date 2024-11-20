@@ -9,8 +9,8 @@ export enum INPUT_GAIN_TYPE {
 
 export const NAV_BUTTON_Y = 15;
 
-const METER_VIEW_STARTX = 15;
-const METER_VIEW_STARTY = 15;
+export const METER_VIEW_STARTX = 15;
+export const METER_VIEW_STARTY = 15;
 export const METER_SPACING_X = 15;
 export const METER_SPACING_Y = 15;
 export const MAIN_VIEW_STARTX = 10;
@@ -2591,11 +2591,28 @@ export class AutoR1Control implements dbpr.Control {
 		return rtn;
 	}
 
+	private deviceProperties = [
+		dbpr.TargetPropertyType.INPUT_DIGITAL_TX_STREAM,
+		dbpr.TargetPropertyType.INPUT_DIGITAL_DS_DATA_PRI,
+		dbpr.TargetPropertyType.INPUT_DIGITAL_DS_DATA_SEC,
+		dbpr.TargetPropertyType.INPUT_DIGITAL_SYNC,
+		dbpr.TargetPropertyType.INPUT_DIGITAL_MODE,
+		dbpr.TargetPropertyType.INPUT_DIGITAL_GAIN,
+		dbpr.TargetPropertyType.INPUT_DIGITAL_SAMPLE_STATUS,
+		dbpr.TargetPropertyType.STATUS_STATUS_TEXT
+	];
+
 	public handleString(options: TemplateOptions) {
 		const { TargetId, TargetChannel, sourceGroup, channelGroup, channel } = options;
 
 		this.TargetId = TargetId ?? this.TargetId;
-		this.TargetChannel = TargetChannel ?? this.TargetChannel;
+
+		if (
+			!this.TargetProperty ||
+			(this.TargetProperty && !this.deviceProperties.includes(this.TargetProperty))
+		) {
+			this.TargetChannel = TargetChannel ?? this.TargetChannel;
+		}
 
 		this.replaceDisplayName('%SourceGroupName%', sourceGroup?.Name);
 		this.replaceDisplayName('%ChannelGroupName%', channelGroup?.name);

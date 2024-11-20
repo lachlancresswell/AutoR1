@@ -1,13 +1,18 @@
 import {
+	AutoR1Control,
 	AutoR1ProjectFile,
 	AutoR1TemplateFile,
 	AutoR1TemplateTitles,
+	ChannelGroup,
 	METER_SPACING_X,
 	METER_SPACING_Y,
 	METER_VIEW_STARTX,
 	METER_VIEW_STARTY,
+	SourceGroup,
 	TemplateOptions
 } from './autor1';
+import { ActionTypes, Group, TargetChannels, TargetTypes } from './dbpr';
+import { PageConfig, ViewTemplateManager } from './ViewTemplateManager';
 
 export enum Position {
 	PREVIOUS = 0,
@@ -22,7 +27,8 @@ export enum Assign {
 	CHANNELS = 'CHANNELS',
 	MUTE = 'MUTE',
 	FALLBACK = 'FALLBACK',
-	DS = 'DS'
+	DS = 'DS',
+	MASTER = 'MASTER'
 }
 
 export interface Template {
@@ -51,6 +57,9 @@ interface ViewTemplateOptions {
 	TargetId: number;
 	TargetChannel?: number;
 	SourceGroupType?: number;
+	SourceGroup?: SourceGroup;
+	ChannelGroup?: ChannelGroup;
+	Channel?: Group;
 	children?: ViewTemplateOptions[];
 }
 
@@ -99,6 +108,9 @@ export const projectFileToTemplateObject = (
 					return {
 						DisplayName: channelGroup.name,
 						TargetId: channelGroup.groupId,
+						TargetChannel: TargetChannels.NONE,
+						SourceGroup: sourceGroup,
+						ChannelGroup: channelGroup,
 						children: channelGroup.channels.map((channel) => {
 							const DisplayName = `${channel.Name} - ${projectFile.getCanIdFromDeviceId(
 								channel.TargetId
@@ -107,7 +119,10 @@ export const projectFileToTemplateObject = (
 								DisplayName,
 								TargetId: channel.TargetId,
 								TargetChannel: channel.TargetChannel,
-								sourceGroupType: sourceGroup.Type
+								sourceGroupType: sourceGroup.Type,
+								SourceGroup: sourceGroup,
+								ChannelGroup: channelGroup,
+								Channel: channel
 							};
 						})
 					};
@@ -120,7 +135,7 @@ export const projectFileToTemplateObject = (
 
 export const parsePos = (pos: number, prev: number, padding: number, templateSize: number) => {
 	let newPos = pos;
-	let cb = () => 0;
+	let cb = (t = 0) => 0;
 	if (pos === Position.PREVIOUS) {
 		newPos = prev;
 	} else if (pos === Position.PREVIOUS_PLUS_PADDING) {
@@ -129,7 +144,7 @@ export const parsePos = (pos: number, prev: number, padding: number, templateSiz
 		newPos = prev + padding + templateSize;
 	} else if (pos === Position.ADVANCE_NEXT) {
 		newPos = prev;
-		cb = () => padding + templateSize;
+		cb = (t = 0) => padding + (t || templateSize);
 	} else {
 		newPos = pos;
 	}
@@ -159,8 +174,8 @@ export const createViewFromTemplate = (
 		curY = startY;
 
 		templates.forEach((template) => {
-			if (template.templates) {
-				formattedChannelGroups.forEach((channelGroup) => {
+			(template.templates ? formattedChannelGroups : [undefined]).forEach(
+				(channelGroup: ViewTemplateOptions | undefined) => {
 					const { x, y, maxX, maxY } = handleViewTemplate(
 						channelGroup,
 						projectFile,
@@ -174,30 +189,125 @@ export const createViewFromTemplate = (
 					);
 					curX = x;
 					curY = y;
-					viewWidth = maxX;
-					viewHeight = maxY;
-				});
-			} else {
-				const { x, y, maxX, maxY } = handleViewTemplate(
-					undefined,
-					projectFile,
-					templateFile,
-					viewId,
-					template,
-					curX,
-					curY,
-					paddingX,
-					paddingY
-				);
-				curX = x;
-				curY = y;
-				viewWidth = maxX;
-				viewHeight = maxY;
-			}
+					viewWidth = Math.max(viewWidth, maxX);
+					viewHeight = Math.max(viewHeight, maxY);
+				}
+			);
 		});
+
+		const values = {
+			HRes: viewWidth,
+			VRes: viewHeight
+		};
+		projectFile.updateView(viewId, values);
 	});
 
 	return { x: curX, y: curY, width: viewWidth, height: viewHeight };
+};
+
+export const handleViewConfig = (
+	pageConfig: PageConfig,
+	projectFile: AutoR1ProjectFile,
+	templateFile: AutoR1TemplateFile
+) => {
+	const views = projectFile.getAllRemoteViews();
+	let viewId: number;
+
+	// If new view
+	if (pageConfig.name) {
+		const view = views?.find((view) => view.Name === pageConfig.name);
+		viewId = view?.ViewId ?? projectFile.createView(pageConfig.name);
+	} else {
+		// If only controls
+		views?.forEach((view) => {
+			const { ViewId } = view;
+
+			const increaseControlPosByAmount = (pos: 'X' | 'Y', padding: number, viewId: number) =>
+				projectFile.db.prepare(
+					`UPDATE Controls SET Pos${pos} = Pos${pos} + ${padding} WHERE ViewId = ${viewId}`
+				);
+
+			increaseControlPosByAmount('X', pageConfig.paddingX ?? 0, ViewId).run();
+			increaseControlPosByAmount('Y', pageConfig.paddingY ?? 0, ViewId).run();
+		});
+	}
+
+	const layoutManager = new ViewTemplateManager(pageConfig, projectFile, templateFile);
+	const renderedTemplates = layoutManager.generateLayout();
+	const renderedControls = layoutManager.renderedControls;
+
+	renderedTemplates.forEach((template) => {
+		const { name, position } = template;
+		const array = [name];
+		if (template.additions?.isLR) array.push('LR');
+		if (template.additions?.isAP) array.push('AP');
+		if (template.additions?.hasCPLv2) array.push('CPL2');
+
+		const loadedTemplate = templateFile.getTemplateWithStrings(array);
+
+		if (pageConfig.name) {
+			projectFile.insertTemplate(loadedTemplate, viewId, position.x, position.y, template.options);
+
+			const { maxX, maxY } = projectFile.getFurthestPointsFromView(viewId);
+
+			projectFile.updateView(viewId, { HRes: maxX + 100, VRes: maxY + 100 });
+		} else {
+			views?.forEach((view) => {
+				const { ViewId } = view;
+
+				projectFile.insertTemplate(
+					loadedTemplate,
+					ViewId,
+					position.x,
+					position.y,
+					template.options
+				);
+			});
+		}
+	});
+
+	renderedControls.forEach((control) => {
+		const { TargetType, Target } = control;
+		if (TargetType === TargetTypes.VIEW) {
+			const view = projectFile.getAllRemoteViews()?.find((view) => view.Name === Target);
+			control.TargetId = view?.ViewId;
+			control.Flags = 262;
+			control.ActionType = ActionTypes.NAVIGATION;
+			control.MainColor = 7;
+			control.SubColor = 7;
+			control.TargetProperty = '' as never;
+		} else if (control.type) {
+			switch (control.Target) {
+				case 'Mute':
+					control.TargetId === projectFile.getMuteGroupID();
+					break;
+				case 'AP':
+					control.TargetId === projectFile.getAPGroup()?.GroupId;
+					break;
+				case 'Fallback':
+					control.TargetId === projectFile.getFallbackGroupID();
+					break;
+				case 'Master':
+					control.TargetId === projectFile.getMasterGroupID();
+					break;
+			}
+		}
+		const ar1Control = new AutoR1Control(control);
+
+		if (pageConfig.name) {
+			const view = projectFile.getAllRemoteViews()?.find((view) => view.Name === pageConfig.name);
+			if (view) {
+				ar1Control.ViewId = view?.ViewId;
+				projectFile.insertControl(ar1Control);
+			}
+		} else {
+			views?.forEach((view) => {
+				const { ViewId } = view;
+
+				ar1Control.ViewId = ViewId;
+			});
+		}
+	});
 };
 
 // TODO: this is pretty disgusting
@@ -231,64 +341,36 @@ export const handleViewTemplate = (
 		prevTemplate ? prevTemplate.height : height
 	);
 
-	if (obj) {
-		const options: TemplateOptions = {
-			DisplayName: obj.DisplayName,
-			TargetId: obj.TargetId,
-			TargetChannel: obj.TargetChannel,
-			sourceGroupType: obj.SourceGroupType
-		};
-		projectFile.insertTemplate(loadedTemplate, viewId, newPosX, newPosY, options);
-	} else {
-		projectFile.insertTemplate(loadedTemplate, viewId, newPosX, newPosY);
-	}
+	const options: TemplateOptions | undefined = obj
+		? {
+				DisplayName: obj.DisplayName,
+				TargetId: obj.TargetId,
+				TargetChannel: obj.TargetChannel,
+				sourceGroupType: obj.SourceGroupType,
+				sourceGroup: obj.SourceGroup,
+				channelGroup: obj.ChannelGroup,
+				channel: obj.Channel
+			}
+		: undefined;
+	projectFile.insertTemplate(loadedTemplate, viewId, newPosX, newPosY, options);
 
 	let maxX = newPosX + (prevTemplate?.width || width);
 	let maxY = newPosY + (prevTemplate?.height || height);
-
-	newPosX = newPosX;
-	newPosY = newPosY;
 
 	templates?.forEach((template) => {
 		let childX = newPosX;
 		let childY = newPosY;
 
-		if (obj && obj.children) {
-			let childPrevWidth = width;
-			let childPrevHeight = height;
-			obj?.children?.forEach((child) => {
-				const {
-					x,
-					y,
-					maxX: childMaxX,
-					maxY: childMaxY,
-					width: childWidth,
-					height: childHeight
-				} = handleViewTemplate(
-					child,
-					projectFile,
-					templateFile,
-					viewId,
-					template,
-					childX,
-					childY,
-					paddingX,
-					paddingY,
-					{ width: childPrevWidth, height: childPrevHeight }
-				);
-				childX = x;
-				childY = y;
-				maxX = childMaxX > maxX ? childMaxX : maxX;
-				maxY = childMaxY > maxY ? childMaxY : maxY;
-				childPrevWidth = childWidth;
-				childPrevHeight = childHeight;
-			});
-		} else {
+		let childPrevWidth = width;
+		let childPrevHeight = height;
+		(obj?.children || [obj]).forEach((obj) => {
 			const {
 				x,
 				y,
 				maxX: childMaxX,
-				maxY: childMaxY
+				maxY: childMaxY,
+				width: childWidth,
+				height: childHeight
 			} = handleViewTemplate(
 				obj,
 				projectFile,
@@ -299,14 +381,23 @@ export const handleViewTemplate = (
 				childY,
 				paddingX,
 				paddingY,
-				{ width, height }
+				{ width: childPrevWidth, height: childPrevHeight }
 			);
 			childX = x;
 			childY = y;
-			maxX = childMaxX > maxX ? childMaxX : maxX;
-			maxY = childMaxY > maxY ? childMaxY : maxY;
-		}
+			maxX = Math.max(childMaxX, maxX);
+			maxY = Math.max(childMaxY, maxY);
+			childPrevWidth = childWidth;
+			childPrevHeight = childHeight;
+		});
 	});
 
-	return { x: newPosX + cbX(), y: newPosY + cbY(), maxX, maxY, width, height };
+	return {
+		x: Math.max(newPosX + cbX(), cbX(maxX)),
+		y: newPosY + cbY(),
+		maxX,
+		maxY,
+		width,
+		height
+	};
 };
