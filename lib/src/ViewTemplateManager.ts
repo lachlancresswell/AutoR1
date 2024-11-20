@@ -24,6 +24,7 @@ interface Position {
 
 interface Propagation {
 	direction: 'horizontal' | 'vertical';
+	itemLimit?: number;
 	spacing: number;
 }
 
@@ -37,6 +38,7 @@ interface TemplateControl extends Partial<Control> {
 	propagation?: Propagation;
 	initialPosition: Position;
 	type?: TemplateType;
+	relativePosition?: Position;
 }
 
 interface TemplateBase {
@@ -61,6 +63,7 @@ export interface PageConfig {
 	paddingY?: number;
 	templates?: TopLevelTemplate[];
 	controls?: TemplateControl[];
+	initialPosition?: Position;
 }
 
 interface RenderedTemplate {
@@ -110,8 +113,21 @@ export class ViewTemplateManager {
 			this.processTemplate(template, template.initialPosition);
 		});
 
+		let controlPosition = this.config.initialPosition;
+
+		this.config.controls = this.config.controls?.filter(
+			(control) => !(control.TargetType === TargetTypes.VIEW && control.ViewId === control.TargetId)
+		);
+
 		this.config.controls?.forEach((control) => {
-			this.processControl(control, control.initialPosition);
+			controlPosition = this.processControl(control, control.initialPosition, controlPosition);
+			if (control.propagation?.direction === 'horizontal') {
+				controlPosition.x = controlPosition.x + control.Width;
+			}
+
+			if (control.propagation?.direction === 'vertical') {
+				controlPosition.x = controlPosition.x + control.Height;
+			}
 		});
 	}
 
@@ -125,9 +141,17 @@ export class ViewTemplateManager {
 
 		let previousTemplatePos = parentTemplatePos;
 
+		let insertedCount = 0;
+
 		options.forEach((option, index) => {
-			const position = this.calculatePosition(template, basePosition, previousTemplatePos);
 			const dimensions = this.templateFile.getTemplateWidthHeight(template.name);
+			const position = this.calculatePosition(
+				template,
+				basePosition,
+				previousTemplatePos,
+				dimensions,
+				insertedCount
+			);
 			previousTemplatePos = {
 				x: position.x + dimensions.width - basePosition.x,
 				y: position.y + dimensions.height - basePosition.y
@@ -157,6 +181,8 @@ export class ViewTemplateManager {
 					previousTemplatePos
 				);
 			});
+
+			insertedCount = insertedCount + 1;
 		});
 	}
 
@@ -164,19 +190,23 @@ export class ViewTemplateManager {
 		control: TemplateControl,
 		basePosition: Position,
 		parentTemplatePos?: { x: number; y: number }
-	): void {
+	): Position {
 		const position = this.calculatePosition(control, basePosition, parentTemplatePos);
 
 		control.PosX = position.x;
 		control.PosY = position.y;
 
 		this.renderedControls.push(control);
+
+		return position;
 	}
 
 	private calculatePosition(
 		template: TemplateBase | TemplateControl,
 		basePosition: Position,
-		previousPos?: { x: number; y: number }
+		previousPos?: { x: number; y: number },
+		dimensions?: { height: number; width: number },
+		insertedCount?: number
 	): Position {
 		if (!template.propagation) {
 			return basePosition;
@@ -184,15 +214,42 @@ export class ViewTemplateManager {
 
 		const { x: prevX, y: prevY } = previousPos || { x: 0, y: 0 };
 
+		let x =
+			template.propagation.direction === 'horizontal'
+				? basePosition.x + prevX + template.propagation.spacing
+				: basePosition.x;
+		let y =
+			template.propagation.direction === 'vertical'
+				? basePosition.y + prevY + template.propagation.spacing
+				: basePosition.y;
+
+		if (insertedCount && template.propagation.itemLimit && dimensions) {
+			if (template.propagation.direction === 'horizontal') {
+				if (insertedCount % template.propagation.itemLimit === 0) {
+					x = basePosition.x;
+				}
+				y =
+					y +
+					(dimensions.height + template.propagation.spacing) *
+						Math.floor(insertedCount / template.propagation.itemLimit);
+			}
+		}
+
+		if (insertedCount && template.propagation.itemLimit && dimensions) {
+			if (template.propagation.direction === 'vertical') {
+				if (insertedCount % template.propagation.itemLimit === 0) {
+					y = basePosition.y;
+				}
+				x =
+					x +
+					(dimensions.width + template.propagation.spacing) *
+						Math.floor(insertedCount / template.propagation.itemLimit);
+			}
+		}
+
 		return {
-			x:
-				template.propagation.direction === 'horizontal'
-					? basePosition.x + prevX + template.propagation.spacing
-					: basePosition.x,
-			y:
-				template.propagation.direction === 'vertical'
-					? basePosition.y + prevY + template.propagation.spacing
-					: basePosition.y
+			x,
+			y
 		};
 	}
 
