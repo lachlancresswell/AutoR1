@@ -115,10 +115,6 @@ export class ViewTemplateManager {
 
 		let controlPosition = this.config.initialPosition;
 
-		this.config.controls = this.config.controls?.filter(
-			(control) => !(control.TargetType === TargetTypes.VIEW && control.ViewId === control.TargetId)
-		);
-
 		this.config.controls?.forEach((control) => {
 			controlPosition = this.processControl(control, control.initialPosition, controlPosition);
 			if (control.propagation?.direction === 'horizontal') {

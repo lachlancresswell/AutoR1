@@ -303,8 +303,8 @@ export const handleViewConfig = (
 		} else {
 			views?.forEach((view) => {
 				const { ViewId } = view;
-
 				ar1Control.ViewId = ViewId;
+				projectFile.insertControl(ar1Control);
 			});
 		}
 	});
