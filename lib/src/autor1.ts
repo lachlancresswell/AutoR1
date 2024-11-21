@@ -645,6 +645,20 @@ export class SourceGroup implements dbpr.SourceGroup {
 			this.Type !== dbpr.SourceGroupTypes.UNUSED_CHANNELS
 		);
 	}
+
+	/**
+	 * Returns true if the group has a relative delay control available by default
+	 * @returns boolean
+	 *
+	 * @example
+	 * const p = new ProjectFile(PROJECT_INIT)
+	 * p.getSrcGrpInfo()
+	 * srcGrp.hasRelativeDelay()
+	 * // => true
+	 */
+	public hasRelativeDelay() {
+		return this.Type !== dbpr.SourceGroupTypes.ARRAY;
+	}
 }
 
 class TemporaryTemplate {
@@ -897,6 +911,15 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 			control.Height = Height ?? control.Height;
 			control.JoinedId = joinedId!;
 			control.ViewId = ViewId;
+
+			if (
+				control.TargetProperty === dbpr.TargetPropertyType.CHANNEL_STATUS_MS_DELAY &&
+				control.TargetType === dbpr.TargetTypes.GROUP
+			) {
+				control.Flags = options?.sourceGroup?.hasRelativeDelay()
+					? dbpr.ControlFlags.RELATIVE
+					: dbpr.ControlFlags.ABSOLUTE;
+			}
 
 			this.insertControl(control);
 		}
