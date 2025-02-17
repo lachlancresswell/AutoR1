@@ -398,6 +398,7 @@ export class SourceGroup implements dbpr.SourceGroup {
 	eq: boolean = true;
 
 	channelGroups: ChannelGroup[] = [];
+	childGroups: ChannelGroup[] = [];
 
 	constructor(row: AutoR1SourceGroupRow) {
 		this.ViewId = row.ViewId;
@@ -881,6 +882,23 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 			);
 			if (sourceGroup) {
 				sourceGroup.childGroupIds.push(childGroup.GroupId);
+
+				let type: ChannelGroupTypes = 'TYPE_TOPS';
+
+				if (childGroup.Name.endsWith('TOPs')) {
+					type = 'TYPE_TOPS';
+				} else if (childGroup.Name.endsWith('SUBs')) {
+					type = 'TYPE_SUBS';
+				}
+
+				const group = new ChannelGroup({
+					groupId: childGroup.GroupId,
+					name: childGroup.Name,
+					type,
+					channels: []
+				});
+
+				sourceGroup.childGroups.push(group);
 			}
 		});
 	};
