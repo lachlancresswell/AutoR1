@@ -5,10 +5,11 @@ import {
 	SourceGroup,
 	TemplateOptions
 } from './autor1';
-import { Control, ControlTypes, Group, TargetTypes } from './dbpr';
+import { Control, ControlTypes, Group, SourceGroupTypes, TargetTypes } from './dbpr';
 
 type TemplateType =
 	| 'SourceGroup'
+	| 'BandPassGroup'
 	| 'ChannelGroup'
 	| 'Channel'
 	| 'Mute'
@@ -299,6 +300,45 @@ export class ViewTemplateManager {
 							)
 							.map((channelGroup) => handleChannelGroup(channelGroup, sourceGroup))
 							.flat()
+					};
+				});
+			case 'BandPassGroup':
+				// let channelGroups: { channelGroup: Group; sourceGroup: SourceGroup }[] = [];
+				const bandPassGroups = this.projectFile.sourceGroups
+					.map((sourceGroup) => {
+						// Master group for sub array and non-mixed point sources
+						const shouldAssignMaster =
+							sourceGroup.Type === SourceGroupTypes.SUBARRAY ||
+							(sourceGroup.Type === SourceGroupTypes.POINT_SOURCE &&
+								sourceGroup.hasSUBs() &&
+								!sourceGroup.hasTOPs()) ||
+							(sourceGroup.Type === SourceGroupTypes.POINT_SOURCE &&
+								sourceGroup.hasTOPs() &&
+								!sourceGroup.hasSUBs()) ||
+							sourceGroup.Type === SourceGroupTypes.ADDITIONAL_AMPLIFIER;
+
+						if (shouldAssignMaster) {
+							const channelGroup = this.projectFile
+								.getAllGroups()
+								?.find((group) => group.GroupId === sourceGroup.masterGroupId)!;
+							return { channelGroup, sourceGroup };
+						} else {
+							return sourceGroup.childGroupIds.map((childGroupId) => {
+								const channelGroup = this.projectFile
+									.getAllGroups()
+									?.find((group) => group.GroupId === childGroupId)!;
+
+								return { channelGroup, sourceGroup };
+							});
+						}
+					})
+					.flat();
+
+				return bandPassGroups.map((channelGroup) => {
+					return {
+						DisplayName: channelGroup.channelGroup.Name,
+						TargetId: channelGroup.channelGroup.GroupId,
+						sourceGroup: channelGroup.sourceGroup
 					};
 				});
 			case 'ChannelGroup':
