@@ -659,6 +659,14 @@ export class SourceGroup implements dbpr.SourceGroup {
 	public hasRelativeDelay() {
 		return this.Type !== dbpr.SourceGroupTypes.ARRAY;
 	}
+
+	public hasRelativeLevel() {
+		return (
+			(this.Type === dbpr.SourceGroupTypes.ARRAY && this.hasTOPs() && this.hasSUBs()) ||
+			this.Type === dbpr.SourceGroupTypes.SUBARRAY ||
+			this.Type === dbpr.SourceGroupTypes.POINT_SOURCE
+		);
+	}
 }
 
 class TemporaryTemplate {
@@ -917,6 +925,15 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 				control.TargetType === dbpr.TargetTypes.GROUP
 			) {
 				control.Flags = options?.sourceGroup?.hasRelativeDelay()
+					? dbpr.ControlFlags.RELATIVE
+					: dbpr.ControlFlags.ABSOLUTE;
+			}
+
+			if (
+				control.TargetProperty === dbpr.TargetPropertyType.CONFIG_POTI_LEVEL &&
+				control.TargetType === dbpr.TargetTypes.GROUP
+			) {
+				control.Flags = options?.sourceGroup?.hasRelativeLevel()
 					? dbpr.ControlFlags.RELATIVE
 					: dbpr.ControlFlags.ABSOLUTE;
 			}
