@@ -966,7 +966,10 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 		for (const templateControl of template.controls) {
 			const control = Object.assign(new AutoR1Control(), templateControl);
 
-			if (options?.sourceGroup && !control.isVisible(options?.sourceGroup)) {
+			if (
+				options?.sourceGroup &&
+				!control.isVisible(options?.sourceGroup, options?.channelGroup!)
+			) {
 				continue;
 			}
 
