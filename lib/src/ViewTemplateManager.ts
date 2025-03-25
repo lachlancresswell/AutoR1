@@ -5,7 +5,17 @@ import {
 	SourceGroup,
 	TemplateOptions
 } from './autor1';
-import { Control, ControlTypes, Group, SourceGroupTypes, TargetTypes } from './dbpr';
+import {
+	ActionTypes,
+	Control,
+	ControlFlags,
+	ControlTypes,
+	Group,
+	SourceGroupTypes,
+	TargetChannels,
+	TargetPropertyType,
+	TargetTypes
+} from './dbpr';
 
 type TemplateType =
 	| 'SourceGroup'
@@ -36,10 +46,12 @@ interface TemplateControl extends Partial<Control> {
 	Width: number;
 	Height: number;
 	Target: string;
+	Flag?: string;
 	propagation?: Propagation;
 	initialPosition: Position;
 	type?: TemplateType;
 	relativePosition?: Position;
+	Property: 'Mute' | 'EQ1' | 'EQ2' | 'Page';
 }
 
 interface TemplateBase {
