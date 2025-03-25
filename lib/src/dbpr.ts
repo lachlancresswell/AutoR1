@@ -94,7 +94,10 @@ export enum ControlTypes {
 
 export enum ControlFlags {
 	ABSOLUTE = 6,
-	RELATIVE = 14
+	RELATIVE = 14,
+	SWITCH_OFF = 6,
+	SWITCH_ON = 4102,
+	SWITCH_TOGGLE = 262
 }
 
 /**

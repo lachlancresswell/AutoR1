@@ -318,17 +318,22 @@ export class ViewTemplateManager {
 							sourceGroup.Type === SourceGroupTypes.ADDITIONAL_AMPLIFIER;
 
 						if (shouldAssignMaster) {
-							const channelGroup = this.projectFile
+							const group = this.projectFile
 								.getAllGroups()
 								?.find((group) => group.GroupId === sourceGroup.masterGroupId)!;
-							return { channelGroup, sourceGroup };
+
+							return [{ group, sourceGroup, channelGroup: undefined }];
 						} else {
 							return sourceGroup.childGroupIds.map((childGroupId) => {
-								const channelGroup = this.projectFile
+								const group = this.projectFile
 									.getAllGroups()
 									?.find((group) => group.GroupId === childGroupId)!;
 
-								return { channelGroup, sourceGroup };
+								const channelGroup = sourceGroup.childGroups.find(
+									(g) => g.groupId === childGroupId
+								);
+
+								return { group, sourceGroup, channelGroup };
 							});
 						}
 					})
@@ -336,9 +341,10 @@ export class ViewTemplateManager {
 
 				return bandPassGroups.map((channelGroup) => {
 					return {
-						DisplayName: channelGroup.channelGroup.Name,
-						TargetId: channelGroup.channelGroup.GroupId,
-						sourceGroup: channelGroup.sourceGroup
+						DisplayName: channelGroup.group.Name,
+						TargetId: channelGroup.group.GroupId,
+						sourceGroup: channelGroup.sourceGroup,
+						channelGroup: channelGroup.channelGroup
 					};
 				});
 			case 'ChannelGroup':
