@@ -190,6 +190,74 @@ export class ViewTemplateManager {
 	): Position {
 		const position = this.calculatePosition(control, basePosition, parentTemplatePos);
 
+		switch (control.Type) {
+			case ControlTypes.EQ:
+				control.Width = 554;
+				control.Height = 426;
+				control.TargetProperty = TargetPropertyType.CONFIG_EQ1_ENABLE;
+				control.Flags = ControlFlags.ABSOLUTE;
+				control.ActionType = ActionTypes.NAVIGATION;
+				break;
+			case ControlTypes.SWITCH:
+				control.ActionType = ActionTypes.INTERACTION;
+				control.LimitMax = 1.0;
+				break;
+		}
+
+		switch (control.Flag) {
+			case 'Off':
+				control.Flags = ControlFlags.SWITCH_OFF;
+				break;
+			case 'On':
+				control.Flags = ControlFlags.SWITCH_ON;
+				break;
+			case 'Toggle':
+				control.Flags = ControlFlags.SWITCH_TOGGLE;
+				break;
+		}
+
+		switch (control.Property) {
+			case 'EQ1':
+				control.TargetProperty = TargetPropertyType.CONFIG_EQ1_ENABLE;
+				break;
+			case 'EQ2':
+				control.TargetProperty = TargetPropertyType.CONFIG_EQ2_ENABLE;
+				break;
+			case 'Mute':
+				control.TargetProperty = TargetPropertyType.CONFIG_MUTE;
+				break;
+			case 'Page':
+				control.TargetProperty = null;
+				break;
+		}
+
+		switch (control.Target) {
+			case 'Master':
+				control.TargetId = this.projectFile.getMasterGroupID();
+				control.TargetChannel = TargetChannels.NONE;
+				break;
+			case 'Mute':
+				control.TargetId = this.projectFile.getMuteGroupID();
+				control.TargetChannel = TargetChannels.NONE;
+				break;
+			case 'AP':
+				control.TargetId = this.projectFile.getAPGroup()?.TargetId;
+				control.TargetChannel = TargetChannels.NONE;
+				break;
+			case 'Fallback':
+				control.TargetId = this.projectFile.getFallbackGroupID();
+				control.TargetChannel = TargetChannels.NONE;
+				break;
+			case 'DS':
+				control.TargetId = this.projectFile.getDsGroupID();
+				control.TargetChannel = TargetChannels.NONE;
+				break;
+			case 'EQ':
+				control.TargetId = this.projectFile.getEqGroupID();
+				control.TargetChannel = TargetChannels.NONE;
+				break;
+		}
+
 		control.PosX = position.x;
 		control.PosY = position.y;
 
