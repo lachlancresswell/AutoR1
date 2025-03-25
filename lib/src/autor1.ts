@@ -2213,11 +2213,12 @@ export class AutoR1Control implements dbpr.Control {
 	 * @param sourceGroup SourceGroup control will be associated with
 	 * @returns True if will be visible, false if not
 	 */
-	public isVisible(sourceGroup: SourceGroup) {
+	public isVisible(sourceGroup: SourceGroup, channelGroup: ChannelGroup) {
 		if (
 			this.isTypeDigital() &&
 			this.targetsCPL() &&
-			!sourceGroup.channelGroups.find((cg) => cg.hasCPL())
+			(!channelGroup?.hasCPL() ||
+				(!channelGroup && !sourceGroup.channelGroups.find((cg) => cg.hasCPL())))
 		) {
 			// Skip CPL
 			return false;
