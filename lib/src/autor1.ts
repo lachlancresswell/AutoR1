@@ -334,28 +334,53 @@ export class ChannelGroup implements ChannelGroupInterface {
 }
 
 export interface AutoR1SourceGroupRow extends dbpr.SourceGroup {
-	ArraySightIdR: number;
-	MainGroupId: number;
-	MainGroupName: string;
-	NextSourceGroupId: number;
 	SourceGroupId: number;
-	SubGroupId: number;
-	SubGroupName: string;
-	SubCGroupId: number;
-	SubCGroupName: string;
-	SubLeftGroupId: number;
-	SubLeftGroupName: string;
-	SubRightGroupId: number;
-	SubRightGroupName: string;
+	Type: dbpr.SourceGroupTypes;
+	Name: string;
+	NextSourceGroupId: number;
+	ArrayProcessingEnable: dbpr.ArrayProcessingFlag;
+	ArraySightId: number;
+	ArraySightIdR: number;
 	System: string;
-	TopGroupId: number;
-	TopGroupName: string;
-	TopLeftGroupId: number;
-	TopLeftGroupName: string;
-	TopRightGroupId: number;
-	TopRightGroupName: string;
 	ViewId: number;
-	xover: dbpr.Crossover | null;
+	ViewName: string;
+	R1GroupsMasterGroupId: number;
+	R1GroupsMasterParentId: number;
+	R1GroupsMasterName: string;
+	R1GroupsLeftRightGroupId: number;
+	R1GroupsLeftRightParentId: number;
+	R1GroupsLeftRightName: string;
+	R1GroupsMasterTopsGroupId: number;
+	R1GroupsMasterTopsParentId: number;
+	R1GroupsMasterTopsName: string;
+	R1GroupsMasterSubsGroupId: number;
+	R1GroupsMasterSubsParentId: number;
+	R1GroupsMasterSubsName: string;
+	R1GroupsLeftRightTopsGroupId: number;
+	R1GroupsLeftRightTopsParentId: number;
+	R1GroupsLeftRightTopsName: string;
+	R1GroupsLeftRightSubsGroupId: number;
+	R1GroupsLeftRightSubsParentId: number;
+	R1GroupsLeftRightSubsName: string;
+	R1GroupsLeftRightTopsLGroupId: number;
+	R1GroupsLeftRightTopsLParentId: number;
+	R1GroupsLeftRightTopsLName: string;
+	R1GroupsLeftRightTopsRGroupId: number;
+	R1GroupsLeftRightTopsRParentId: number;
+	R1GroupsLeftRightTopsRName: string;
+	R1GroupsLeftRightSubsLGroupId: number;
+	R1GroupsLeftRightSubsLParentId: number;
+	R1GroupsLeftRightSubsLName: string;
+	R1GroupsLeftRightSubsRGroupId: number;
+	R1GroupsLeftRightSubsRParentId: number;
+	R1GroupsLeftRightSubsRName: string;
+	AutoR1SubCenterGroupId: number;
+	AutoR1SubCenterName: string;
+	AutoR1SubLeftGroupId: number;
+	AutoR1SubLeftName: string;
+	AutoR1SubRightGroupId: number;
+	AutoR1SubRightName: string;
+	SUBsCrossover: dbpr.Crossover;
 }
 
 /**
@@ -416,21 +441,23 @@ export class SourceGroup implements dbpr.SourceGroup {
 		this.RelativeDelay = row.RelativeDelay;
 		this.System = row.System;
 		this.RemarkableChangeDate = row.RemarkableChangeDate;
-		this.xover = row.xover || 'CUT';
+		this.xover = row.SUBsCrossover || 'CUT';
 
-		if (row.TopGroupId && row.TopGroupName) {
+		row.R1GroupsMasterTopsGroupId;
+
+		if (row.R1GroupsMasterTopsGroupId && row.R1GroupsMasterTopsName) {
 			const mainGroup = new ChannelGroup({
-				groupId: row.TopGroupId,
-				name: row.TopGroupName,
+				groupId: row.R1GroupsMasterTopsGroupId,
+				name: row.R1GroupsMasterTopsName,
 				type: 'TYPE_TOPS',
 				channels: []
 			});
 			this.channelGroups.push(mainGroup);
 
-			if (row.TopLeftGroupId && row.TopLeftGroupName) {
+			if (row.R1GroupsLeftRightTopsLGroupId && row.R1GroupsLeftRightTopsLName) {
 				const leftGroup = new ChannelGroup({
-					groupId: row.TopLeftGroupId,
-					name: row.TopLeftGroupName,
+					groupId: row.R1GroupsLeftRightTopsLGroupId,
+					name: row.R1GroupsLeftRightTopsLName,
 					type: 'TYPE_TOPS_L',
 					channels: []
 				});
@@ -441,10 +468,10 @@ export class SourceGroup implements dbpr.SourceGroup {
 
 				mainGroup.leftGroup = leftGroup;
 			}
-			if (row.TopRightGroupId && row.TopRightGroupName) {
+			if (row.R1GroupsLeftRightTopsRGroupId && row.R1GroupsLeftRightTopsRName) {
 				const rightGroup = new ChannelGroup({
-					groupId: row.TopRightGroupId,
-					name: row.TopRightGroupName,
+					groupId: row.R1GroupsLeftRightTopsRGroupId,
+					name: row.R1GroupsLeftRightTopsRName,
 					type: 'TYPE_TOPS_R',
 					channels: []
 				});
@@ -457,10 +484,10 @@ export class SourceGroup implements dbpr.SourceGroup {
 			}
 		}
 
-		if (row.SubGroupId && row.SubGroupName) {
+		if (row.R1GroupsMasterSubsGroupId && row.R1GroupsMasterSubsName) {
 			const subGroup = new ChannelGroup({
-				groupId: row.SubGroupId,
-				name: row.SubGroupName,
+				groupId: row.R1GroupsMasterSubsGroupId,
+				name: row.R1GroupsMasterSubsName,
 				type: 'TYPE_SUBS',
 				channels: []
 			});
@@ -468,10 +495,10 @@ export class SourceGroup implements dbpr.SourceGroup {
 			let leftGroup: ChannelGroup;
 			let rightGroup: ChannelGroup;
 
-			if (row.SubLeftGroupId && row.SubLeftGroupName) {
+			if (row.R1GroupsLeftRightSubsLGroupId && row.R1GroupsLeftRightSubsLName) {
 				leftGroup = new ChannelGroup({
-					groupId: row.SubLeftGroupId,
-					name: row.SubLeftGroupName,
+					groupId: row.R1GroupsLeftRightSubsLGroupId,
+					name: row.R1GroupsLeftRightSubsLName,
 					type: 'TYPE_SUBS_L',
 					channels: []
 				});
@@ -482,10 +509,10 @@ export class SourceGroup implements dbpr.SourceGroup {
 
 				subGroup.leftGroup = leftGroup;
 			}
-			if (row.SubRightGroupId && row.SubRightGroupName) {
+			if (row.R1GroupsLeftRightSubsRGroupId && row.R1GroupsLeftRightSubsRName) {
 				rightGroup = new ChannelGroup({
-					groupId: row.SubRightGroupId,
-					name: row.SubRightGroupName,
+					groupId: row.R1GroupsLeftRightSubsRGroupId,
+					name: row.R1GroupsLeftRightSubsRName,
 					type: 'TYPE_SUBS_R',
 					channels: []
 				});
@@ -496,10 +523,49 @@ export class SourceGroup implements dbpr.SourceGroup {
 
 				subGroup.rightGroup = rightGroup;
 			}
-			if (row.SubCGroupId && row.SubCGroupName) {
+		}
+
+		if (row.AutoR1SubLeftGroupId && row.AutoR1SubRightGroupId) {
+			const subGroup = new ChannelGroup({
+				groupId: row.R1GroupsMasterGroupId,
+				name: row.R1GroupsMasterName,
+				type: 'TYPE_SUBS',
+				channels: []
+			});
+			this.channelGroups.push(subGroup);
+			let leftGroup: ChannelGroup;
+			let rightGroup: ChannelGroup;
+
+			leftGroup = new ChannelGroup({
+				groupId: row.AutoR1SubLeftGroupId,
+				name: row.AutoR1SubLeftName,
+				type: 'TYPE_SUBS_L',
+				channels: []
+			});
+
+			leftGroup.mainGroup = subGroup;
+
+			this.channelGroups.push(leftGroup);
+
+			subGroup.leftGroup = leftGroup;
+
+			rightGroup = new ChannelGroup({
+				groupId: row.AutoR1SubRightGroupId,
+				name: row.AutoR1SubRightName,
+				type: 'TYPE_SUBS_R',
+				channels: []
+			});
+
+			rightGroup.mainGroup = subGroup;
+
+			this.channelGroups.push(rightGroup);
+
+			subGroup.rightGroup = rightGroup;
+
+			if (row.AutoR1SubCenterGroupId && row.AutoR1SubCenterName) {
 				const centreGroup = new ChannelGroup({
-					groupId: row.SubCGroupId,
-					name: row.SubCGroupName,
+					groupId: row.AutoR1SubCenterGroupId,
+					name: row.AutoR1SubCenterName,
 					type: 'TYPE_SUBS_C',
 					channels: []
 				});
@@ -515,7 +581,7 @@ export class SourceGroup implements dbpr.SourceGroup {
 		}
 
 		// Skip final group if subs or tops groups have been found, only use for point sources
-		if (!this.channelGroups.length && row.MainGroupId && row.MainGroupName) {
+		if (!this.channelGroups.length && row.R1GroupsMasterGroupId && row.R1GroupsMasterName) {
 			const type: ChannelGroupTypes =
 				this.System !== 'mixed'
 					? this.System === 'SUBs'
@@ -524,8 +590,8 @@ export class SourceGroup implements dbpr.SourceGroup {
 					: 'TYPE_ADDITIONAL_AMPLIFIER';
 			this.channelGroups.push(
 				new ChannelGroup({
-					groupId: row.MainGroupId,
-					name: row.MainGroupName,
+					groupId: row.R1GroupsMasterGroupId,
+					name: row.R1GroupsMasterName,
 					type,
 					channels: []
 				})
@@ -741,11 +807,23 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 		}
 
 		const query = `
-        SELECT Views.ViewId, Views.Name, SourceGroups.SourceGroupId, NextSourceGroupId, SourceGroups.Type, ArrayProcessingEnable,
-        ArraySightId, ArraySightIdR, System, mainGroup.GroupId as MainGroupId, mainGroup.Name as MainGroupName, topsGroup.GroupId as TopGroupId, topsGroup.Name as TopGroupName,
-        topsLGroup.GroupId as TopLeftGroupId, topsLGroup.Name as TopLeftGroupName, topsRGroup.GroupId as TopRightGroupId, topsRGroup.Name as TopRightGroupName,
-        subsGroup.GroupId as SubGroupId, subsGroup.Name as SubGroupName, subsLGroup.GroupId as SubLeftGroupId, subsLGroup.Name as SubLeftGroupName, subsRGroup.GroupId as
-        SubRightGroupId, subsRGroup.Name as SubRightGroupName, subsCGroup.GroupId as SubCGroupId, subsCGroup.Name as SubCGroupName, i.DisplayName as xover
+        SELECT SourceGroups.SourceGroupId, SourceGroups.Type, SourceGroups.Name, SourceGroups.NextSourceGroupId, SourceGroups.ArrayProcessingEnable, SourceGroups.ArraySightId, ArraySightIdR, SourceGroupsAdditionalData.System, 
+		Views.ViewId, Views.Name,
+		R1GroupsMaster.GroupId as R1GroupsMasterGroupId, R1GroupsMaster.ParentId as R1GroupsMasterParentId, R1GroupsMaster.Name as R1GroupsMasterName,
+		R1GroupsLeftRight.GroupId as R1GroupsLeftRightGroupId, R1GroupsLeftRight.ParentId as R1GroupsLeftRightParentId, R1GroupsLeftRight.Name as R1GroupsLeftRightName,
+		R1GroupsMasterTops.GroupId as R1GroupsMasterTopsGroupId, R1GroupsMasterTops.ParentId as R1GroupsMasterTopsParentId, R1GroupsMasterTops.Name as R1GroupsMasterTopsName,
+		R1GroupsMasterSubs.GroupId as R1GroupsMasterSubsGroupId, R1GroupsMasterSubs.ParentId as R1GroupsMasterSubsParentId, R1GroupsMasterSubs.Name as R1GroupsMasterSubsName,
+		R1GroupsLeftRightTops.GroupId as R1GroupsLeftRightTopsGroupId, R1GroupsLeftRightTops.ParentId as R1GroupsLeftRightTopsParentId, R1GroupsLeftRightTops.Name as R1GroupsLeftRightTopsName,
+		R1GroupsLeftRightSubs.GroupId as R1GroupsLeftRightSubsGroupId, R1GroupsLeftRightSubs.ParentId as R1GroupsLeftRightSubsParentId, R1GroupsLeftRightSubs.Name as R1GroupsLeftRightSubsName,
+		R1GroupsLeftRightTopsL.GroupId as R1GroupsLeftRightTopsLGroupId, R1GroupsLeftRightTopsL.ParentId as R1GroupsLeftRightTopsLParentId, R1GroupsLeftRightTopsL.Name as R1GroupsLeftRightTopsLName,
+		R1GroupsLeftRightTopsR.GroupId as R1GroupsLeftRightTopsRGroupId, R1GroupsLeftRightTopsR.ParentId as R1GroupsLeftRightTopsRParentId, R1GroupsLeftRightTopsR.Name as R1GroupsLeftRightTopsRName,
+		R1GroupsLeftRightSubsL.GroupId as R1GroupsLeftRightSubsLGroupId, R1GroupsLeftRightSubsL.ParentId as R1GroupsLeftRightSubsLParentId, R1GroupsLeftRightSubsL.Name as R1GroupsLeftRightSubsLName,
+		R1GroupsLeftRightSubsR.GroupId as R1GroupsLeftRightSubsRGroupId, R1GroupsLeftRightSubsR.ParentId as R1GroupsLeftRightSubsRParentId, R1GroupsLeftRightSubsR.Name as R1GroupsLeftRightSubsRName,
+		AutoR1SubsL.GroupId as AutoR1SubLeftGroupId, AutoR1SubsL.ParentId as AutoR1SubLeftParentId, AutoR1SubsL.Name as AutoR1SubLeftName,
+		AutoR1SubsR.GroupId as AutoR1SubRightGroupId, AutoR1SubsR.ParentId as AutoR1SubRightParentId, AutoR1SubsR.Name as AutoR1SubRightName,
+		AutoR1SubsC.GroupId as AutoR1SubCenterGroupId, AutoR1SubsC.ParentId as AutoR1SubCenterParentId, AutoR1SubsC.Name as AutoR1SubCenterName,
+		CrossoverControls.DisplayName as SUBsCrossover
+-- SELECT *
         FROM SourceGroups
         LEFT OUTER JOIN (SELECT ArraySightId as ArraySightIdR, SourceGroupId as SGid FROM SourceGroups) ON SourceGroups.NextSourceGroupId = SGid
         /* Combine additional source group data */
@@ -754,42 +832,45 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
         /* Combine view info */
         JOIN Views
         ON Views.Name = SourceGroups.Name
-        /* Combine R1 groups to Source Groups - We only have the name to go on here */
-        JOIN Groups mainGroup
-        ON SourceGroups.name = mainGroup.Name
-        /* Fetch TOPs groups which may or may not have L/R subgroups */
-        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs') topsGroup
-        ON topsGroup.ParentId = mainGroup.GroupId
-        /* Fetch L/R TOP groups which will be under the main TOPs groups */
-        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs L' ) topsLGroup
-        ON topsLGroup.ParentId  = topsGroup.GroupId
-        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs R' ) topsRGroup
-        ON topsRGroup.ParentId  = topsGroup.GroupId
-        /* Fetch the SUBs groups */
-        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs') subsGroup
-        ON subsGroup.ParentId  = mainGroup.GroupId
+		/* Skip second half of stereo pairs */
+        AND SourceGroups.OrderIndex != -1
+        /* R1 Master Sub Groups */
+        LEFT OUTER JOIN  (SELECT GroupId, Name, ParentId FROM Groups WHERE ParentId = (SELECT GroupId FROM Groups WHERE Name == 'Master')) R1GroupsMaster
+        ON SourceGroups.name = R1GroupsMaster.Name
+        /* R1 Left/Right Sub Groups */
+		LEFT OUTER JOIN  (SELECT GroupId, Name, ParentId FROM Groups WHERE ParentId = (SELECT GroupId FROM Groups WHERE Name == 'Left/Right')) R1GroupsLeftRight
+        ON SourceGroups.name = R1GroupsLeftRight.Name
+		/* Fetch TOPs and SUBs groups under Master group */
+		LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs') R1GroupsMasterTops
+		ON R1GroupsMasterTops.ParentId = R1GroupsMaster.GroupId
+		LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs') R1GroupsMasterSubs
+		ON R1GroupsMasterSubs.ParentId = R1GroupsMaster.GroupId
+		/* Fetch TOPs and SUBs groups under Left/Right group */
+		LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs') R1GroupsLeftRightTops
+		ON R1GroupsLeftRightTops.ParentId = R1GroupsLeftRight.GroupId
+		LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs') R1GroupsLeftRightSubs
+		ON R1GroupsLeftRightSubs.ParentId = R1GroupsLeftRight.GroupId
+		/* Fetch TOPs L/R and SUBs L/R groups under TOPs/SUBs group */
+		LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs L') R1GroupsLeftRightTopsL
+		ON R1GroupsLeftRightTopsL.ParentId = R1GroupsLeftRightTops.GroupId
+		LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% TOPs R') R1GroupsLeftRightTopsR
+		ON R1GroupsLeftRightTopsR.ParentId = R1GroupsLeftRightTops.GroupId
+		LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs L') R1GroupsLeftRightSubsL
+		ON R1GroupsLeftRightSubsL.ParentId = R1GroupsLeftRightSubs.GroupId
+		LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs R') R1GroupsLeftRightSubsR
+		ON R1GroupsLeftRightSubsR.ParentId = R1GroupsLeftRightSubs.GroupId
         /* Fetch L/R/C SUB groups we created earlier */
-        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs L' ) subsLGroup
-        ON subsLGroup.ParentId  = subsGroup.GroupId
-        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs R' ) subsRGroup
-        ON subsRGroup.ParentId  = subsGroup.GroupId
-        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE Name LIKE '% SUBs C' ) subsCGroup
+        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE ParentId = (SELECT GroupId FROM Groups WHERE Name == 'Auto R1')  AND Name LIKE '% SUBs L' ) AutoR1SubsL
+		ON SourceGroups.Type = 3
+        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE ParentId = (SELECT GroupId FROM Groups WHERE Name == 'Auto R1')  AND Name LIKE '% SUBs R' ) AutoR1SubsR
+		ON SourceGroups.Type = 3
+        LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE ParentId = (SELECT GroupId FROM Groups WHERE Name == 'Auto R1')  AND Name LIKE '% SUBs C' ) AutoR1SubsC
+		ON SourceGroups.Type = 3
         /* Fetch crossover info for subs */
-        ON subsCGroup.ParentId  = subsGroup.GroupId
-        LEFT OUTER JOIN (SELECT * FROM Controls WHERE DisplayName = '100Hz' OR DisplayName = 'Infra') i
-        ON i.ViewId  = Views.ViewId
+        LEFT OUTER JOIN (SELECT * FROM Controls WHERE DisplayName = '100Hz' OR DisplayName = 'Infra') CrossoverControls
+        ON CrossoverControls.ViewId  = Views.ViewId
         /* Skip unused channels group */
         WHERE SourceGroups.name != 'Unused channels'
-        /* Skip second half of stereo pairs */
-        AND OrderIndex != -1
-        /* Skip duplicate groups in Main group _only for arrays_. We want L/R groups for arrays. */
-        AND (SourceGroups.Type == 1 AND mainGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == 'Master'))
-        /* Skip existing Sub array group in Main */
-        OR (SourceGroups.Type == 3 AND mainGroup.ParentId != (SELECT GroupId FROM Groups WHERE Name == 'Master'))
-        /* Get point source groups from Main group */
-        OR (SourceGroups.Type == 2 AND mainGroup.ParentId == (SELECT GroupId FROM Groups WHERE Name == 'Master'))
-        /* Device only groups */
-        OR SourceGroups.Type == 4
         ORDER BY SourceGroups.OrderIndex ASC`;
 
 		const stmt = this.db.prepare(query);
