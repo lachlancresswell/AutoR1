@@ -390,7 +390,15 @@ export class ViewTemplateManager {
 								.getAllGroups()
 								?.find((group) => group.GroupId === sourceGroup.masterGroupId)!;
 
-							return [{ group, sourceGroup, channelGroup: undefined }];
+							return [
+								{
+									group,
+									sourceGroup,
+									channelGroup: sourceGroup.channelGroups.length
+										? sourceGroup.channelGroups[0]
+										: undefined
+								}
+							];
 						} else {
 							return sourceGroup.childGroupIds.map((childGroupId) => {
 								const group = this.projectFile
