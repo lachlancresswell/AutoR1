@@ -25,8 +25,8 @@
 	"modes": {
 		"window": {
 			"title": "AutoR1",
-			"width": 100,
-			"height": 100,
+			"width": 800,
+			"height": 1000,
 			"minWidth": 400,
 			"minHeight": 200,
 			"icon": "/frontend/public/favicon.png",
