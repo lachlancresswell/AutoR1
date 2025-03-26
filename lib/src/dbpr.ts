@@ -915,6 +915,33 @@ export class ProjectFile extends SqlDbFile {
 	}
 
 	/**
+	 * Finds parent group of a given group from its ID
+	 * @param groupId ID of group
+	 * @returns Group or undefined
+	 *
+	 * @example
+	 * const p = new ProjectFile('path/to/project.dbpr');
+	 * const group = p.getParentGroupFromGroupId(1);
+	 * console.log(group);
+	 * // => {}
+	 */
+	public getParentGroupFromGroupId(groupId: number): Group | undefined {
+		const stmt = this.db.prepare('SELECT ParentId FROM Groups WHERE GroupId = ?');
+		const rtn = stmt.get([groupId]) as unknown as number[];
+
+		if (!rtn || !rtn.length) {
+			console.debug(`Could not find group with id ${groupId}`);
+			return undefined;
+		}
+
+		const parentId = rtn[0];
+
+		const group = this.getAllGroups()?.find((group) => group.GroupId === parentId);
+
+		return group;
+	}
+
+	/**
 	 * Finds ID of a view from its name
 	 * @param name Name of view
 	 * @returns ViewId or undefined
