@@ -217,7 +217,7 @@
 		newProjectFile.createSubLRCGroups(parentId);
 		newProjectFile.getSrcGrpInfo();
 
-		projectFileBuffer = Buffer.from(buffer);
+		projectFileBuffer = buffer;
 		fileName = droppedFile!.name;
 		sourceGroupsStatus = newProjectFile.sourceGroups.map((sg) => ({
 			fallback: sg.fallback,
