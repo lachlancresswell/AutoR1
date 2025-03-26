@@ -1604,17 +1604,6 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 		}
 
 		const subArrayGroupName = subArrayGroup.Name;
-		this.createGroup({
-			Name: subArrayGroupName,
-			ParentId: parentGroupId
-		});
-		let subGroupParentID = this.getHighestGroupID();
-
-		this.createGroup({
-			Name: `${subArrayGroupName} SUBs`,
-			ParentId: subGroupParentID
-		});
-		subGroupParentID = this.getHighestGroupID();
 
 		const suffix = [' SUBs L', ' SUBs R', ' SUBs C'];
 		const subArrayGroups = this.getSubArrayGroups();
@@ -1623,7 +1612,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 		for (const [idx, subArrayGroup] of subArrayGroups.entries()) {
 			this.createGroup({
 				Name: `${subArrayGroupName}${suffix[idx]}`,
-				ParentId: subGroupParentID
+				ParentId: parentGroupId
 			});
 			const pId = this.getHighestGroupID()!;
 
