@@ -1217,7 +1217,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 			Name: string;
 		};
 
-		if (subArrayName) {
+		if (subArrayName && subArrayName.Name) {
 			const getGroupIdStmt = this.db.prepare(
 				'SELECT GroupId FROM Groups WHERE Name = ? AND ParentId = ?'
 			);
