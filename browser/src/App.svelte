@@ -52,7 +52,7 @@
 	onMount(async () => {
 		init();
 
-		const arrayBuffer = base64ToArrayBuffer(templateBase64);
+		const arrayBuffer = await Neutralino.filesystem.readBinaryFile('../lib/Projects/templates.r2t');
 		const buffer = new Uint8Array(arrayBuffer);
 		defaultTemplateFile = await AutoR1.AutoR1TemplateFile.build(Buffer.from(buffer));
 		templateFile = defaultTemplateFile;
