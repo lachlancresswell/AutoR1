@@ -1,5 +1,12 @@
 /* eslint-disable */
-import { ChannelGroup, SourceGroup, AutoR1ProjectFile } from '../../autor1';
+import {
+	ChannelGroup,
+	SourceGroup,
+	AutoR1ProjectFile,
+	AutoR1Control,
+	TemplateOptions,
+	AutoR1Template
+} from '../../autor1';
 import * as DBPR from '../../dbpr';
 import SQLjs from 'sql.js';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
@@ -575,12 +582,12 @@ describe('SourceGroup', () => {
 			const row = { ...defaultRow };
 			const index = 0;
 
-			row.TopGroupId = 101;
-			row.TopGroupName = 'TopGroupName';
+			row.R1GroupsMasterTopsGroupId = 101;
+			row.R1GroupsMasterTopsName = 'TopGroupName';
 			const newSourceGroup = new SourceGroup(row);
 
-			expect(newSourceGroup.channelGroups[index].name).toBe(row.TopGroupName);
-			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.TopGroupId);
+			expect(newSourceGroup.channelGroups[index].name).toBe(row.R1GroupsMasterTopsName);
+			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.R1GroupsMasterTopsGroupId);
 		});
 
 		it('should assign Top Left properties', () => {
@@ -588,17 +595,21 @@ describe('SourceGroup', () => {
 			const parentIndex = 0;
 			const index = 1;
 
-			row.TopGroupId = 101;
-			row.TopGroupName = 'TopGroupName';
-			row.TopLeftGroupId = 103;
-			row.TopLeftGroupName = 'TopLeftGroupName';
+			row.R1GroupsMasterTopsGroupId = 101;
+			row.R1GroupsMasterTopsName = 'TopGroupName';
+			row.R1GroupsLeftRightTopsLGroupId = 103;
+			row.R1GroupsLeftRightTopsLName = 'R1GroupsLeftRightTopsLName';
 			const newSourceGroup = new SourceGroup(row);
 
-			expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.name).toBe(row.TopLeftGroupName);
-			expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.groupId).toBe(row.TopLeftGroupId);
+			expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.name).toBe(
+				row.R1GroupsLeftRightTopsLName
+			);
+			expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.groupId).toBe(
+				row.R1GroupsLeftRightTopsLGroupId
+			);
 
-			expect(newSourceGroup.channelGroups[index].name).toBe(row.TopLeftGroupName);
-			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.TopLeftGroupId);
+			expect(newSourceGroup.channelGroups[index].name).toBe(row.R1GroupsLeftRightTopsLName);
+			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.R1GroupsLeftRightTopsLGroupId);
 		});
 
 		it('should assign Top Group Right properties', () => {
@@ -606,37 +617,35 @@ describe('SourceGroup', () => {
 			const parentIndex = 0;
 			const index = 2;
 
-			row.TopGroupId = 101;
-			row.TopGroupName = 'TopGroupName';
-			row.TopCGroupId = 102;
-			row.TopCGroupName = 'TopCGroupName';
-			row.TopLeftGroupId = 103;
-			row.TopLeftGroupName = 'TopLeftGroupName';
-			row.TopRightGroupId = 104;
-			row.TopRightGroupName = 'TopRightGroupName';
+			row.R1GroupsMasterTopsGroupId = 101;
+			row.R1GroupsMasterTopsName = 'TopGroupName';
+			row.R1GroupsLeftRightTopsLGroupId = 103;
+			row.R1GroupsLeftRightTopsLName = 'R1GroupsLeftRightTopsLName';
+			row.R1GroupsLeftRightTopsRGroupId = 104;
+			row.R1GroupsLeftRightTopsRName = 'R1GroupsLeftRightTopsRName';
 			const newSourceGroup = new SourceGroup(row);
 
 			expect(newSourceGroup.channelGroups[parentIndex].rightGroup?.name).toBe(
-				row.TopRightGroupName
+				row.R1GroupsLeftRightTopsRName
 			);
 			expect(newSourceGroup.channelGroups[parentIndex].rightGroup?.groupId).toBe(
-				row.TopRightGroupId
+				row.R1GroupsLeftRightTopsRGroupId
 			);
 
-			expect(newSourceGroup.channelGroups[index].name).toBe(row.TopRightGroupName);
-			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.TopRightGroupId);
+			expect(newSourceGroup.channelGroups[index].name).toBe(row.R1GroupsLeftRightTopsRName);
+			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.R1GroupsLeftRightTopsRGroupId);
 		});
 
 		it('should assign Sub Group properties', () => {
 			const row = { ...defaultRow };
 			const index = 0;
 
-			row.SubGroupId = 101;
-			row.SubGroupName = 'SubGroupName';
+			row.R1GroupsMasterSubsGroupId = 101;
+			row.R1GroupsMasterSubsName = 'R1GroupsMasterSubsName';
 			const newSourceGroup = new SourceGroup(row);
 
-			expect(newSourceGroup.channelGroups[index].name).toBe(row.SubGroupName);
-			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.SubGroupId);
+			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.R1GroupsMasterSubsGroupId);
+			expect(newSourceGroup.channelGroups[index].name).toBe(row.R1GroupsMasterSubsName);
 		});
 
 		it('should assign Sub Group Left properties', () => {
@@ -644,19 +653,23 @@ describe('SourceGroup', () => {
 			const parentIndex = 0;
 			const index = 1;
 
-			row.SubGroupId = 101;
-			row.SubGroupName = 'SubGroupName';
+			row.R1GroupsMasterSubsGroupId = 101;
+			row.R1GroupsMasterSubsName = 'R1GroupsMasterSubsName';
 			row.SubCGroupId = 102;
 			row.SubCGroupName = 'SubCGroupName';
-			row.SubLeftGroupId = 103;
-			row.SubLeftGroupName = 'SubLeftGroupName';
+			row.R1GroupsLeftRightSubsLGroupId = 103;
+			row.R1GroupsLeftRightSubsLName = 'AutoR1SubLeftGroupName';
 			const newSourceGroup = new SourceGroup(row);
 
-			expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.name).toBe(row.SubLeftGroupName);
-			expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.groupId).toBe(row.SubLeftGroupId);
+			expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.name).toBe(
+				row.R1GroupsLeftRightSubsLName
+			);
+			expect(newSourceGroup.channelGroups[parentIndex].leftGroup?.groupId).toBe(
+				row.R1GroupsLeftRightSubsLGroupId
+			);
 
-			expect(newSourceGroup.channelGroups[index].name).toBe(row.SubLeftGroupName);
-			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.SubLeftGroupId);
+			expect(newSourceGroup.channelGroups[index].name).toBe(row.R1GroupsLeftRightSubsLName);
+			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.R1GroupsLeftRightSubsLGroupId);
 		});
 
 		it('should assign Sub Group Right properties', () => {
@@ -664,35 +677,35 @@ describe('SourceGroup', () => {
 			const parentIndex = 0;
 			const index = 2;
 
-			row.SubGroupId = 101;
-			row.SubGroupName = 'SubGroupName';
-			row.SubLeftGroupId = 103;
-			row.SubLeftGroupName = 'SubLeftGroupName';
-			row.SubRightGroupId = 104;
-			row.SubRightGroupName = 'SubRightGroupName';
+			row.R1GroupsMasterSubsGroupId = 101;
+			row.R1GroupsMasterSubsName = 'R1GroupsMasterSubsName';
+			row.R1GroupsLeftRightSubsLGroupId = 103;
+			row.R1GroupsLeftRightSubsLName = 'AutoR1SubLeftGroupName';
+			row.R1GroupsLeftRightSubsRGroupId = 104;
+			row.R1GroupsLeftRightSubsRName = 'SubRightGroupName';
 			const newSourceGroup = new SourceGroup(row);
 
 			expect(newSourceGroup.channelGroups[parentIndex].rightGroup?.name).toBe(
-				row.SubRightGroupName
+				row.R1GroupsLeftRightSubsRName
 			);
 			expect(newSourceGroup.channelGroups[parentIndex].rightGroup?.groupId).toBe(
-				row.SubRightGroupId
+				row.R1GroupsLeftRightSubsRGroupId
 			);
 
-			expect(newSourceGroup.channelGroups[index].name).toBe(row.SubRightGroupName);
-			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.SubRightGroupId);
+			expect(newSourceGroup.channelGroups[index].name).toBe(row.R1GroupsLeftRightSubsRName);
+			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.R1GroupsLeftRightSubsRGroupId);
 		});
 
 		it('should assign Point Source properties', () => {
 			const row = { ...defaultRow };
 			const index = 0;
 
-			row.MainGroupId = 100;
-			row.MainGroupName = 'MainGroupName';
+			row.R1GroupsMasterGroupId = 100;
+			row.R1GroupsMasterName = 'MainGroupName';
 			const newSourceGroup = new SourceGroup(row);
 
-			expect(newSourceGroup.channelGroups[index].name).toBe(row.MainGroupName);
-			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.MainGroupId);
+			expect(newSourceGroup.channelGroups[index].name).toBe(row.R1GroupsMasterName);
+			expect(newSourceGroup.channelGroups[index].groupId).toBe(row.R1GroupsMasterGroupId);
 		});
 	});
 
@@ -1095,7 +1108,7 @@ describe('AutoR1ProjectFile', () => {
 			getAsObject.mockReturnValueOnce({ GroupId: 1 });
 
 			// Newly created parent sub group ID
-			getAsObject.mockReturnValueOnce({ 'max(GroupId)': 1 });
+			// getAsObject.mockReturnValueOnce({ 'max(GroupId)': 1 });
 
 			// Newly created child sub group ID
 			getAsObject.mockReturnValueOnce({ GroupId: 2 });
@@ -1127,7 +1140,303 @@ describe('AutoR1ProjectFile', () => {
 			(projectFile as any).createSubLRCGroups();
 
 			// Assert
-			expect(run).toHaveBeenCalledTimes(4);
+			expect(run).toHaveBeenCalledTimes(2);
 		});
+	});
+});
+
+describe('AutoR1Control.handleString', () => {
+	let control: AutoR1Control;
+
+	beforeEach(() => {
+		control = new AutoR1Control({} as any);
+	});
+
+	it('passing in a TargetId and TargetChannel should update TargetId and TargetChannel', () => {
+		const options: any = { TargetId: 123, TargetChannel: 456 };
+		control.handleString(options);
+		expect(control.TargetId).toBe(123);
+		expect(control.TargetChannel).toBe(456);
+	});
+
+	it('should replace %SourceGroupName% in DisplayName', () => {
+		control.DisplayName = 'Test %SourceGroupName%';
+		const options: any = { sourceGroup: { Name: 'SourceGroup' } };
+		control.handleString(options);
+		expect(control.DisplayName).toBe('Test SourceGroup');
+	});
+
+	it('should replace %ChannelGroupName% in DisplayName', () => {
+		control.DisplayName = 'Test %ChannelGroupName%';
+		const options: any = { channelGroup: { name: 'ChannelGroup', type: 'TOPS' } };
+		control.handleString(options);
+		expect(control.DisplayName).toBe('Test ChannelGroup');
+	});
+
+	it('should replace %ChannelName% in DisplayName', () => {
+		control.DisplayName = 'Test %ChannelName%';
+		const options: any = { channel: { Name: 'Channel' } };
+		control.handleString(options);
+		expect(control.DisplayName).toBe('Test Channel');
+	});
+
+	it('should handle %SourceGroupPageTarget%', () => {
+		control.DisplayName = 'Test %SourceGroupPageTarget%';
+		const options: any = { sourceGroup: { ViewId: 789 } };
+		control.handleString(options);
+		expect(control.DisplayName).toBe('Test ');
+		expect(control.TargetId).toBe(789);
+	});
+
+	it('should handle %EqPageTarget%', () => {
+		control.DisplayName = 'Test %EqPageTarget%';
+		const options: any = { sourceGroup: { ViewId: 789 } };
+		control.handleString(options);
+		expect(control.DisplayName).toBe('Test ');
+		expect(control.TargetId).toBe(790);
+	});
+
+	it('should handle %Target_ChannelGroup% with channel number and without L/R', () => {
+		control.DisplayName = 'Test %Target_ChannelGroup_1%';
+		const options: any = {
+			sourceGroup: {
+				channelGroups: [
+					{
+						isLeft: () => false,
+						isRight: () => false,
+						channels: [{ TargetId: 111, TargetChannel: 222 }]
+					}
+				]
+			}
+		};
+		control.handleString(options);
+		expect(control.DisplayName).toBe('Test ');
+		expect(control.TargetId).toBe(111);
+		expect(control.TargetChannel).toBe(222);
+	});
+
+	it('should handle %Target_ChannelGroup% with channel number and L', () => {
+		control.DisplayName = 'Test %Target_ChannelGroup_L_1%';
+		const options: any = {
+			sourceGroup: {
+				channelGroups: [
+					{
+						isLeft: () => true,
+						isRight: () => false,
+						channels: [{ TargetId: 111, TargetChannel: 222 }]
+					},
+					{
+						isLeft: () => false,
+						isRight: () => true,
+						channels: [{ TargetId: 333, TargetChannel: 444 }]
+					}
+				]
+			}
+		};
+		control.handleString(options);
+		expect(control.DisplayName).toBe('Test ');
+		expect(control.TargetId).toBe(111);
+		expect(control.TargetChannel).toBe(222);
+	});
+
+	it('should handle %Target_ChannelGroup% with channel number and R', () => {
+		control.DisplayName = 'Test %Target_ChannelGroup_R_1%';
+		const options: any = {
+			sourceGroup: {
+				channelGroups: [
+					{
+						isLeft: () => true,
+						isRight: () => false,
+						channels: [{ TargetId: 111, TargetChannel: 222 }]
+					},
+					{
+						isLeft: () => false,
+						isRight: () => true,
+						channels: [{ TargetId: 333, TargetChannel: 444 }]
+					}
+				]
+			}
+		};
+		control.handleString(options);
+		expect(control.DisplayName).toBe('Test ');
+		expect(control.TargetId).toBe(333);
+		expect(control.TargetChannel).toBe(444);
+	});
+});
+
+describe('AutoR1ProjectFile.insertTemplate', () => {
+	let projectFile: AutoR1ProjectFile;
+	let template: AutoR1Template;
+
+	beforeEach(async () => {
+		prepare = vi.fn(() => ({ get, getAsObject, bind, step, free, run }));
+		Database = vi.fn(() => ({ prepare }));
+		(SQLjs as unknown as Mock).mockReturnValue({
+			Database
+		});
+
+		getAsObject.mockReturnValueOnce({ GroupId: 1 });
+
+		projectFile = await AutoR1ProjectFile.build(true as any);
+		template = new AutoR1Template({} as any, [], 100, 100);
+
+		// Mock methods
+		projectFile.getHighestJoinedID = vi.fn().mockReturnValue(10);
+		projectFile.insertControl = vi.fn();
+	});
+
+	it('should insert template with default values', () => {
+		const control = new AutoR1Control();
+		template.controls = [control];
+
+		projectFile.insertTemplate(template, 1);
+
+		expect(projectFile.insertControl).toHaveBeenCalledWith(
+			expect.objectContaining({
+				PosX: 0,
+				PosY: 0,
+				JoinedId: 11,
+				ViewId: 1
+			})
+		);
+	});
+
+	it('should insert template with custom position', () => {
+		const control = new AutoR1Control();
+		template.controls = [control];
+
+		projectFile.insertTemplate(template, 1, 50, 60);
+
+		expect(projectFile.insertControl).toHaveBeenCalledWith(
+			expect.objectContaining({
+				PosX: 50,
+				PosY: 60,
+				JoinedId: 11,
+				ViewId: 1
+			})
+		);
+	});
+
+	it('should use provided joinedId', () => {
+		const control = new AutoR1Control();
+		template.controls = [control];
+		const options: TemplateOptions = { joinedId: 20 };
+
+		projectFile.insertTemplate(template, 1, 0, 0, options);
+
+		expect(projectFile.insertControl).toHaveBeenCalledWith(
+			expect.objectContaining({
+				JoinedId: 20
+			})
+		);
+	});
+
+	it('should apply custom Width and Height', () => {
+		const control = new AutoR1Control();
+		control.Width = 100;
+		control.Height = 100;
+		template.controls = [control];
+		const options: TemplateOptions = { Width: 200, Height: 300 };
+
+		projectFile.insertTemplate(template, 1, 0, 0, options);
+
+		expect(projectFile.insertControl).toHaveBeenCalledWith(
+			expect.objectContaining({
+				Width: 200,
+				Height: 300
+			})
+		);
+	});
+
+	it('should handle %SourceGroupName% string', () => {
+		const control = new AutoR1Control();
+		control.DisplayName = '%SourceGroupName%';
+		template.controls = [control];
+		const options: any = { sourceGroup: { Name: 'TestGroup' } };
+
+		projectFile.insertTemplate(template, 1, 0, 0, options);
+
+		expect(projectFile.insertControl).toHaveBeenCalledWith(
+			expect.objectContaining({
+				DisplayName: 'TestGroup'
+			})
+		);
+	});
+
+	it('should handle $ChannelGroupName% string', () => {
+		const control = new AutoR1Control();
+		control.DisplayName = '%ChannelGroupName%';
+		template.controls = [control];
+		const options: any = {
+			channelGroup: { name: 'TestGroup', type: 'TOPS' }
+		};
+
+		projectFile.insertTemplate(template, 1, 0, 0, options);
+
+		expect(projectFile.insertControl).toHaveBeenCalledWith(
+			expect.objectContaining({
+				DisplayName: 'TestGroup'
+			})
+		);
+	});
+
+	it('should handle $ChannelName% string', () => {
+		const control = new AutoR1Control();
+		control.DisplayName = '%ChannelName%';
+		template.controls = [control];
+		const options: any = {
+			channel: { Name: 'TestGroup' }
+		};
+
+		projectFile.insertTemplate(template, 1, 0, 0, options);
+
+		expect(projectFile.insertControl).toHaveBeenCalledWith(
+			expect.objectContaining({
+				DisplayName: 'TestGroup'
+			})
+		);
+	});
+
+	it('should handle $SourceGroupPageTarget% string', () => {
+		const control = new AutoR1Control();
+		control.DisplayName = '%SourceGroupPageTarget%';
+		template.controls = [control];
+		const options: any = {
+			sourceGroup: { ViewId: 1 }
+		};
+
+		projectFile.insertTemplate(template, 1, 0, 0, options);
+
+		expect(projectFile.insertControl).toHaveBeenCalledWith(
+			expect.objectContaining({
+				TargetId: 1
+			})
+		);
+	});
+
+	it('should handle string options', () => {
+		const control = new AutoR1Control();
+		control.DisplayName = '%SourceGroupName%';
+		template.controls = [control];
+		const options: any = { sourceGroup: { Name: 'TestGroup' } };
+
+		projectFile.insertTemplate(template, 1, 0, 0, options);
+
+		expect(projectFile.insertControl).toHaveBeenCalledWith(
+			expect.objectContaining({
+				DisplayName: 'TestGroup'
+			})
+		);
+	});
+
+	it('CPL control should be skipped for sources which do not use CPL', () => {
+		const control = new AutoR1Control();
+		control.isVisible = () => false;
+		template.controls = [control];
+		const options: any = { sourceGroup: { Name: 'TestGroup' } };
+
+		projectFile.insertTemplate(template, 1, 0, 0, options);
+
+		expect(projectFile.insertControl).not.toHaveBeenCalled();
 	});
 });

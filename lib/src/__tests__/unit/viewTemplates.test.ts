@@ -1,4 +1,5 @@
-import { AutoR1ProjectFile, AutoR1TemplateFile } from '../../autor1';
+import { AutoR1ProjectFile, AutoR1Template, AutoR1TemplateFile, SourceGroup } from '../../autor1';
+import { SourceGroupTypes, TargetChannels } from '../../dbpr';
 import {
 	Assign,
 	createViewFromTemplate,
@@ -106,15 +107,203 @@ describe('parsePos', () => {
 	});
 });
 
-	it('multiple columns, multiple rows', async () => {
+describe('myfunc', () => {
+	it('Creates Auto Meters View correctly where child template is wider than parent (METER wider than METERS_GROUP)', async () => {
 		getAsObject.mockReturnValueOnce({ GroupId: 1 });
 		const projectFile = await AutoR1ProjectFile.build(true as any);
 		get.mockReturnValueOnce({ GroupId: 1 });
 		const templateFile = await AutoR1TemplateFile.build(true as any);
-		const templates = [
-			{ name: 'METERS_TITLE', width: 1000, height: 1000 },
-			{ name: 'METERS_GROUP', width: 1000, height: 1000 },
+		const templates: AutoR1Template[] = [
+			{ name: 'METERS_TITLE', width: 10, height: 10 },
+			{ name: 'METERS_GROUP', width: 100, height: 100 },
 			{ name: 'METER', width: 1000, height: 1000 }
+		] as any;
+		templateFile.templates = templates;
+		projectFile.sourceGroups = [
+			{
+				Name: 'sg1',
+				Type: SourceGroupTypes.ARRAY,
+				SourceGroupId: 1,
+				channelGroups: [
+					{
+						name: 'cg1',
+						groupId: 10,
+						hasLorR: () => false,
+						channels: [
+							{
+								Name: 'c1',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c2',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c3',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c4',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							}
+						]
+					},
+					{
+						name: 'cg2',
+						groupId: 10,
+						hasLorR: () => false,
+						channels: [
+							{
+								Name: 'c5',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c6',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c7',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c8',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							}
+						]
+					}
+				]
+			},
+			{
+				Name: 'sg2',
+				Type: SourceGroupTypes.ARRAY,
+				SourceGroupId: 1,
+				channelGroups: [
+					{
+						name: 'cg3',
+						groupId: 10,
+						hasLorR: () => false,
+						channels: [
+							{
+								Name: 'c9',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c10',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c11',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c12',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							}
+						]
+					},
+					{
+						name: 'cg4',
+						groupId: 10,
+						hasLorR: () => false,
+						channels: [
+							{
+								Name: 'c13',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c14',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c15',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							},
+							{
+								Name: 'c16',
+								TargetId: 1000,
+								TargetChannel: TargetChannels.CHANNEL_A
+							}
+						]
+					}
+				]
+			}
+		] as SourceGroup[];
+		const viewTemplate: ViewTemplate = {
+			'Auto Meters': {
+				startX: 1,
+				startY: 1,
+				paddingX: 10,
+				paddingY: 10,
+				insideOut: false,
+				templates: [
+					{
+						title: 'METERS_TITLE',
+						x: 1,
+						y: Position.ADVANCE_NEXT
+					},
+					{
+						title: 'METERS_GROUP',
+						x: Position.ADVANCE_NEXT,
+						y: Position.PREVIOUS,
+						assign: Assign.CHANNELGROUPS,
+						templates: [
+							{
+								title: 'METER',
+								assign: Assign.CHANNELGROUPS,
+								x: Position.PREVIOUS,
+								y: Position.ADVANCE
+							}
+						]
+					}
+				]
+			}
+		};
+
+		projectFile.insertTemplate = vi.fn();
+
+		getAsObject.mockReturnValue({ 'max(ViewId)': 1024 });
+
+		const { x, y, width, height } = createViewFromTemplate(viewTemplate, projectFile, templateFile);
+
+		// Assert
+		expect(width).toBe(
+			viewTemplate['Auto Meters'].startX +
+				templates[2].width * 4 +
+				viewTemplate['Auto Meters'].paddingX * 3
+		);
+		expect(height).toBe(
+			viewTemplate['Auto Meters'].startY +
+				templates[0].height +
+				templates[1].height +
+				templates[2].height * 4 +
+				viewTemplate['Auto Meters'].paddingY * 5
+		);
+	});
+
+	it('Creates Auto Meters View correctly where child template is NOT wider than parent (METER NOT wider than METERS_GROUP)', async () => {
+		getAsObject.mockReturnValueOnce({ GroupId: 1 });
+		const projectFile = await AutoR1ProjectFile.build(true as any);
+		get.mockReturnValueOnce({ GroupId: 1 });
+		const templateFile = await AutoR1TemplateFile.build(true as any);
+		const templates: AutoR1Template[] = [
+			{ name: 'METERS_TITLE', width: 10, height: 10 },
+			{ name: 'METERS_GROUP', width: 1000, height: 100 },
+			{ name: 'METER', width: 100, height: 1000 }
 		] as any;
 		templateFile.templates = templates;
 		projectFile.sourceGroups = [
@@ -263,7 +452,7 @@ describe('parsePos', () => {
 		// Assert
 		expect(width).toBe(
 			viewTemplate['Auto Meters'].startX +
-				templates[0].width * 4 +
+				templates[1].width * 4 +
 				viewTemplate['Auto Meters'].paddingX * 3
 		);
 		expect(height).toBe(
