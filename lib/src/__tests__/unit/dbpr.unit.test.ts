@@ -13,6 +13,7 @@ import {
 } from '../../dbpr';
 import SQLjs from 'sql.js';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { SqlDbFileStub } from '../dbpr.stub';
 
 vi.mock('sql.js');
 
@@ -96,7 +97,7 @@ describe('SqlDbFile', () => {
 			const db = 'db';
 
 			// Act
-			const dbFile = new SqlDbFile(db as any);
+			const dbFile = new SqlDbFileStub(db as any);
 
 			// Assert
 			expect(dbFile.db).toMatch(db);
