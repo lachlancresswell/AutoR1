@@ -136,6 +136,11 @@
 			projectFile.sourceGroups[i].eq = row.eq;
 		});
 
+		projectFile.createAPGroup(parentId);
+		projectFile.createMainFallbackGroup(parentId);
+		projectFile.createMainEqGroup(parentId);
+		projectFile.createMainDsGroup(parentId);
+		projectFile.createMainMuteGroup(parentId);
 		
 
 		config.forEach((view) => handleViewConfig(view, projectFile, templateFile!));
