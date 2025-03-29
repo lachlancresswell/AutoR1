@@ -503,13 +503,13 @@
 						<button
 							class="flex-grow-1 basis-1/4 rounded-md bg-lime-500"
 							style="flex-grow: 1;"
-							onclick={() => processFile(projectFileBuffer!, sourceGroupsStatus!, projectOptions)}
+							onclick={() => processFile(file!, sourceGroupsStatus!, projectOptions)}
 						>
 							<span style="margin-right: 0.4vw;">▶️</span><span>Run</span>
 						</button>
 						{#if projectFile.additions}
 							<button
-								class="basis-1/4 rounded-md bg-slate-200"
+								class="basis-1/4 rounded-md bg-slate-200 dark:bg-slate-500"
 								style="flex-grow: 1;"
 								onclick={cleanFile}
 							>
@@ -517,14 +517,14 @@
 							</button>
 						{/if}
 						<button
-							class="basis-1/4 rounded-md bg-slate-200"
+							class="basis-1/4 rounded-md bg-slate-200 dark:bg-slate-500"
 							style="flex-grow: 1;"
 							onclick={clearFile}
 						>
 							<span style="margin-right: 0.4vw;">⏮️</span><span>Clear</span>
 						</button>
 						<button
-							class="basis-1/4 rounded-md bg-slate-200"
+							class="basis-1/4 rounded-md bg-slate-200 dark:bg-slate-500"
 							style="flex-grow: 1;"
 							onclick={toggleVisibility}
 						>
@@ -533,7 +533,7 @@
 						</button>
 						{#if isVisible && statusHasChanged()}
 							<button
-								class="basis-1/4 rounded-md bg-slate-200"
+								class="basis-1/4 rounded-md bg-slate-200 dark:bg-slate-500"
 								style="flex-grow: 1;"
 								onclick={resetStatus}
 							>
@@ -569,14 +569,14 @@
 									{#if !customTemplateFileName}
 										<input type="file" id="templateInput" class="hidden" accept=".r2t" />
 										<button
-											class="w-full basis-1/4 cursor-pointer rounded-md bg-slate-200 text-center"
+											class="w-full basis-1/4 cursor-pointer rounded-md bg-slate-200 dark:bg-slate-500 text-center"
 											onchange={handleTemplateFileDrop}
 											onclick={handleTemplateFileClick}
 										>
 											Load
 										</button>
 										<button
-											class="w-full basis-1/4 cursor-pointer rounded-md bg-slate-200 text-center"
+											class="w-full basis-1/4 cursor-pointer rounded-md bg-slate-200 dark:bg-slate-500 text-center"
 											onclick={handleTemplateFileDownload}
 										>
 											Get
