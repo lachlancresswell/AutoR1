@@ -2,11 +2,6 @@ import { type Database } from 'sql.js';
 import * as dbpr from './dbpr';
 import { build, type Group } from './dbpr';
 
-export enum INPUT_GAIN_TYPE {
-	ANALOG = 0,
-	DIGITAL = 1
-}
-
 export const NAV_BUTTON_Y = 15;
 
 export const METER_VIEW_STARTX = 15;
@@ -97,7 +92,6 @@ export interface ProjectOptions {
 	meter: boolean;
 	eq: boolean;
 	arraySightControls: boolean;
-	inputGainType: 0 | 1;
 }
 
 /**
