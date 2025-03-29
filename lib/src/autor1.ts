@@ -1159,59 +1159,14 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 	public clean(parentGroupId = MAIN_GROUP_ID) {
 		console.log('Cleaning R1 project.');
 
-		const mainViewId = this.getViewIdFromName(MAIN_WINDOW_TITLE);
-
-		// Remove anything to do with the AutoR1 Main view
-		if (mainViewId) {
-			this.removeNavButtons();
-
-			const ctrlStmt = this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?');
-			ctrlStmt.bind([mainViewId]);
-			ctrlStmt.run();
-			console.log(`Deleted ${MAIN_WINDOW_TITLE} controls.`);
-
-			const viewStmt = this.db.prepare('DELETE FROM Views WHERE "Name" = ?');
-			viewStmt.bind([MAIN_WINDOW_TITLE]);
-			viewStmt.run();
-			console.log(`Deleted ${MAIN_WINDOW_TITLE} view.`);
-		}
-
-		const meterViewId = this.getViewIdFromName(METER_WINDOW_TITLE);
-
-		// Remove anything to do with the AutoR1 Meter view
-		if (meterViewId) {
-			const ctrlStmt = this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?');
-			ctrlStmt.bind([meterViewId]);
-			ctrlStmt.run();
-			console.log(`Deleted ${METER_WINDOW_TITLE} view controls.`);
-
-			const viewStmt = this.db.prepare('DELETE FROM Views WHERE "Name" = ?');
-			viewStmt.bind([METER_WINDOW_TITLE]);
-			viewStmt.run();
-			console.log(`Deleted ${METER_WINDOW_TITLE} view.`);
-		}
-
-		const eqViewId = this.getViewIdFromName(EQ_WINDOW_TITLE);
-
-		// Remove anything to do with the AutoR1 EQ view
-		if (eqViewId) {
-			const ctrlStmt = this.db.prepare('DELETE FROM Controls WHERE "ViewId" = ?');
-			ctrlStmt.bind([eqViewId]);
-			ctrlStmt.run();
-			console.log(`Deleted ${EQ_WINDOW_TITLE} view controls.`);
-
-			const viewStmt = this.db.prepare('DELETE FROM Views WHERE "Name" = ?');
-			viewStmt.bind([EQ_WINDOW_TITLE]);
-			viewStmt.run();
-			console.log(`Deleted ${EQ_WINDOW_TITLE} view.`);
-		}
+		// TODO: remove generated views from template
 
 		const subArrayNameStmt = this.db.prepare('SELECT Name FROM SourceGroups WHERE Type = ?');
 		const subArrayName = subArrayNameStmt.getAsObject([dbpr.SourceGroupTypes.SUBARRAY]) as {
 			Name: string;
 		};
 
-		if (subArrayName && subArrayName.Name) {
+		if (subArrayName?.Name) {
 			const getGroupIdStmt = this.db.prepare(
 				'SELECT GroupId FROM Groups WHERE Name = ? AND ParentId = ?'
 			);
@@ -1219,7 +1174,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 				GroupId: number;
 			};
 
-			if (groupId && groupId.GroupId) {
+			if (groupId?.GroupId) {
 				this.deleteGroup(groupId.GroupId);
 			}
 		}
