@@ -40,6 +40,7 @@
 	let projectFileBuffer: Buffer | undefined = $state();
 	let projectOptions: AutoR1.ProjectOptions = $state({ ...DEFAULT_OPTIONS });
 	let fileName: string = $state('');
+	let file: File | undefined = $state(undefined);
 	let customTemplateFileName = $state('');
 	let sourceGroupsStatus: SourceGroupStatus[] | undefined = $state();
 	let isVisible = $state(false);
@@ -91,7 +92,7 @@
 
 	async function cleanFile() {
 		if (projectFileBuffer) {
-			const projectFile = await AutoR1.AutoR1ProjectFile.build(projectFileBuffer);
+			const projectFile = await AutoR1.AutoR1ProjectFile.build(Buffer.prototype.transfer(projectFileBuffer));
 			const id = projectFile.getGroupIdFromName(GROUP_NAME);
 			projectFile.clean(id);
 
@@ -104,6 +105,7 @@
 	}
 
 	function clearFile() {
+		file = undefined;
 		projectFile = undefined;
 		fileName = '';
 		sourceGroupsStatus = undefined;
@@ -113,12 +115,13 @@
 	}
 
 	const processFile = async (
-		fileBuffer: Buffer,
+		droppedFile: File,
 		status: SourceGroupStatus[],
 		options: AutoR1.ProjectOptions
 	) => {
+		const buffer = await loadDbpr(droppedFile);
 		let projectFile: AutoR1.AutoR1ProjectFile;
-		projectFile = await AutoR1.AutoR1ProjectFile.build(fileBuffer!);
+		projectFile = await AutoR1.AutoR1ProjectFile.build(buffer!);
 
 		if (projectFile.additions) {
 			const id = projectFile.getGroupIdFromName(GROUP_NAME);
@@ -153,8 +156,9 @@
 	};
 
 	function handleDrop(event: Event) {
-		const [file] = (event.target as HTMLInputElement).files!;
-		loadProjectFile(file).then((loadedfile) => projectFile = loadedfile)
+		const [droppedFile] = (event.target as HTMLInputElement).files!;
+		file = droppedFile;
+		loadProjectFile(droppedFile).then((loadedfile) => projectFile = loadedfile)
 	}
 
 	function handleTemplateFileDrop(event: Event) {
