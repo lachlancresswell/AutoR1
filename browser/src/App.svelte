@@ -16,7 +16,6 @@
 	} from '../../native/frontend/src/windows/main/neutrino';
 
 	const GROUP_NAME = 'AutoR1';
-	const DEFAULT_INPUT_GAIN_TYPE = AutoR1.INPUT_GAIN_TYPE.ANALOG;
 	const SUFFIX = '_AUTO';
 
 	const newAutoPath = (path: string) => path.substring(0, path.lastIndexOf('.')) + SUFFIX + '.dbpr';
@@ -32,8 +31,7 @@
 		main: true,
 		meter: true,
 		eq: true,
-		arraySightControls: true,
-		inputGainType: DEFAULT_INPUT_GAIN_TYPE
+		arraySightControls: true
 	};
 
 	let defaultTemplateFile: AutoR1.AutoR1TemplateFile | undefined = $state();
@@ -144,8 +142,6 @@
 		projectFile.createMainEqGroup();
 		projectFile.createMainDsGroup();
 		projectFile.createMainMuteGroup();
-
-		options.inputGainType = parseInt(options.inputGainType as any) as 0 | 1;
 
 		const config: PageConfig[] = [
 			{
@@ -376,8 +372,7 @@
 			!projectOptions.meter ||
 			!projectOptions.eq ||
 			!projectOptions.arraySightControls ||
-			customTemplateFileName ||
-			parseInt(projectOptions.inputGainType as any) !== DEFAULT_INPUT_GAIN_TYPE
+			customTemplateFileName
 		);
 	}
 
@@ -568,29 +563,6 @@
 										type="checkbox"
 										bind:checked={projectOptions.arraySightControls}
 									/>
-								</div>
-								<!-- svelte-ignore a11y_click_events_have_key_events -->
-								<!-- svelte-ignore a11y_no_static_element_interactions -->
-								<div class="flex justify-end">
-									<div class="w-fit basis-2/3">Input gain</div>
-									<div class="basis-1/3">
-										<input
-											id="inputGainTypeAnalog"
-											value={0}
-											type="radio"
-											bind:group={projectOptions.inputGainType}
-										/>
-										<label class="cursor-pointer" for="inputGainTypeAnalog">Analog</label>
-									</div>
-									<div class="basis-1/3">
-										<input
-											id="inputGainTypeDigital"
-											value={1}
-											type="radio"
-											bind:group={projectOptions.inputGainType}
-										/>
-										<label class="cursor-pointer" for="inputGainTypeDigital">Digital</label>
-									</div>
 								</div>
 								<div class="flex justify-between gap-1" title="Load a custom .r2t template file.">
 									<div class="w-fit basis-1/2">Custom templates:</div>
