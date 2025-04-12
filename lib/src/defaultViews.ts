@@ -50,8 +50,10 @@ export const config: PageConfig[] = [
 				TargetType: dbpr.TargetTypes.GROUP,
 				Target: 'Mute',
 				Property: 'Mute',
-				Flag: 'Toggle',
-				MainColor: 12,
+				Flag: 'Toggle-Confirm',
+				ConfirmOffMsg: 'Unmute?',
+				ConfirmOnMsg: 'Mute?',
+				MainColor: 13,
 				initialPosition: { x: 145, y: 160 }
 			}
 		]

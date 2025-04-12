@@ -220,11 +220,26 @@ export class ViewTemplateManager {
 			case 'Off':
 				control.Flags = ControlFlags.SWITCH_OFF;
 				break;
+			case 'Off-Confirm':
+				control.Flags = ControlFlags.SWITCH_OFF_CONFIRM;
+				break;
 			case 'On':
 				control.Flags = ControlFlags.SWITCH_ON;
 				break;
+			case 'On-Confirm':
+				control.Flags = ControlFlags.SWITCH_ON_CONFIRM;
+				break;
 			case 'Toggle':
 				control.Flags = ControlFlags.SWITCH_TOGGLE;
+				break;
+			case 'Toggle-Confirm':
+				control.Flags = ControlFlags.SWITCH_TOGGLE_CONFIRM;
+				break;
+			case 'Toggle-ConfirmOn':
+				control.Flags = ControlFlags.SWITCH_TOGGLE_CONFIRM_ON;
+				break;
+			case 'Toggle-ConfirmOff':
+				control.Flags = ControlFlags.SWITCH_TOGGLE_CONFIGM_OFF;
 				break;
 		}
 
