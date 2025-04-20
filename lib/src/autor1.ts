@@ -2001,19 +2001,12 @@ export class AutoR1Control implements dbpr.Control {
 							? options.sourceGroup.channelGroups.find((ch) => ch.isTOPs())
 							: matches.lOrR === 'SUBs'
 								? options.sourceGroup.channelGroups.find((ch) => ch.isSUBs())
-								: undefined;
+								: options.sourceGroup.channelGroups[0];
 
 			if (matches.channelNumber && side) {
 				this.TargetId = side.channels[matches.channelNumber - 1].TargetId || this.TargetId;
 				this.TargetChannel =
 					side.channels[matches.channelNumber - 1].TargetChannel || this.TargetChannel;
-			} else if (matches.channelNumber) {
-				this.TargetId =
-					options.sourceGroup.channelGroups[0].channels[matches.channelNumber - 1].TargetId ||
-					this.TargetId;
-				this.TargetChannel =
-					options.sourceGroup.channelGroups[0].channels[matches.channelNumber - 1].TargetChannel ||
-					this.TargetChannel;
 			} else {
 				this.TargetId = side?.groupId || this.TargetId;
 			}
