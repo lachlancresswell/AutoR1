@@ -1,6 +1,6 @@
 import { type Database } from 'sql.js';
 import * as dbpr from './dbpr';
-import { build, type Group } from './dbpr';
+import { createControl } from './controlFactory';
 
 export const NAV_BUTTON_Y = 15;
 
@@ -1773,39 +1773,39 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 }
 
 export class AutoR1Control implements dbpr.Control {
-	ActionType = dbpr.ActionTypes.NONE;
-	Alignment = -1;
-	ConfirmOffMsg: string | null = null;
-	ConfirmOnMsg: string | null = null;
-	ControlId = -1;
-	Dimension: Uint8Array | null = null;
-	DisplayName: string | null = null;
-	Flags = 0;
-	Font = 'Arial,12,-1,5,50,0,0,0,0,0';
-	Height = 0;
-	JoinedId = 0;
-	LabelAlignment = 1;
-	LabelColor = 0;
-	LabelFont = 5;
-	LimitMax = 9999;
-	LimitMin = 0;
-	LineThickness = 0;
-	MainColor = -1;
-	PictureIdDay = 0;
-	PictureIdNight = 0;
-	PosX = 0;
-	PosY = 0;
-	SubColor = 1;
-	TargetChannel = dbpr.TargetChannels.NONE;
-	TargetId = -1;
-	TargetProperty: dbpr.TargetPropertyType | null = null;
-	TargetRecord = 0;
-	TargetType = 0;
-	ThresholdValue = 0.0;
-	Type = dbpr.ControlTypes.LED;
-	UniqueName: string | null = null;
-	ViewId = -1;
-	Width = 0;
+	ControlId: number;
+	Type: ControlTypes;
+	PosX: number;
+	PosY: number;
+	Width: number;
+	Height: number;
+	ViewId: number;
+	DisplayName: string | null;
+	UniqueName: string | null;
+	JoinedId: number;
+	LimitMin: number;
+	LimitMax: number;
+	MainColor: number;
+	SubColor: number;
+	LabelColor: number;
+	LabelFont: number;
+	LabelAlignment: number;
+	LineThickness: number;
+	ThresholdValue: number;
+	Flags: number;
+	ActionType: dbpr.ActionTypes;
+	TargetType: dbpr.TargetTypes;
+	TargetId: number;
+	TargetChannel: TargetChannels;
+	TargetProperty: TargetPropertyType | null;
+	TargetRecord: number;
+	ConfirmOnMsg: string | null;
+	ConfirmOffMsg: string | null;
+	PictureIdDay: number;
+	PictureIdNight: number;
+	Font: string;
+	Alignment: number;
+	Dimension: Uint8Array | null;
 
 	constructor(row?: Partial<dbpr.Control>) {
 		if (row) {
@@ -1844,39 +1844,77 @@ export class AutoR1Control implements dbpr.Control {
 				ThresholdValue,
 				UniqueName
 			} = row;
-			this.ViewId = ViewId ?? this.ViewId;
-			this.Type = Type ?? this.Type;
-			this.PosX = PosX ?? this.PosX;
-			this.PosY = PosY ?? this.PosY;
-			this.Width = Width ?? this.Width;
-			this.Height = Height ?? this.Height;
-			this.DisplayName = DisplayName ?? this.DisplayName;
-			this.TargetId = TargetId ?? this.TargetId;
-			this.TargetChannel = TargetChannel ?? this.TargetChannel;
-			this.ActionType = ActionType ?? this.ActionType;
-			this.Alignment = Alignment ?? this.Alignment;
-			this.ConfirmOffMsg = ConfirmOffMsg ?? this.ConfirmOffMsg;
-			this.ConfirmOnMsg = ConfirmOnMsg ?? this.ConfirmOnMsg;
-			this.ControlId = ControlId ?? this.ControlId;
-			this.Dimension = Dimension ?? this.Dimension;
-			this.Flags = Flags ?? this.Flags;
-			this.Font = Font ?? this.Font;
-			this.JoinedId = JoinedId ?? this.JoinedId;
-			this.LabelAlignment = LabelAlignment ?? this.LabelAlignment;
-			this.LabelColor = LabelColor ?? this.LabelColor;
-			this.LabelFont = LabelFont ?? this.LabelFont;
-			this.LimitMin = LimitMin ?? this.LimitMin;
-			this.LimitMax = LimitMax ?? this.LimitMax;
-			this.LineThickness = LineThickness ?? this.LineThickness;
-			this.MainColor = MainColor ?? this.MainColor;
-			this.PictureIdDay = PictureIdDay ?? this.PictureIdDay;
-			this.PictureIdNight = PictureIdNight ?? this.PictureIdNight;
-			this.SubColor = SubColor ?? this.SubColor;
-			this.TargetProperty = TargetProperty ?? this.TargetProperty;
-			this.TargetRecord = TargetRecord ?? this.TargetRecord;
-			this.TargetType = TargetType ?? this.TargetType;
-			this.ThresholdValue = ThresholdValue ?? this.ThresholdValue;
-			this.UniqueName = UniqueName ?? this.UniqueName;
+
+			const defaultControl = createControl(Type || ControlTypes.CHANNEL);
+
+			this.ViewId = ViewId ?? defaultControl.ViewId;
+			this.Type = Type ?? defaultControl.Type;
+			this.PosX = PosX ?? defaultControl.PosX;
+			this.PosY = PosY ?? defaultControl.PosY;
+			this.Width = Width ?? defaultControl.Width;
+			this.Height = Height ?? defaultControl.Height;
+			this.DisplayName = DisplayName ?? defaultControl.DisplayName;
+			this.TargetId = TargetId ?? defaultControl.TargetId;
+			this.TargetChannel = TargetChannel ?? defaultControl.TargetChannel;
+			this.ActionType = ActionType ?? defaultControl.ActionType;
+			this.Alignment = Alignment ?? defaultControl.Alignment;
+			this.ConfirmOffMsg = ConfirmOffMsg ?? defaultControl.ConfirmOffMsg;
+			this.ConfirmOnMsg = ConfirmOnMsg ?? defaultControl.ConfirmOnMsg;
+			this.ControlId = ControlId ?? defaultControl.ControlId;
+			this.Dimension = Dimension ?? defaultControl.Dimension;
+			this.Flags = Flags ?? defaultControl.Flags;
+			this.Font = Font ?? defaultControl.Font;
+			this.JoinedId = JoinedId ?? defaultControl.JoinedId;
+			this.LabelAlignment = LabelAlignment ?? defaultControl.LabelAlignment;
+			this.LabelColor = LabelColor ?? defaultControl.LabelColor;
+			this.LabelFont = LabelFont ?? defaultControl.LabelFont;
+			this.LimitMin = LimitMin ?? defaultControl.LimitMin;
+			this.LimitMax = LimitMax ?? defaultControl.LimitMax;
+			this.LineThickness = LineThickness ?? defaultControl.LineThickness;
+			this.MainColor = MainColor ?? defaultControl.MainColor;
+			this.PictureIdDay = PictureIdDay ?? defaultControl.PictureIdDay;
+			this.PictureIdNight = PictureIdNight ?? defaultControl.PictureIdNight;
+			this.SubColor = SubColor ?? defaultControl.SubColor;
+			this.TargetProperty = TargetProperty ?? defaultControl.TargetProperty;
+			this.TargetRecord = TargetRecord ?? defaultControl.TargetRecord;
+			this.TargetType = TargetType ?? defaultControl.TargetType;
+			this.ThresholdValue = ThresholdValue ?? defaultControl.ThresholdValue;
+			this.UniqueName = UniqueName ?? defaultControl.UniqueName;
+		} else {
+			const defaultControl = createControl(ControlTypes.CHANNEL);
+			this.ViewId = defaultControl.ViewId;
+			this.Type = defaultControl.Type;
+			this.PosX = defaultControl.PosX;
+			this.PosY = defaultControl.PosY;
+			this.Width = defaultControl.Width;
+			this.Height = defaultControl.Height;
+			this.DisplayName = defaultControl.DisplayName;
+			this.TargetId = defaultControl.TargetId;
+			this.TargetChannel = defaultControl.TargetChannel;
+			this.ActionType = defaultControl.ActionType;
+			this.Alignment = defaultControl.Alignment;
+			this.ConfirmOffMsg = defaultControl.ConfirmOffMsg;
+			this.ConfirmOnMsg = defaultControl.ConfirmOnMsg;
+			this.ControlId = defaultControl.ControlId;
+			this.Dimension = defaultControl.Dimension;
+			this.Flags = defaultControl.Flags;
+			this.Font = defaultControl.Font;
+			this.JoinedId = defaultControl.JoinedId;
+			this.LabelAlignment = defaultControl.LabelAlignment;
+			this.LabelColor = defaultControl.LabelColor;
+			this.LabelFont = defaultControl.LabelFont;
+			this.LimitMin = defaultControl.LimitMin;
+			this.LimitMax = defaultControl.LimitMax;
+			this.LineThickness = defaultControl.LineThickness;
+			this.MainColor = defaultControl.MainColor;
+			this.PictureIdDay = defaultControl.PictureIdDay;
+			this.PictureIdNight = defaultControl.PictureIdNight;
+			this.SubColor = defaultControl.SubColor;
+			this.TargetProperty = defaultControl.TargetProperty;
+			this.TargetRecord = defaultControl.TargetRecord;
+			this.TargetType = defaultControl.TargetType;
+			this.ThresholdValue = defaultControl.ThresholdValue;
+			this.UniqueName = defaultControl.UniqueName;
 		}
 	}
 
