@@ -761,8 +761,8 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 		}
 
 		const query = `
-        SELECT SourceGroups.SourceGroupId, SourceGroups.Type, SourceGroups.Name, SourceGroups.NextSourceGroupId, SourceGroups.ArrayProcessingEnable, SourceGroups.ArraySightId, ArraySightIdR, SourceGroupsAdditionalData.System, 
-		Views.ViewId, Views.Name,
+        SELECT SourceGroups.SourceGroupId, SourceGroups.Type, SourceGroups.Name as Name, SourceGroups.NextSourceGroupId, SourceGroups.ArrayProcessingEnable, SourceGroups.ArraySightId, ArraySightIdR, SourceGroups.Mounting, SourceGroupsAdditionalData.System, 
+		Views.ViewId, Views.Name as ViewName,
 		R1GroupsMaster.GroupId as R1GroupsMasterGroupId, R1GroupsMaster.ParentId as R1GroupsMasterParentId, R1GroupsMaster.Name as R1GroupsMasterName,
 		R1GroupsLeftRight.GroupId as R1GroupsLeftRightGroupId, R1GroupsLeftRight.ParentId as R1GroupsLeftRightParentId, R1GroupsLeftRight.Name as R1GroupsLeftRightName,
 		R1GroupsMasterTops.GroupId as R1GroupsMasterTopsGroupId, R1GroupsMasterTops.ParentId as R1GroupsMasterTopsParentId, R1GroupsMasterTops.Name as R1GroupsMasterTopsName,
@@ -777,15 +777,11 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 		AutoR1SubsR.GroupId as AutoR1SubRightGroupId, AutoR1SubsR.ParentId as AutoR1SubRightParentId, AutoR1SubsR.Name as AutoR1SubRightName,
 		AutoR1SubsC.GroupId as AutoR1SubCenterGroupId, AutoR1SubsC.ParentId as AutoR1SubCenterParentId, AutoR1SubsC.Name as AutoR1SubCenterName,
 		CrossoverControls.DisplayName as SUBsCrossover
--- SELECT *
         FROM SourceGroups
         LEFT OUTER JOIN (SELECT ArraySightId as ArraySightIdR, SourceGroupId as SGid FROM SourceGroups) ON SourceGroups.NextSourceGroupId = SGid
         /* Combine additional source group data */
         JOIN SourceGroupsAdditionalData 
         ON SourceGroups.SourceGroupId = SourceGroupsAdditionalData.SourceGroupId
-        /* Combine view info */
-        JOIN Views
-        ON Views.Name = SourceGroups.Name
 		/* Skip second half of stereo pairs */
         AND SourceGroups.OrderIndex != -1
         /* R1 Master Sub Groups */
@@ -820,7 +816,10 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 		ON SourceGroups.Type = 3
         LEFT OUTER JOIN (SELECT GroupId, Name, ParentId FROM Groups WHERE ParentId = (SELECT GroupId FROM Groups WHERE Name == 'Auto R1')  AND Name LIKE '% SUBs C' ) AutoR1SubsC
 		ON SourceGroups.Type = 3
-        /* Fetch crossover info for subs */
+		/* Combine view info */
+        LEFT  JOIN Views
+        ON Views.Name = SourceGroups.Name
+		/* Fetch crossover info for subs */
         LEFT OUTER JOIN (SELECT * FROM Controls WHERE DisplayName = '100Hz' OR DisplayName = 'Infra') CrossoverControls
         ON CrossoverControls.ViewId  = Views.ViewId
         /* Skip unused channels group */
@@ -949,10 +948,7 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 		let { joinedId } = options || {};
 
 		// Increase global joined ID
-		const highestJoinedId = this.getHighestJoinedID();
-		if (!highestJoinedId) {
-			throw new Error('Could not find a joined ID');
-		}
+		const highestJoinedId = this.getHighestJoinedID() || 0;
 
 		if (!joinedId) joinedId = highestJoinedId + 1;
 
