@@ -1,5 +1,14 @@
 import { type Database } from 'sql.js';
 import * as dbpr from './dbpr';
+import {
+	build,
+	ControlTypes,
+	SourceGroupTypes,
+	TargetChannels,
+	TargetPropertyType,
+	TargetTypes,
+	type Group
+} from './dbpr';
 import { createControl } from './controlFactory';
 
 export const NAV_BUTTON_Y = 15;
@@ -68,15 +77,16 @@ type ChannelGroupTypes =
 export interface TemplateOptions {
 	DisplayName?: string;
 	TargetId?: number;
-	TargetChannel?: number;
+	TargetChannel?: TargetChannels;
+	TargetType?: TargetTypes;
 	Width?: number;
 	Height?: number;
 	joinedId?: number;
 	sourceGroup?: SourceGroup;
 	channelGroup?: ChannelGroup;
 	channel?: Group;
-	sourceGroupType?: dbpr.SourceGroupTypes | ChannelGroupTypes;
-	strings?: { sourceGroupName?: string; channelGroupName?: string };
+	sourceGroupType?: SourceGroupTypes | ChannelGroupTypes;
+	index?: number;
 }
 
 interface ChannelGroupInterface {
@@ -2018,7 +2028,7 @@ export class AutoR1Control implements dbpr.Control {
 		this.replaceDisplayName('%SourceGroupName%', sourceGroup?.Name);
 		this.replaceDisplayName('%ChannelGroupName%', channelGroup?.name);
 		this.replaceDisplayName('%ChannelName%', channel?.Name);
-		this.replaceDisplayName('%xover%', xover);
+		this.replaceDisplayName('%i%', ((options?.index || 0) + 1).toString());
 
 		if (this.displayNameIncludes('%SourceGroupPageTarget%')) {
 			this.TargetId = options.sourceGroup?.ViewId || this.TargetId;
