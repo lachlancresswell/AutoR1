@@ -35,6 +35,13 @@ export enum R1GroupsType {
 	DEVICE = 1
 }
 
+export enum LabelAlignment {
+	BOTTOM = 64,
+	LEFT = 1,
+	TOP = 32,
+	RIGHT = 2
+}
+
 /**
  * Source group row from database
  * 
@@ -102,7 +109,11 @@ export enum ControlFlags {
 	SWITCH_TOGGLE = 262,
 	SWITCH_TOGGLE_CONFIRM = 3334,
 	SWITCH_TOGGLE_CONFIRM_ON = 2054,
-	SWITCH_TOGGLE_CONFIGM_OFF = 2310
+	SWITCH_TOGGLE_CONFIGM_OFF = 2310,
+	METER_SCALE_SHOW = 134,
+	METER_HIDE_SCALE_HIDE_WAYNAMES = 166,
+	METER_SHOW_SCALE_SHOW_WAYNAMES = 536871046,
+	METER_HIDE_SCALE_SHOW_WAYNAMES = 536871078
 }
 
 /**
@@ -120,6 +131,7 @@ export enum TargetChannels {
 }
 
 export enum TargetTypes {
+	NONE = -1,
 	GROUP = 0,
 	CHANNEL = 1,
 	DIRECT_ACCESS = 2,
@@ -432,7 +444,7 @@ export interface Control {
 	SubColor: number;
 	LabelColor: number;
 	LabelFont: number;
-	LabelAlignment: number;
+	LabelAlignment: LabelAlignment;
 	LineThickness: number;
 	ThresholdValue: number;
 	Flags: number;
@@ -1111,7 +1123,7 @@ export class ProjectFile extends SqlDbFile {
 			control.Height,
 			control.ViewId,
 			control.DisplayName,
-			control.UniqueName,
+			control.UniqueName || '',
 			control.JoinedId,
 			control.LimitMin,
 			control.LimitMax,
@@ -1129,10 +1141,10 @@ export class ProjectFile extends SqlDbFile {
 			control.TargetChannel,
 			control.TargetProperty,
 			control.TargetRecord,
-			control.ConfirmOnMsg,
-			control.ConfirmOffMsg,
-			control.PictureIdDay,
-			control.PictureIdNight,
+			control.ConfirmOnMsg || '',
+			control.ConfirmOffMsg || '',
+			control.PictureIdDay || '',
+			control.PictureIdNight || '',
 			control.Font,
 			control.Alignment,
 			control.Dimension || ' '
