@@ -2120,24 +2120,40 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
 				);
 				const controls = dbpr.getAllAsObjects<dbpr.Control>(stmt);
 
-				const { width, height } = this.getTemplateWidthHeight(template.Name);
+				const { width, height } = AutoR1TemplateFile.getTemplateWidthHeightFromControls(controls);
 
-				this.templates.push(new AutoR1Template(template, controls, width, height));
-				console.debug(
-					`Loaded template - ${index} / ${this.templates[this.templates.length - 1].name}`
-				);
+				this.loadTemplate(template, controls, width, height);
 			});
-
-		const autoR1TemplateTitles = Object.values(AutoR1TemplateTitles);
-		const loadedTitles = this.templates.map((t) => t.name);
-		loadedTitles.forEach((title) => {
-			if (!autoR1TemplateTitles.includes(title as AutoR1TemplateTitles)) {
-				throw new Error(`Template ${title} not found in template file.`);
-			}
-		});
 	}
 
 	static build = (fb: Buffer) => build<AutoR1TemplateFile>(fb, (db) => new AutoR1TemplateFile(db));
+
+	public loadTemplate = (
+		template: dbpr.Section,
+		controls: dbpr.Control[],
+		width: number,
+		height: number
+	) => {
+		const newTemplate = new AutoR1Template(template, controls, width, height);
+		this.templates.push(newTemplate);
+		console.debug(`Loaded template - ${newTemplate.name}`);
+	};
+
+	getNextJoinedId = () => {
+		const highestIdObject = this.templates.reduce(
+			(max, obj) => (obj.joinedId > max.joinedId ? obj : max),
+			this.templates[0]
+		);
+		return highestIdObject.joinedId + 1;
+	};
+
+	getNextId = () => {
+		const highestIdObject = this.templates.reduce(
+			(max, obj) => (obj.id > max.id ? obj : max),
+			this.templates[0]
+		);
+		return highestIdObject.id + 1;
+	};
 
 	/**
 	 * Returns a template by name
