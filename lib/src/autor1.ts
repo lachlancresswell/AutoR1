@@ -2235,28 +2235,23 @@ export class AutoR1TemplateFile extends dbpr.TemplateFile {
 		width: number;
 		height: number;
 	} {
-		const rtn = this.db
-			.prepare(`SELECT JoinedId FROM 'main'.'Sections' WHERE Name = ?`)
-			.getAsObject([templateName]) as { JoinedId: number };
-		if (!rtn || !rtn.JoinedId) {
-			throw new Error(`${templateName} template not found.`);
-		}
+		const templateControls = this.templates.find((t) => t.name === templateName)?.controls!;
 
-		const jId = rtn.JoinedId;
-		const stmt = this.db.prepare(
-			`SELECT PosX, PosY, Width, Height FROM Controls WHERE JoinedId = ${jId} `
-		);
+		return AutoR1TemplateFile.getTemplateWidthHeightFromControls(templateControls);
+	}
 
-		const templateControls = dbpr.getAllAsObjects<{
-			PosX: number;
-			PosY: number;
-			Width: number;
-			Height: number;
-		}>(stmt);
-		if (!templateControls.length) {
-			throw new Error(`${templateName} template controls not found.`);
-		}
-
+	/**
+	 * Returns the width and height of a template
+	 * @param templateFile File containing the templates
+	 * @param templateName Name of the template to get the size of
+	 * @returns Object containing the width and height of the template
+	 * @throws Error if the template doesn't exist
+	 * @throws Error if the template doesn't have any controls
+	 */
+	static getTemplateWidthHeightFromControls(templateControls: dbpr.Control[]): {
+		width: number;
+		height: number;
+	} {
 		let maxWidth = 0;
 		let maxHeight = 0;
 		for (const row of templateControls) {
