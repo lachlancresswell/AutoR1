@@ -979,6 +979,26 @@ export class ProjectFile extends SqlDbFile {
 		return rtn.ViewId;
 	}
 
+	public getSnapshotFromName(name: string): number | undefined {
+		const stmt = this.db.prepare('SELECT SnapshotId FROM Snapshots WHERE Name = ?');
+		const rtn = stmt.getAsObject([name]) as { SnapshotId: number };
+		if (!rtn || rtn.SnapshotId === undefined) {
+			console.debug(`Could not find snapshot with name ${name}`);
+			return undefined;
+		}
+		return rtn.SnapshotId;
+	}
+
+	public getDeviceFromName(name: string): number | undefined {
+		const stmt = this.db.prepare('SELECT DeviceId FROM Devices WHERE Name = ?');
+		const rtn = stmt.getAsObject([name]) as { DeviceId: number };
+		if (!rtn || rtn.DeviceId === undefined) {
+			console.debug(`Could not find snapshot with name ${name}`);
+			return undefined;
+		}
+		return rtn.DeviceId;
+	}
+
 	/**
 	 * Get all views from the Views table
 	 * @returns Array of views
