@@ -963,7 +963,15 @@ export class AutoR1ProjectFile extends dbpr.ProjectFile {
 				continue;
 			}
 
-			if (options) control.handleString(options);
+			if (options) {
+				const { TargetChannel, TargetId, TargetType } = options;
+
+				control.TargetChannel = TargetChannel ?? control.TargetChannel;
+				control.TargetId = TargetId ?? control.TargetId;
+				control.TargetType = TargetType ?? control.TargetType;
+
+				control.handleString(options);
+			}
 
 			control.PosX = control.PosX + posX;
 			control.PosY = control.PosY + posY;
@@ -2012,15 +2020,14 @@ export class AutoR1Control implements dbpr.Control {
 		this.replaceDisplayName('%ChannelName%', channel?.Name);
 		this.replaceDisplayName('%xover%', xover);
 
-		this.TargetId =
-			(this.displayNameIncludes('%SourceGroupPageTarget%') && options.sourceGroup?.ViewId) ||
-			this.TargetId;
-
-		this.TargetId =
-			(this.displayNameIncludes('%EqPageTarget%') &&
-				options.sourceGroup?.ViewId &&
-				options.sourceGroup?.ViewId + 1) ||
-			this.TargetId;
+		if (this.displayNameIncludes('%SourceGroupPageTarget%')) {
+			this.TargetId = options.sourceGroup?.ViewId || this.TargetId;
+			this.TargetType = dbpr.TargetTypes.VIEW;
+		} else if (this.displayNameIncludes('%EqPageTarget%')) {
+			this.TargetId =
+				(options.sourceGroup?.ViewId && options.sourceGroup?.ViewId + 1) || this.TargetId;
+			this.TargetType = dbpr.TargetTypes.VIEW;
+		}
 
 		if (this.DisplayName?.includes('%Target_ChannelGroup') && options.sourceGroup) {
 			const matches = extractFromTargetString(this.DisplayName, 'Target_ChannelGroup');
@@ -2041,8 +2048,20 @@ export class AutoR1Control implements dbpr.Control {
 				this.TargetId = side.channels[matches.channelNumber - 1].TargetId || this.TargetId;
 				this.TargetChannel =
 					side.channels[matches.channelNumber - 1].TargetChannel || this.TargetChannel;
+
+				if (
+					this.TargetProperty === TargetPropertyType.CHANNEL_STATUS_OUTPUT_POWER ||
+					this.TargetProperty === TargetPropertyType.CHANNEL_STATUS_GAIN_REDUCTION_HEADROOM
+				) {
+					this.TargetType = dbpr.TargetTypes.DIRECT_ACCESS;
+				} else {
+					this.TargetType = dbpr.TargetTypes.CHANNEL;
+				}
+			} else if (side) {
+				this.TargetType = dbpr.TargetTypes.GROUP;
+				this.TargetId = side?.groupId;
 			} else {
-				this.TargetId = side?.groupId || this.TargetId;
+				this.TargetId = this.TargetId;
 			}
 		}
 	}
