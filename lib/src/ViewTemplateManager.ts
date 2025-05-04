@@ -70,21 +70,20 @@ interface Propagation {
 	inverted?: boolean;
 }
 
-interface TemplateBase {
+interface TemplateBase<T> {
 	target?: TemplateTarget;
 	propagation?: Propagation;
 	position?: Position;
 	DisplayName?: string;
+	children?: T[];
 }
 
-interface AutoR1TemplateControl extends TemplateBase {
+interface AutoR1TemplateControl extends TemplateBase<AutoR1TemplateControl> {
 	controls: Partial<Control>[];
-	children?: AutoR1TemplateControl[];
 }
 
-interface AutoR1Template extends TemplateBase {
+interface AutoR1Template extends TemplateBase<AutoR1Template> {
 	name: string;
-	children?: AutoR1Template[];
 }
 
 export interface PageConfig {
@@ -178,7 +177,8 @@ export class ViewTemplateManager {
 		options: ViewTemplateOptions[] = [{}]
 	) {
 		let template = initialTemplate;
-		const isTemplate = (object: Control | TemplateBase) => 'name' in object;
+		const isTemplate = (object: Control | TemplateBase<AutoR1Template | AutoR1TemplateControl>) =>
+			'name' in object;
 
 		// Bunch o controls, create a cheeky virtual template
 		if (!isTemplate(template)) {
@@ -249,7 +249,7 @@ export class ViewTemplateManager {
 	}
 
 	private calculatePosition(
-		template: TemplateBase,
+		template: TemplateBase<AutoR1Template | AutoR1TemplateControl>,
 		basePosition: Position,
 		lastPosition = { x: 0, y: 0 },
 		dimensions = { width: 0, height: 0 },
@@ -441,13 +441,12 @@ export class ViewTemplateManager {
 					};
 				});
 			case TemplateTargetTypes.ChannelGroup:
-				if ((parent as SourceGroup)?.SourceGroupId) {
-					const sourceGroup = parent as SourceGroup;
-					return sourceGroup.channelGroups
+				if (parent && 'SourceGroupId' in parent) {
+					return parent.channelGroups
 						.filter((channelGroup) =>
 							channelGroup.hasLorR() ? (channelGroup.isLorR() ? true : false) : true
 						)
-						.map((channelGroup, index) => handleChannelGroup(channelGroup, sourceGroup, index))
+						.map((channelGroup, index) => handleChannelGroup(channelGroup, parent, index))
 						.flat()
 						.slice(circuitStart, circuitsEnd);
 				} else {
@@ -498,10 +497,9 @@ export class ViewTemplateManager {
 				}
 			case TemplateTargetTypes.ChannelGroupFlown:
 				if (parent && 'Mounting' in parent && parent.Mounting === MountingFlag.FLOWN) {
-					const sourceGroup = parent as SourceGroup;
-					return sourceGroup.channelGroups
+					return parent.channelGroups
 						.filter((channelGroup) => (channelGroup.hasLorR() ? channelGroup.isLorR() : true))
-						.map((channelGroup, index) => handleChannelGroup(channelGroup, sourceGroup, index))
+						.map((channelGroup, index) => handleChannelGroup(channelGroup, parent, index))
 						.flat()
 						.slice(circuitStart, circuitsEnd);
 				} else {
@@ -530,10 +528,9 @@ export class ViewTemplateManager {
 				}
 			case TemplateTargetTypes.ChannelGroupGround:
 				if (parent && 'Mounting' in parent && parent.Mounting === MountingFlag.GROUND_STACK) {
-					const sourceGroup = parent as SourceGroup;
-					return sourceGroup.channelGroups
+					return parent.channelGroups
 						.filter((channelGroup) => (channelGroup.hasLorR() ? channelGroup.isLorR() : true))
-						.map((channelGroup, index) => handleChannelGroup(channelGroup, sourceGroup, index))
+						.map((channelGroup, index) => handleChannelGroup(channelGroup, parent, index))
 						.flat()
 						.slice(circuitStart, circuitsEnd);
 				} else {
@@ -561,10 +558,11 @@ export class ViewTemplateManager {
 						.slice(circuitStart, circuitsEnd);
 				}
 			case TemplateTargetTypes.Channel:
-				const channelGroup = parent as ChannelGroup;
-				return channelGroup.channels
-					.map((channel, index) => handleChannel(channel, index, channelGroup))
-					.slice(circuitStart, circuitsEnd);
+				if (parent && 'channels' in parent) {
+					return parent.channels
+						.map((channel, index) => handleChannel(channel, index, parent))
+						.slice(circuitStart, circuitsEnd);
+				}
 			case TemplateTargetTypes.Mute:
 				return [
 					{
