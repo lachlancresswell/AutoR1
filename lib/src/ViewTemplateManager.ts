@@ -311,7 +311,7 @@ export class ViewTemplateManager {
 				DisplayName,
 				TargetId: channel.TargetId,
 				TargetChannel: channel.TargetChannel,
-				TargetType: TargetTypes.CHANNEL,
+				TargetType: TargetTypes.DIRECT_ACCESS,
 				index,
 				sourceGroup,
 				channelGroup,
