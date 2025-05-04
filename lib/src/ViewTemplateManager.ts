@@ -46,10 +46,15 @@ export enum Direction {
 	Vertical = 'vertical'
 }
 
+export enum Circuits {
+	FirstHalf = -2,
+	SecondHalf = -3
+}
+
 interface TemplateTarget {
 	type: TemplateTargetTypes;
 	name?: string;
-	start?: number;
+	start?: number | Circuits;
 	end?: number;
 }
 interface Position {
@@ -469,14 +474,27 @@ export class ViewTemplateManager {
 									};
 								})
 						)
-						.flat()
-						.slice(circuitStart, circuitsEnd);
+						.flat();
 
-					if (name) {
-						return channelGroups.filter((cg) => cg.channelGroup.name === name);
-					}
+					return channelGroups
+						.filter((cg) => cg.channelGroup.name === (name ?? cg.channelGroup.name))
+						.map((cg) => {
+							// First half
+							if (circuitStart === -2) {
+								const start = 0;
+								const end = cg.children.length - Math.floor(cg.children.length / 2);
 
-					return channelGroups;
+								return { ...cg, children: cg.children.slice(start, end) };
+							} else if (circuitStart === -3) {
+								// Second half
+								const start = Math.ceil(cg.children.length / 2);
+								const end = cg.children.length;
+
+								return { ...cg, children: cg.children.slice(start, end) };
+							}
+
+							return { ...cg, children: cg.children.slice(circuitStart, circuitsEnd) };
+						});
 				}
 			case TemplateTargetTypes.ChannelGroupFlown:
 				if (parent && 'Mounting' in parent && parent.Mounting === MountingFlag.FLOWN) {
