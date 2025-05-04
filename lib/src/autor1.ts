@@ -2026,7 +2026,20 @@ export class AutoR1Control implements dbpr.Control {
 		const xover = channelGroup?.type.includes('TOPS') ? 'CUT' : sourceGroup?.xover;
 
 		this.replaceDisplayName('%SourceGroupName%', sourceGroup?.Name);
-		this.replaceDisplayName('%ChannelGroupName%', channelGroup?.name);
+
+		if (!(sourceGroup?.hasSUBs() && sourceGroup.hasTOPs())) {
+			this.replaceDisplayName(
+				'%ChannelGroupName%',
+				channelGroup?.name
+					.replace('TOPs ', '')
+					.replace('SUBs ', '')
+					.replace('TOPs', '')
+					.replace('SUBs', '')
+			);
+		} else {
+			this.replaceDisplayName('%ChannelGroupName%', channelGroup?.name);
+		}
+
 		this.replaceDisplayName('%ChannelName%', channel?.Name);
 		this.replaceDisplayName('%i%', ((options?.index || 0) + 1).toString());
 
