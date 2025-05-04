@@ -655,6 +655,43 @@ export class ViewTemplateManager {
 	}
 }
 
+export interface GroupConfig {
+	name: string;
+	children: { name: string; start?: number; end?: number }[];
+}
+
+export const handleGroupConfig = (groupConfig: GroupConfig, projectFile: AutoR1ProjectFile) => {
+	const children = groupConfig.children
+		.map((child) => {
+			const sourceGroup = projectFile.sourceGroups.find((sg) => sg.Name === child.name);
+
+			if (sourceGroup?.isStereo()) {
+				return sourceGroup?.channelGroups
+					.filter((cg) => cg.isLorR())
+					.map((channelGroup) =>
+						channelGroup.channels.slice(child.start ?? 0, child.end ?? channelGroup.channels.length)
+					)
+					.flat();
+			} else {
+				return sourceGroup?.channelGroups
+					.map((channelGroup) =>
+						channelGroup.channels.slice(child.start ?? 0, child.end ?? channelGroup.channels.length)
+					)
+					.flat();
+			}
+		})
+		.filter((group) => !!group)
+		.flat();
+
+	const groupId = projectFile.createGroup({
+		Name: groupConfig.name
+	});
+
+	children.forEach((child) => {
+		projectFile.addChannelToGroup({ ...child, ParentId: groupId });
+	});
+};
+
 export const handleViewConfig = (
 	pageConfig: PageConfig,
 	projectFile: AutoR1ProjectFile,
